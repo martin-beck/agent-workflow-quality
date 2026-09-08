@@ -34,7 +34,10 @@ configuration, deadlines, output bounds, minimal environments, normalized failur
 agreement, semantic weakening, and native-command equivalence on controlled fixtures. Family ARs
 must add their own positive, negative, version-skew, and native-equivalence fixtures. Shell and
 documentation family tests additionally prove tracked input selection and declared fixture exclusion;
-documentation tests distinguish offline local-link evidence from external availability.
+documentation tests distinguish offline local-link evidence from external availability. Schema tests
+cover duplicate JSON keys, non-finite constants, restricted YAML, declared dialects, confined local
+reference graphs, format assertions, semantic instance failures, file budgets, and content-minimized
+errors.
 
 Source and wheel archives are inspected without extraction for unsafe paths, development metadata
 that can expose private paths, duplicate or non-regular members, bounded size, required packaged

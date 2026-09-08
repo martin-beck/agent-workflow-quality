@@ -39,9 +39,12 @@ ADAPTER_KEYS = {
 INPUT_MODES = {"explicit", "tracked-formats", "tracked-shell"}
 MAX_SELECTED_INPUTS = 10_000
 MAX_SELECTED_INPUT_BYTES = 1_000_000
+MAX_SELECTED_FILE_BYTES = 5_000_000
+MAX_SELECTED_TOTAL_BYTES = 50_000_000
+MAX_CONFIG_FILE_BYTES = 5_000_000
 ADAPTER_ID = re.compile(r"^ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 TOOL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*$")
-FORMAT = re.compile(r"^\.[a-z0-9]+$")
+FORMAT = re.compile(r"^\.[a-z0-9]+(?:\.[a-z0-9]+)*$")
 SHELL_SHEBANG = re.compile(
     rb"^#![ \t]*(?:/usr/bin/env(?:[ \t]+-S)?[ \t]+)?"
     rb"(?:/[^ \t\r\n]+/)?(?:sh|bash|dash|ksh|mksh|zsh|ash)(?:[ \t]|$)"
@@ -346,6 +349,10 @@ def _config_failure(root: Path, contract: dict[str, Any]) -> list[dict[str, str]
                 relative,
                 "declared project configuration is unavailable",
             )
+        if path.stat().st_size > MAX_CONFIG_FILE_BYTES:
+            return _finding(
+                "adapter-config-limit", relative, "declared configuration exceeds the size bound"
+            )
     return None
 
 
@@ -400,7 +407,7 @@ def _selected_inputs(root: Path, contract: dict[str, Any]) -> list[str]:
         relative = path.relative_to(root).as_posix()
         if _is_fixture(relative, fixtures):
             continue
-        if path.suffix in contract["formats"] or (
+        if any(relative.endswith(suffix) for suffix in contract["formats"]) or (
             mode == "tracked-shell" and _shell_entrypoint(path)
         ):
             selected.append(relative)
@@ -469,10 +476,25 @@ def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
             "adapter-inputs-missing", "", "adapter selected no tracked project inputs"
         )
         return _result(contract, started, "fail", failure)
-    input_bytes = sum(len(os.fsencode(item)) + 1 for item in inputs)
-    if len(inputs) > MAX_SELECTED_INPUTS or input_bytes > MAX_SELECTED_INPUT_BYTES:
+    argument_bytes = sum(len(os.fsencode(item)) + 1 for item in inputs)
+    if len(inputs) > MAX_SELECTED_INPUTS or argument_bytes > MAX_SELECTED_INPUT_BYTES:
         failure = _finding(
-            "adapter-inputs-limit", "", "adapter selected inputs exceed the argv safety bound"
+            "adapter-inputs-limit", "", "adapter selected inputs exceed a safety bound"
+        )
+        return _result(contract, started, "fail", failure)
+    try:
+        file_sizes = [(root / item).stat().st_size for item in inputs]
+    except OSError:
+        failure = _finding(
+            "adapter-inputs-missing", "", "adapter selected an unavailable tracked input"
+        )
+        return _result(contract, started, "fail", failure)
+    if (
+        any(size > MAX_SELECTED_FILE_BYTES for size in file_sizes)
+        or sum(file_sizes) > MAX_SELECTED_TOTAL_BYTES
+    ):
+        failure = _finding(
+            "adapter-inputs-limit", "", "adapter selected inputs exceed a safety bound"
         )
         return _result(contract, started, "fail", failure)
     failure = _execution_failure(root, executable, contract, environment, inputs)

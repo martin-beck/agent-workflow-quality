@@ -85,6 +85,10 @@ class CheckTests(unittest.TestCase):
         self.assertTrue(self.run_one(checks.shell_entrypoints, shell))
         self.assertTrue(self.run_one(checks.local_links, markdown))
         self.assertTrue(self.run_one(checks.json_parse, document))
+        for ambiguous in ('{"key": 1, "key": 2}\n', '{"value": NaN}\n'):
+            with self.subTest(ambiguous=ambiguous):
+                document.write_text(ambiguous, encoding="utf-8")
+                self.assertEqual("invalid-json", self.run_one(checks.json_parse, document)[0].code)
         self.assertTrue(self.run_one(checks.privacy_patterns, private))
 
     def test_ecosystem_and_formal_checks(self) -> None:

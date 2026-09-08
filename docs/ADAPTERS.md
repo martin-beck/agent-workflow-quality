@@ -24,8 +24,9 @@ awq --root . adapter-catalog --family python --format json
 The response includes a canonical catalog digest, family assumptions, and complete contracts.
 Unknown families fail closed. Catalog entries are templates for explicit review and copying into a
 repository policy; they are never enabled automatically. See the
-[Python adapter family](PYTHON_ADAPTERS.md), [shell adapter family](SHELL_ADAPTERS.md), and
-[documentation adapter family](DOCUMENTATION_ADAPTERS.md) for exact pins and configuration contracts.
+[Python adapter family](PYTHON_ADAPTERS.md), [shell adapter family](SHELL_ADAPTERS.md),
+[documentation adapter family](DOCUMENTATION_ADAPTERS.md), and
+[schema adapter family](SCHEMA_ADAPTERS.md) for exact pins and configuration contracts.
 
 ## Contract
 
@@ -40,7 +41,7 @@ Each object conforms to `schemas/adapter-contract.schema.json` and contains:
 | `timeout_seconds` | Finite deadline shared by probe and execution, with a ten-second probe cap. |
 | `tier`, `evidence` | Earliest execution tier and evidence classification. |
 | `limitation`, `remediation` | Required bounded review context. |
-| `formats` | Unique lowercase suffixes covered by the adapter. |
+| `formats` | Unique lowercase simple or compound suffixes covered by the adapter, such as `.json` or `.schema.json`. |
 | `config_paths` | Unique repository-relative project configuration files that must exist. |
 | `input_mode` | Optional `explicit` default, `tracked-formats`, or `tracked-shell` selection. |
 
@@ -96,8 +97,9 @@ A passing result contains no findings. Failures use stable codes:
 | --- | --- |
 | `adapter-config-unsafe` | A declared configuration path escaped confinement. |
 | `adapter-config-missing` | Required project configuration was unavailable. |
+| `adapter-config-limit` | Required project configuration exceeded the per-file size bound. |
 | `adapter-inputs-missing` | A tracked-input contract selected no eligible source files. |
-| `adapter-inputs-limit` | Selected paths exceeded the bounded process-argument budget. |
+| `adapter-inputs-limit` | Selected paths or file content exceeded an input safety bound. |
 | `adapter-tool-unavailable` | Discovery or process startup failed. |
 | `adapter-version-timeout` | The version probe exceeded its deadline. |
 | `adapter-version-output-limit` | Probe output exceeded 4096 bytes. |
@@ -108,6 +110,9 @@ A passing result contains no findings. Failures use stable codes:
 
 Findings deliberately omit command output and source excerpts. The `duration_ms` measurement varies;
 the status, classifications, and messages are stable for an otherwise fixed execution context.
+
+Configuration and selected files are each capped at 5 MB; the selected set is capped at 50 MB,
+10,000 paths, one million path bytes, 100 argv elements before inputs, and bounded path lengths.
 
 ## Agent workflow
 
