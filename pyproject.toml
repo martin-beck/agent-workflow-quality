@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-workflow-quality"
-version = "0.4.0"
+version = "0.5.0"
 description = "Versioned, agent-ready software quality policies, gates, and evidence"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -48,6 +48,7 @@ python_version = "3.12"
 strict = true
 warn_unreachable = true
 show_error_codes = true
+files = ["src", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 module = "jsonschema"

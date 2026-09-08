@@ -17,7 +17,14 @@ MAX_MEMBERS = 10_000
 MAX_MEMBER_BYTES = 5_000_000
 MAX_TOTAL_BYTES = 50_000_000
 DENIED_PARTS = frozenset({".git", ".venv", "__pycache__"})
-REQUIRED_SCHEMAS = frozenset({"adapter-contract.schema.json", "adapter-result.schema.json"})
+REQUIRED_SCHEMAS = frozenset(
+    {
+        "adapter-catalog.schema.json",
+        "adapter-contract.schema.json",
+        "adapter-result.schema.json",
+    }
+)
+REQUIRED_DATA = frozenset({"adapter_catalog.json"})
 ArchiveMember = tuple[str, bytes | None]
 
 
@@ -109,12 +116,21 @@ def inspect_archive(path: Path) -> list[str]:
             total += len(content)
             if total > MAX_TOTAL_BYTES:
                 raise DistributionError("archive content exceeds the review bound")
-        present = {
+        present_schemas = {
             name.name for name in names if len(name.parts) >= 2 and name.parts[-2] == "schemas"
+        }
+        present_data = {
+            name.name
+            for name in names
+            if len(name.parts) >= 3 and tuple(name.parts[-3:-1]) == ("awq", "data")
         }
         issues.extend(
             f"{path.name}: required packaged schema is missing: {schema}"
-            for schema in sorted(REQUIRED_SCHEMAS - present)
+            for schema in sorted(REQUIRED_SCHEMAS - present_schemas)
+        )
+        issues.extend(
+            f"{path.name}: required packaged data is missing: {item}"
+            for item in sorted(REQUIRED_DATA - present_data)
         )
         return issues
     except (OSError, tarfile.TarError, zipfile.BadZipFile) as error:

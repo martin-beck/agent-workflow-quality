@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "families": [
+    {
+      "id": "python",
+      "title": "Python quality adapters",
+      "description": "Reviewed offline commands for Python formatting, linting, strict typing, tests, and branch-aware coverage.",
+      "assumptions": [
+        "The repository supports Python 3.12 and declares authoritative tool settings in pyproject.toml.",
+        "Unit tests are discoverable below tests with filenames matching test_*.py.",
+        "The project installs official wheels for the exact reviewed Ruff, compiled mypy, and C-extension coverage releases before invoking AWQ; AWQ never installs them.",
+        "Coverage run executes before coverage report when both contracts are selected."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-PYTHON-COVERAGE-01-RUN",
+          "tool": "coverage",
+          "version": "7.16.0",
+          "version_argv": ["coverage", "--version"],
+          "version_output": "Coverage.py, version 7.16.0 with C extension\nFull documentation is at https://coverage.readthedocs.io/en/7.16.0",
+          "argv": ["coverage", "run", "--branch", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Coverage execution shows only code reached by the configured unittest discovery suite and does not prove behavioral completeness.",
+          "remediation": "Repair failing tests or the project-owned coverage configuration, then rerun the native command.",
+          "formats": [".py"],
+          "config_paths": ["pyproject.toml"]
+        },
+        {
+          "id": "ADAPTER-PYTHON-COVERAGE-02-REPORT",
+          "tool": "coverage",
+          "version": "7.16.0",
+          "version_argv": ["coverage", "--version"],
+          "version_output": "Coverage.py, version 7.16.0 with C extension\nFull documentation is at https://coverage.readthedocs.io/en/7.16.0",
+          "argv": ["coverage", "report"],
+          "timeout_seconds": 120,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "The report enforces project-owned thresholds against the existing coverage data file and is meaningful only after a matching coverage run.",
+          "remediation": "Run the coverage execution contract first, add meaningful tests, and satisfy the checked-in threshold.",
+          "formats": [".py"],
+          "config_paths": ["pyproject.toml"]
+        },
+        {
+          "id": "ADAPTER-PYTHON-MYPY",
+          "tool": "mypy",
+          "version": "2.3.1",
+          "version_argv": ["mypy", "--version"],
+          "version_output": "mypy 2.3.1 (compiled: yes)",
+          "argv": ["mypy", "--config-file", "pyproject.toml"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Static typing covers only files and strictness declared by the repository and cannot prove runtime behavior.",
+          "remediation": "Correct typing findings or explicitly refine the reviewed project-owned mypy configuration.",
+          "formats": [".py", ".pyi"],
+          "config_paths": ["pyproject.toml"]
+        },
+        {
+          "id": "ADAPTER-PYTHON-RUFF-FORMAT",
+          "tool": "ruff",
+          "version": "0.16.5",
+          "version_argv": ["ruff", "--version"],
+          "version_output": "ruff 0.16.5",
+          "argv": ["ruff", "format", "--check", "--config", "pyproject.toml", "."],
+          "timeout_seconds": 120,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "Formatting checks deterministic layout only and does not establish correctness or lint cleanliness.",
+          "remediation": "Run ruff format with the checked-in pyproject.toml and review the resulting source changes.",
+          "formats": [".py", ".pyi"],
+          "config_paths": ["pyproject.toml"]
+        },
+        {
+          "id": "ADAPTER-PYTHON-RUFF-LINT",
+          "tool": "ruff",
+          "version": "0.16.5",
+          "version_argv": ["ruff", "--version"],
+          "version_output": "ruff 0.16.5",
+          "argv": ["ruff", "check", "--config", "pyproject.toml", "."],
+          "timeout_seconds": 120,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Lint rules detect configured static patterns but cannot prove runtime correctness or complete security.",
+          "remediation": "Repair Ruff findings under the checked-in configuration and review any suppression narrowly.",
+          "formats": [".py", ".pyi"],
+          "config_paths": ["pyproject.toml"]
+        },
+        {
+          "id": "ADAPTER-PYTHON-UNITTEST",
+          "tool": "python",
+          "version": "3.12",
+          "version_argv": ["python", "-c", "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}')"],
+          "version_output": "Python 3.12",
+          "argv": ["python", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Discovery executes the repository's unittest suite but cannot establish that all intended behaviors or environments are covered.",
+          "remediation": "Repair the failing test or implementation and extend project tests when the behavior lacks coverage.",
+          "formats": [".py"],
+          "config_paths": ["pyproject.toml"]
+        }
+      ]
+    }
+  ]
+}

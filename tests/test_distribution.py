@@ -68,14 +68,18 @@ class DistributionVerificationTests(unittest.TestCase):
             "awq.whl",
             [
                 ("awq/__init__.py", b""),
+                ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
         )
         source = self.tarball(
             "awq.tar.gz",
             [
                 ("awq/src/awq/__init__.py", b""),
+                ("awq/src/awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
             ],
@@ -97,8 +101,10 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/.git", b"worktree metadata"),
                 ("awq/duplicate", b"first"),
                 ("awq/duplicate", b"second"),
+                ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
         )
@@ -110,8 +116,10 @@ class DistributionVerificationTests(unittest.TestCase):
         wheel = self.wheel(
             "symlink.whl",
             [
+                ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
         )
@@ -127,6 +135,29 @@ class DistributionVerificationTests(unittest.TestCase):
         )
         self.assertTrue(
             any("required packaged schema" in item for item in inspect_archive(missing))
+        )
+        missing_data = self.wheel(
+            "missing-data.whl",
+            [
+                ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
+                ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+            ],
+        )
+        self.assertTrue(
+            any("required packaged data" in item for item in inspect_archive(missing_data))
+        )
+        misplaced_data = self.wheel(
+            "misplaced-data.whl",
+            [
+                ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
+                ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("other/data/adapter_catalog.json", b"{}\n"),
+            ],
+        )
+        self.assertTrue(
+            any("required packaged data" in item for item in inspect_archive(misplaced_data))
         )
         bad = self.root / "bad.whl"
         bad.write_bytes(b"not a zip")

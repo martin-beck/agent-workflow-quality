@@ -14,7 +14,7 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from awq import __version__
-from awq.adapters import AdapterError, run_adapter
+from awq.adapters import AdapterError, load_adapter_catalog, run_adapter
 from awq.checks import run_checks
 from awq.project import (
     EXCEPTION_KEYS,
@@ -161,6 +161,23 @@ def adapter_run(root: Path, contract_path: str) -> dict[str, Any]:
         raise ProjectError(str(error)) from error
 
 
+def adapter_catalog(family: str | None) -> dict[str, Any]:
+    """Return reviewed opt-in adapter contracts for agent consumption."""
+    try:
+        families, digest = load_adapter_catalog()
+    except AdapterError as error:
+        raise ProjectError(str(error)) from error
+    if family is not None and family not in families:
+        raise ProjectError(f"unknown adapter family: {family}")
+    selected = sorted(families) if family is None else [family]
+    return {
+        "status": "ok",
+        "schema_version": 1,
+        "adapter_catalog_sha256": digest,
+        "families": [families[identifier] for identifier in selected],
+    }
+
+
 def evidence(root: Path, tier: str) -> dict[str, Any]:
     """Create the normalized content-minimized evidence envelope."""
     policy, lock = load_project(root)
@@ -222,6 +239,10 @@ def doctor(root: Path) -> dict[str, Any]:
     policy, lock = load_project(root)
     _, _, digest = load_registry()
     _, _, standards_digest = load_standards()
+    try:
+        _, adapter_catalog_digest = load_adapter_catalog()
+    except AdapterError as error:
+        raise ProjectError(str(error)) from error
     findings: list[dict[str, str]] = []
     if lock["awq_version"] != __version__:
         findings.append(
@@ -268,6 +289,7 @@ def doctor(root: Path) -> dict[str, Any]:
         "awq_version": __version__,
         "registry_sha256": digest,
         "standards_registry_sha256": standards_digest,
+        "adapter_catalog_sha256": adapter_catalog_digest,
         "findings": findings,
     }
 

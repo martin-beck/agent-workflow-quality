@@ -52,6 +52,7 @@ honest limitation. The shared runner never invokes a shell, downloads a tool, or
 output:
 
 ```sh
+awq --root . adapter-catalog --family python --format json
 awq --root . adapter-run quality/adapters/example.json --format json
 awq --root . plan --format json
 awq --root . check --tier pr --format json
@@ -59,7 +60,9 @@ awq --root . check --tier pr --format json
 
 Adapter families are delivered independently: Python in AR-0012, shell in AR-0013, documentation
 in AR-0014, and schema formats in AR-0015. See [pinned adapters](docs/ADAPTERS.md) for the contract,
-failure taxonomy, security boundary, and migration details.
+failure taxonomy, security boundary, and migration details. The reviewed Python commands, exact
+pins, configuration assumptions, and adoption recipe are documented in the
+[Python adapter family](docs/PYTHON_ADAPTERS.md).
 
 Development is coordinated through
 [Agent Workflow Quality State](https://github.com/martin-beck/agent-workflow-quality-state)
