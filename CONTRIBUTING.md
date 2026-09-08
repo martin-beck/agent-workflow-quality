@@ -3,6 +3,9 @@
 Use the coordinated process in `docs/DEVELOPMENT.md`. Changes need focused tests, hostile-path
 coverage, deterministic generated outputs, a signed commit and a matching `Signed-off-by` trailer.
 
+Install the checksum-pinned shell tools into a new prefix outside the repository and prepend its
+`bin` directory to `PATH`. This acquisition step is online; the gate itself is offline.
+
 Run the complete local gate before publication:
 
 ```sh
@@ -26,8 +29,9 @@ roots. Those roots contain hostile fixtures,
 derived content, or externally owned source and must not be rewritten to satisfy first-party policy.
 For every selected source, the exact
 `Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.` line must immediately
-precede `SPDX-License-Identifier: MIT`; both lines must be unique. Only an interpreter shebang may
-precede the header.
+precede `SPDX-License-Identifier: MIT`. The canonical adjacent pair must be unique, while standalone
+SPDX text elsewhere in source content or test data is not treated as a second header. Only an
+interpreter shebang may precede the header.
 
 Never reduce a floor, broaden an exception, suppress a finding, or regenerate expected output solely
 to make a check pass. Explain intentional policy changes in the pull request.

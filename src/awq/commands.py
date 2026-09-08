@@ -607,6 +607,15 @@ def _compare_adapters(
         if old_timeout != new_timeout:
             classification = "weakening" if new_timeout < old_timeout else "strengthening"
             _change(changes, classification, f"{prefix}.timeout_seconds", "deadline changed")
+        old_mode = old[identifier].get("input_mode", "explicit")
+        new_mode = new[identifier].get("input_mode", "explicit")
+        if old_mode != new_mode:
+            classification = (
+                "strengthening"
+                if old_mode == "explicit" and new_mode == "tracked-shell"
+                else "weakening"
+            )
+            _change(changes, classification, f"{prefix}.input_mode", "input mode changed")
         for field in (
             "tool",
             "version",

@@ -52,9 +52,11 @@ def check_file(root: Path, path: Path) -> list[str]:
     issues: list[str] = []
     if lines[start : start + 2] != expected:
         issues.append(f"{path}: expected exact Huawei/MIT header at line {start + 1}")
-    for line, label in ((expected[0], "copyright"), (expected[1], "SPDX")):
-        if lines.count(line) != 1:
-            issues.append(f"{path}: expected exactly one canonical {label} line")
+    pair_count = sum(
+        lines[index : index + 2] == expected for index in range(max(len(lines) - 1, 0))
+    )
+    if pair_count != 1:
+        issues.append(f"{path}: expected exactly one canonical Huawei/MIT header pair")
     return issues
 
 

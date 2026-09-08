@@ -55,7 +55,7 @@ class SourceHeaderTests(unittest.TestCase):
             self.assertEqual(checker.check_file(root, plain), [])
             self.assertEqual(checker.check_file(root, shell), [])
 
-    def test_check_file_reports_position_and_duplicates(self) -> None:
+    def test_check_file_reports_malformed_prefix(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = Path("tool.py")
@@ -64,9 +64,28 @@ class SourceHeaderTests(unittest.TestCase):
                 encoding="utf-8",
             )
             issues = checker.check_file(root, path)
-            self.assertEqual(len(issues), 2)
+            self.assertEqual(len(issues), 1)
             self.assertIn("expected exact Huawei/MIT header", issues[0])
-            self.assertIn("exactly one canonical SPDX", issues[1])
+
+    def test_check_file_accepts_standalone_spdx_test_data(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = Path("tool.py")
+            (root / path).write_text(
+                f'# {checker.COPYRIGHT}\n# {checker.SPDX}\n\ndata = """\n# {checker.SPDX}\n"""\n',
+                encoding="utf-8",
+            )
+            self.assertEqual(checker.check_file(root, path), [])
+
+    def test_check_file_rejects_duplicate_header_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = Path("tool.py")
+            pair = f"# {checker.COPYRIGHT}\n# {checker.SPDX}\n"
+            (root / path).write_text(pair + "\npass\n" + pair, encoding="utf-8")
+            issues = checker.check_file(root, path)
+            self.assertEqual(len(issues), 1)
+            self.assertIn("exactly one canonical Huawei/MIT header pair", issues[0])
 
     def test_check_file_reports_non_utf8_and_unsupported_path(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

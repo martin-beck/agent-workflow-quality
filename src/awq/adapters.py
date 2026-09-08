@@ -20,6 +20,7 @@ from typing import Any
 
 from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes
 
+ADAPTER_OPTIONAL_KEYS = {"input_mode"}
 ADAPTER_KEYS = {
     "id",
     "tool",
@@ -35,9 +36,14 @@ ADAPTER_KEYS = {
     "formats",
     "config_paths",
 }
+INPUT_MODES = {"explicit", "tracked-shell"}
 ADAPTER_ID = re.compile(r"^ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 TOOL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*$")
 FORMAT = re.compile(r"^\.[a-z0-9]+$")
+SHELL_SHEBANG = re.compile(
+    rb"^#![ \t]*(?:/usr/bin/env(?:[ \t]+-S)?[ \t]+)?"
+    rb"(?:/[^ \t\r\n]+/)?(?:sh|bash|dash|ksh|mksh|zsh|ash)(?:[ \t]|$)"
+)
 FAMILY_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 CATALOG_KEYS = {"schema_version", "families"}
 FAMILY_KEYS = {"id", "title", "description", "assumptions", "contracts"}
@@ -138,8 +144,11 @@ def _validate_paths(value: dict[str, Any]) -> None:
 
 def validate_adapter(value: dict[str, Any]) -> None:
     """Validate one exact adapter contract without third-party dependencies."""
-    if set(value) != ADAPTER_KEYS:
+    keys = set(value)
+    if not keys >= ADAPTER_KEYS or not keys <= ADAPTER_KEYS | ADAPTER_OPTIONAL_KEYS:
         raise AdapterError("adapter has unknown or missing fields")
+    if value.get("input_mode", "explicit") not in INPUT_MODES:
+        raise AdapterError("adapter has an unsupported input mode")
     _validate_identity(value)
     _validate_argv(value)
     _validate_classification(value)
@@ -360,13 +369,50 @@ def _probe_failure(
     return None
 
 
+def _is_fixture(relative: str, fixtures: list[str]) -> bool:
+    return any(
+        relative == prefix or relative.startswith(prefix.rstrip("/") + "/") for prefix in fixtures
+    )
+
+
+def _shell_entrypoint(path: Path) -> bool:
+    try:
+        if path.is_symlink() or not path.is_file() or not path.stat().st_mode & 0o111:
+            return False
+        with path.open("rb") as stream:
+            return SHELL_SHEBANG.match(stream.readline(256)) is not None
+    except OSError:
+        return False
+
+
+def _selected_inputs(root: Path, contract: dict[str, Any]) -> list[str]:
+    mode = contract.get("input_mode", "explicit")
+    if mode == "explicit":
+        return []
+    from awq.project import load_project, policy_paths, tracked_files
+
+    policy_path, _ = policy_paths(root)
+    fixtures = load_project(root)[0]["fixture_paths"] if policy_path.is_file() else []
+    selected: list[str] = []
+    for path in tracked_files(root):
+        relative = path.relative_to(root).as_posix()
+        if _is_fixture(relative, fixtures):
+            continue
+        if path.suffix in contract["formats"] or (
+            mode == "tracked-shell" and _shell_entrypoint(path)
+        ):
+            selected.append(relative)
+    return selected
+
+
 def _execution_failure(
     root: Path,
     executable: str,
     contract: dict[str, Any],
     environment: dict[str, str],
+    inputs: list[str],
 ) -> list[dict[str, str]] | None:
-    argv = [executable, *contract["argv"][1:]]
+    argv = [executable, *contract["argv"][1:], *inputs]
     try:
         completed = subprocess.run(  # noqa: S603 - validated argv and no shell.
             argv,
@@ -415,5 +461,11 @@ def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
     failure = _probe_failure(*outcome, contract["version_output"])
     if failure:
         return _result(contract, started, "fail", failure)
-    failure = _execution_failure(root, executable, contract, environment)
+    inputs = _selected_inputs(root, contract)
+    if contract.get("input_mode", "explicit") != "explicit" and not inputs:
+        failure = _finding(
+            "adapter-inputs-missing", "", "adapter selected no tracked project inputs"
+        )
+        return _result(contract, started, "fail", failure)
+    failure = _execution_failure(root, executable, contract, environment, inputs)
     return _result(contract, started, "fail" if failure else "pass", failure or [])

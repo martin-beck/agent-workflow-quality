@@ -88,6 +88,7 @@ class AdapterContractTests(unittest.TestCase):
             {**base, "config_paths": ["./config.toml"]},
             {**base, "config_paths": ["path//config.toml"]},
             {**base, "config_paths": ["same", "same"]},
+            {**base, "input_mode": "unbounded"},
         ]
         runtime_only_cross_field_cases = {4, 5}
         for number, contract in enumerate(mutations):
@@ -407,6 +408,26 @@ class AdapterSemanticDiffTests(unittest.TestCase):
         self.assertEqual(
             {"review"},
             self.classifications([base], [changed], f"adapters.{base['id']}.remediation"),
+        )
+
+    def test_input_mode_changes_are_semantically_classified(self) -> None:
+        explicit = python_contract()
+        tracked = python_contract(input_mode="tracked-shell")
+        self.assertEqual(
+            {"strengthening"},
+            self.classifications(
+                [explicit],
+                [tracked],
+                f"adapters.{explicit['id']}.input_mode",
+            ),
+        )
+        self.assertEqual(
+            {"weakening"},
+            self.classifications(
+                [tracked],
+                [explicit],
+                f"adapters.{explicit['id']}.input_mode",
+            ),
         )
 
 
