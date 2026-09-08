@@ -29,6 +29,8 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Install locked quality environment
         run: uv sync --locked --only-group quality
+      - name: Source license headers
+        run: uv run python scripts/check_source_headers.py
       - name: Format lint and type
         run: |
           uv run ruff format --check src tests scripts

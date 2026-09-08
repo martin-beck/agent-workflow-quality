@@ -1,3 +1,6 @@
+# Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+# SPDX-License-Identifier: MIT
+
 """Policy governance, exception lifecycle, and hosting observation tests."""
 
 from __future__ import annotations
