@@ -32,6 +32,9 @@ class SourceHeaderTests(unittest.TestCase):
     def test_comment_prefix_applies_reviewed_formats_and_exclusions(self) -> None:
         self.assertEqual(checker.comment_prefix(Path("src/tool.py")), "# ")
         self.assertEqual(checker.comment_prefix(Path("scripts/check.sh")), "# ")
+        self.assertEqual(checker.comment_prefix(Path("tools/awq")), "# ")
+        self.assertIsNone(checker.comment_prefix(Path("nested/tools/awq")))
+        self.assertIsNone(checker.comment_prefix(Path("tools/awq.exe")))
         self.assertIsNone(checker.comment_prefix(Path("fixtures/broken.py")))
         self.assertIsNone(checker.comment_prefix(Path("generated/tool.py")))
         self.assertIsNone(checker.comment_prefix(Path("vendor/tool.py")))
@@ -101,6 +104,22 @@ class SourceHeaderTests(unittest.TestCase):
             with contextlib.redirect_stderr(stderr):
                 self.assertEqual(checker.main(["--root", str(root)]), 1)
             self.assertIn("bad.py: expected exact Huawei/MIT header", stderr.getvalue())
+
+    def test_exact_extensionless_launcher_is_selected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            launcher = root / "tools" / "awq"
+            launcher.parent.mkdir()
+            launcher.write_text(
+                f"#!/bin/sh\n# {checker.COPYRIGHT}\n# {checker.SPDX}\n\nexit 0\n",
+                encoding="utf-8",
+            )
+            lookalike = root / "nested" / "tools" / "awq"
+            lookalike.parent.mkdir(parents=True)
+            lookalike.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            self.assertEqual(checker.tracked_source_files(root), (Path("tools/awq"),))
 
     def test_main_reports_git_failure(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

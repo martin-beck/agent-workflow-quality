@@ -13,6 +13,7 @@ from pathlib import Path
 COPYRIGHT = "Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved."
 SPDX = "SPDX-License-Identifier: MIT"
 COMMENT_PREFIXES = {".py": "# ", ".sh": "# "}
+EXTENSIONLESS_SOURCES = {Path("tools/awq"): "# "}
 EXCLUDED_ROOTS = frozenset({"fixtures", "generated", "vendor"})
 
 
@@ -24,7 +25,7 @@ def comment_prefix(path: Path) -> str | None:
     """Select reviewed first-party source formats and exclusions."""
     if path.parts and path.parts[0] in EXCLUDED_ROOTS:
         return None
-    return COMMENT_PREFIXES.get(path.suffix)
+    return EXTENSIONLESS_SOURCES.get(path, COMMENT_PREFIXES.get(path.suffix))
 
 
 def tracked_source_files(root: Path) -> tuple[Path, ...]:

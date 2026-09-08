@@ -18,8 +18,9 @@ uv run python -m awq --root . doctor --format json
 uv run python -m awq --root . check --tier pr --format json
 ```
 
-The source-header gate checks every tracked Python and shell source except content below the
-explicit `fixtures/`, `generated/`, and `vendor/` roots. Those roots contain hostile fixtures,
+The source-header gate checks every tracked Python and shell source, including the extensionless
+`tools/awq` launcher, except content below the explicit `fixtures/`, `generated/`, and `vendor/`
+roots. Those roots contain hostile fixtures,
 derived content, or externally owned source and must not be rewritten to satisfy first-party policy.
 For every selected source, the exact
 `Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.` line must immediately
