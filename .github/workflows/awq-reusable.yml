@@ -1,0 +1,38 @@
+name: AWQ reusable verification
+
+"on":
+  workflow_call:
+    inputs:
+      awq-ref:
+        description: Full commit SHA of the AWQ release to execute
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  awq:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Validate immutable AWQ reference
+        env:
+          AWQ_REF: ${{ inputs.awq-ref }}
+        run: '[[ "$AWQ_REF" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: consumer
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: martin-beck/agent-workflow-quality
+          ref: ${{ inputs.awq-ref }}
+          persist-credentials: false
+          path: awq
+      - name: Run pinned policy bundle offline
+        env:
+          PYTHONPATH: ${{ github.workspace }}/awq/src
+        run: |
+          python3 -m awq --root consumer doctor --format json
+          python3 -m awq --root consumer check --tier pr --format json

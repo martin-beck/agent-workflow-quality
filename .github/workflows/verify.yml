@@ -1,0 +1,74 @@
+name: Verify
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.12.8"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install locked quality environment
+        run: uv sync --locked --only-group quality
+      - name: Format lint and type
+        run: |
+          uv run ruff format --check src tests scripts
+          uv run ruff check src tests scripts
+          uv run mypy src tests scripts
+      - name: Tests and branch coverage
+        run: |
+          uv run coverage run --branch -m unittest discover -s tests -p 'test_*.py'
+          uv run coverage report --fail-under=95
+      - name: Contracts generation and self-check
+        run: |
+          uv run python scripts/generate_catalog.py --check
+          uv run python scripts/validate_contracts.py
+          uv run awq --root . doctor --format json
+          uv run awq --root . check --tier pr --format json
+      - name: Build and install wheel
+        run: |
+          uv build
+          uv venv "${RUNNER_TEMP}/awq-smoke"
+          uv pip install --python "${RUNNER_TEMP}/awq-smoke/bin/python" dist/*.whl
+          "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . inspect --format json
+      - name: DCO certification
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          while IFS= read -r revision; do
+            expected=$(git show -s --format='Signed-off-by: %an <%ae>' "$revision")
+            git show -s --format=%B "$revision" | grep -Fx -- "$expected"
+          done < <(git rev-list "$BASE..$HEAD")
+      - name: SSH commit signature policy
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git config gpg.ssh.allowedSignersFile "$PWD/config/allowed_signers"
+          while IFS= read -r revision; do
+            git verify-commit "$revision"
+          done < <(git rev-list "$BASE..$HEAD")
+      - name: Deterministic clean tree
+        run: git diff --exit-code
