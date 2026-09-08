@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/hosting-observation.schema.json",
+  "title": "AWQ GitHub hosting observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "schema_version",
+    "repository",
+    "default_branch",
+    "observed_at",
+    "tier",
+    "evidence",
+    "network",
+    "rulesets",
+    "findings",
+    "limitation"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tier": {
+      "const": "scheduled"
+    },
+    "evidence": {
+      "const": "environmental"
+    },
+    "network": {
+      "const": true
+    },
+    "rulesets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "target",
+          "enforcement",
+          "applies_to_default_branch",
+          "rule_types",
+          "required_status_checks"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enforcement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule_types": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "applies_to_default_branch": {
+            "type": "boolean"
+          },
+          "required_status_checks": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "rule"
+        ],
+        "properties": {
+          "code": {
+            "const": "missing-hosting-rule"
+          },
+          "rule": {
+            "enum": [
+              "pull_request",
+              "required_status_checks"
+            ]
+          }
+        }
+      }
+    },
+    "limitation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "default_branch": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

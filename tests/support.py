@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import tempfile
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -56,12 +57,37 @@ class Repository:
 
 def base_policy(**updates: Any) -> dict[str, Any]:
     value: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "profiles": ["core"],
         "unknown_formats": "error",
         "fixture_paths": [],
         "extensions": [],
         "exceptions": [],
+        "governance": {
+            "owners": ["@owner"],
+            "max_standard_days": 30,
+            "max_emergency_hours": 24,
+        },
+    }
+    value.update(updates)
+    return value
+
+
+def base_exception(**updates: Any) -> dict[str, Any]:
+    created = datetime.now(UTC) - timedelta(hours=1)
+    value: dict[str, Any] = {
+        "id": "EX-0001",
+        "kind": "standard",
+        "requirement": "AWQ-CORE-001",
+        "owner": "@owner",
+        "reason": "Bounded fixture exception.",
+        "scope": ["README.md"],
+        "created_at": created.isoformat(),
+        "expires_at": (created + timedelta(days=1)).isoformat(),
+        "compensating_evidence": "Reviewed contract-test evidence.",
+        "approval": "urn:awq:approval:EX-0001",
+        "renewals": [],
+        "revocation": None,
     }
     value.update(updates)
     return value

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import shutil
 import subprocess
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from awq import __version__
-from awq.registry import canonical_bytes, expand_profiles, load_registry
+from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes, expand_profiles, load_registry
 
 POLICY_KEYS = {
     "schema_version",
@@ -19,8 +22,10 @@ POLICY_KEYS = {
     "fixture_paths",
     "extensions",
     "exceptions",
+    "governance",
 }
 LOCK_KEYS = {"schema_version", "awq_version", "registry_sha256", "profiles", "requirements"}
+GOVERNANCE_KEYS = {"owners", "max_standard_days", "max_emergency_hours"}
 EXTENSION_KEYS = {
     "id",
     "tier",
@@ -33,6 +38,7 @@ EXTENSION_KEYS = {
 }
 EXCEPTION_KEYS = {
     "id",
+    "kind",
     "requirement",
     "owner",
     "reason",
@@ -40,8 +46,23 @@ EXCEPTION_KEYS = {
     "created_at",
     "expires_at",
     "compensating_evidence",
-    "review",
+    "approval",
+    "renewals",
+    "revocation",
 }
+RENEWAL_KEYS = {
+    "renewed_at",
+    "previous_expires_at",
+    "expires_at",
+    "owner",
+    "reason",
+    "approval",
+}
+REVOCATION_KEYS = {"revoked_at", "owner", "reason", "approval"}
+OWNER_PATTERN = re.compile(r"^@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(?:/[A-Za-z0-9_.-]+)?$")
+FORMAT_PATTERN = re.compile(r"^\.[a-z0-9]+$")
+MAX_CONFIGURED_STANDARD_DAYS = 90
+MAX_CONFIGURED_EMERGENCY_HOURS = 72
 
 
 class ProjectError(ValueError):
@@ -109,37 +130,241 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def _nonempty(value: object) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _safe_relative_pattern(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and not Path(value).is_absolute()
+        and ".." not in Path(value).parts
+    )
+
+
+def _approval(value: object) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    parsed = urlsplit(value)
+    if parsed.scheme == "urn":
+        return bool(parsed.path)
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.hostname)
+        and parsed.username is None
+        and parsed.password is None
+    )
+
+
+def _timestamp(value: object, field: str) -> datetime:
+    if not isinstance(value, str):
+        raise ProjectError(f"{field} must be a timezone-aware timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ProjectError(f"{field} must be a timezone-aware timestamp") from error
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ProjectError(f"{field} must be a timezone-aware timestamp")
+    return parsed.astimezone(UTC)
+
+
+def _validate_governance(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != GOVERNANCE_KEYS:
+        raise ProjectError("governance has unknown or missing fields")
+    owners = value["owners"]
+    if (
+        not isinstance(owners, list)
+        or not owners
+        or not all(isinstance(item, str) and OWNER_PATTERN.fullmatch(item) for item in owners)
+        or len(set(owners)) != len(owners)
+    ):
+        raise ProjectError("governance owners must be unique GitHub users or teams")
+    standard = value["max_standard_days"]
+    emergency = value["max_emergency_hours"]
+    if (
+        not isinstance(standard, int)
+        or isinstance(standard, bool)
+        or not 1 <= standard <= MAX_CONFIGURED_STANDARD_DAYS
+    ):
+        raise ProjectError("standard exception lifetime is outside the supported bound")
+    if (
+        not isinstance(emergency, int)
+        or isinstance(emergency, bool)
+        or not 1 <= emergency <= MAX_CONFIGURED_EMERGENCY_HOURS
+    ):
+        raise ProjectError("emergency exception lifetime is outside the supported bound")
+    return value
+
+
 def validate_policy(value: dict[str, Any]) -> None:
     """Validate fields required at runtime without third-party dependencies."""
-    if set(value) != POLICY_KEYS or value.get("schema_version") != 1:
+    if set(value) != POLICY_KEYS or value.get("schema_version") != 2:
         raise ProjectError("project policy has unknown, missing or unsupported fields")
     if value.get("unknown_formats") not in {"error", "advisory"}:
         raise ProjectError("unknown_formats must be error or advisory")
     profiles = value.get("profiles")
-    if not isinstance(profiles, list) or not profiles or len(set(profiles)) != len(profiles):
+    if (
+        not isinstance(profiles, list)
+        or not profiles
+        or not all(isinstance(item, str) for item in profiles)
+        or len(set(profiles)) != len(profiles)
+    ):
         raise ProjectError("profiles must be a non-empty unique list")
     expand_profiles(profiles)
     for field in ("fixture_paths", "extensions", "exceptions"):
         if not isinstance(value.get(field), list):
             raise ProjectError(f"{field} must be a list")
+    fixtures = value["fixture_paths"]
+    if not all(_safe_relative_pattern(item) for item in fixtures) or len(set(fixtures)) != len(
+        fixtures
+    ):
+        raise ProjectError("fixture paths must be unique safe repository-relative patterns")
+    governance = _validate_governance(value["governance"])
     _validate_extensions(value["extensions"])
-    _validate_exceptions(value["exceptions"])
+    _validate_exceptions(value["exceptions"], governance)
 
 
 def _validate_extensions(extensions: list[object]) -> None:
+    seen: set[str] = set()
     for extension in extensions:
         if not isinstance(extension, dict) or set(extension) != EXTENSION_KEYS:
             raise ProjectError("local extension has unknown or missing fields")
-        if not isinstance(extension["argv"], list) or not extension["argv"]:
+        identifier = extension["id"]
+        if not isinstance(identifier, str) or identifier in seen:
+            raise ProjectError("local extension identifiers must be unique strings")
+        seen.add(identifier)
+        argv = extension["argv"]
+        if not isinstance(argv, list) or not argv or not all(_nonempty(item) for item in argv):
             raise ProjectError("local extension argv must be a non-empty array")
-        if not 1 <= extension["timeout_seconds"] <= 3600:
+        timeout = extension["timeout_seconds"]
+        if not isinstance(timeout, int) or isinstance(timeout, bool) or not 1 <= timeout <= 3600:
             raise ProjectError("local extension deadline is outside the supported bound")
+        if extension["tier"] not in TIERS or extension["evidence"] not in EVIDENCE_CLASSES:
+            raise ProjectError("local extension has an unknown classification")
+        if not _nonempty(extension["limitation"]) or not _nonempty(extension["remediation"]):
+            raise ProjectError("local extension guidance must be non-empty")
+        formats = extension["formats"]
+        if (
+            not isinstance(formats, list)
+            or not all(isinstance(item, str) and FORMAT_PATTERN.fullmatch(item) for item in formats)
+            or len(set(formats)) != len(formats)
+        ):
+            raise ProjectError("local extension formats must be unique lowercase suffixes")
 
 
-def _validate_exceptions(exceptions: list[object]) -> None:
+def _validate_renewal(
+    renewal: dict[str, Any],
+    cursor: datetime,
+    created: datetime,
+    owners: set[str],
+    maximum: timedelta,
+) -> datetime:
+    previous = _timestamp(renewal["previous_expires_at"], "previous_expires_at")
+    renewed = _timestamp(renewal["renewed_at"], "renewed_at")
+    expires = _timestamp(renewal["expires_at"], "renewal expires_at")
+    if previous != cursor or not created <= renewed <= previous or not previous < expires:
+        raise ProjectError("exception renewal history is not a continuous ordered chain")
+    if expires - renewed > maximum:
+        raise ProjectError("exception renewal lifetime is outside the policy bound")
+    if renewal["owner"] not in owners or not _approval(renewal["approval"]):
+        raise ProjectError("exception renewal owner or approval is invalid")
+    if not _nonempty(renewal["reason"]):
+        raise ProjectError("exception renewal reason must be non-empty")
+    return expires
+
+
+def _validate_renewals(
+    exception: dict[str, Any],
+    created: datetime,
+    final_expiry: datetime,
+    owners: set[str],
+    maximum: timedelta,
+) -> None:
+    renewals = exception["renewals"]
+    if not isinstance(renewals, list):
+        raise ProjectError("exception renewals must be a list")
+    if exception["kind"] == "emergency" and renewals:
+        raise ProjectError("emergency exceptions cannot be renewed")
+    for renewal in renewals:
+        if not isinstance(renewal, dict) or set(renewal) != RENEWAL_KEYS:
+            raise ProjectError("exception renewal has unknown or missing fields")
+    cursor = (
+        _timestamp(renewals[0]["previous_expires_at"], "previous_expires_at")
+        if renewals
+        else final_expiry
+    )
+    if cursor <= created or cursor - created > maximum:
+        raise ProjectError("exception initial lifetime is outside the policy bound")
+    for renewal in renewals:
+        cursor = _validate_renewal(renewal, cursor, created, owners, maximum)
+    if cursor != final_expiry:
+        raise ProjectError("exception expiry does not match its renewal history")
+
+
+def _validate_revocation(
+    value: object,
+    created: datetime,
+    expires: datetime,
+    owners: set[str],
+) -> None:
+    if value is None:
+        return
+    if not isinstance(value, dict) or set(value) != REVOCATION_KEYS:
+        raise ProjectError("exception revocation has unknown or missing fields")
+    revoked = _timestamp(value["revoked_at"], "revoked_at")
+    if not created <= revoked <= expires:
+        raise ProjectError("exception revocation is outside the exception lifetime")
+    if value["owner"] not in owners or not _approval(value["approval"]):
+        raise ProjectError("exception revocation owner or approval is invalid")
+    if not _nonempty(value["reason"]):
+        raise ProjectError("exception revocation reason must be non-empty")
+
+
+def _validate_exception(exception: dict[str, Any], governance: dict[str, Any]) -> None:
+    requirements, _, _ = load_registry()
+    owners = set(governance["owners"])
+    if not isinstance(exception["id"], str) or not re.fullmatch(r"EX-[0-9]{4}", exception["id"]):
+        raise ProjectError("exception identifier must match EX-NNNN")
+    if exception["kind"] not in {"standard", "emergency"}:
+        raise ProjectError("exception kind must be standard or emergency")
+    if exception["requirement"] not in requirements:
+        raise ProjectError("exception targets an unknown requirement")
+    if exception["owner"] not in owners:
+        raise ProjectError("exception owner is not a current governance owner")
+    if not _nonempty(exception["reason"]) or not _nonempty(exception["compensating_evidence"]):
+        raise ProjectError("exception rationale and compensating evidence must be non-empty")
+    scopes = exception["scope"]
+    if (
+        not isinstance(scopes, list)
+        or not scopes
+        or not all(_safe_relative_pattern(item) for item in scopes)
+        or len(set(scopes)) != len(scopes)
+    ):
+        raise ProjectError("exception scope must contain unique safe repository patterns")
+    if not _approval(exception["approval"]):
+        raise ProjectError("exception approval must be an HTTPS or URN reference")
+    created = _timestamp(exception["created_at"], "created_at")
+    expires = _timestamp(exception["expires_at"], "expires_at")
+    maximum = (
+        timedelta(hours=governance["max_emergency_hours"])
+        if exception["kind"] == "emergency"
+        else timedelta(days=governance["max_standard_days"])
+    )
+    _validate_renewals(exception, created, expires, owners, maximum)
+    _validate_revocation(exception["revocation"], created, expires, owners)
+
+
+def _validate_exceptions(exceptions: list[object], governance: dict[str, Any]) -> None:
+    seen: set[str] = set()
     for exception in exceptions:
         if not isinstance(exception, dict) or set(exception) != EXCEPTION_KEYS:
             raise ProjectError("exception has unknown or missing fields")
+        identifier = exception["id"]
+        if not isinstance(identifier, str) or identifier in seen:
+            raise ProjectError("exception identifiers must be unique strings")
+        seen.add(identifier)
+        _validate_exception(exception, governance)
 
 
 def validate_lock(value: dict[str, Any]) -> None:
@@ -171,12 +396,17 @@ def make_policy(profiles: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
     expanded = expand_profiles(selected)
     _, _, digest = load_registry()
     policy = {
-        "schema_version": 1,
+        "schema_version": 2,
         "profiles": selected,
         "unknown_formats": "error",
         "fixture_paths": ["fixtures/broken"],
         "extensions": [],
         "exceptions": [],
+        "governance": {
+            "owners": ["@project-maintainers"],
+            "max_standard_days": 30,
+            "max_emergency_hours": 24,
+        },
     }
     lock = {
         "schema_version": 1,

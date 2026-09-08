@@ -34,6 +34,12 @@ jobs:
           uv run ruff format --check src tests scripts
           uv run ruff check src tests scripts
           uv run mypy src tests scripts
+      - name: Policy weakening gate
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: uv run awq --root . policy-diff "$BASE" "$HEAD" --format json
       - name: Tests and branch coverage
         run: |
           uv run coverage run --branch -m unittest discover -s tests -p 'test_*.py'

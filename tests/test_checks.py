@@ -9,7 +9,7 @@ from pathlib import Path
 from awq import checks
 from awq.project import make_policy, write_initialization
 from awq.registry import load_registry
-from tests.support import Repository, base_policy
+from tests.support import Repository, base_exception, base_policy
 
 
 class CheckTests(unittest.TestCase):
@@ -113,17 +113,11 @@ class CheckTests(unittest.TestCase):
         requirement = load_registry()[0]["AWQ-CORE-001"]
         bad = self.repo.write("bad.txt", "bad")
         expires = (datetime.now(UTC) + timedelta(days=1)).isoformat()
-        exception = {
-            "id": "EX-0001",
-            "requirement": "AWQ-CORE-001",
-            "owner": "owner",
-            "reason": "fixture",
-            "scope": ["bad.txt"],
-            "created_at": datetime.now(UTC).isoformat(),
-            "expires_at": expires,
-            "compensating_evidence": "reviewed fixture",
-            "review": "review-1",
-        }
+        exception = base_exception(
+            scope=["bad.txt"],
+            created_at=datetime.now(UTC).isoformat(),
+            expires_at=expires,
+        )
         result = checks.run_requirement(
             self.repo.root, {**self.policy, "exceptions": [exception]}, requirement, [bad]
         )
