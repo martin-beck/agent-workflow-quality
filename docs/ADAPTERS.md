@@ -24,7 +24,8 @@ awq --root . adapter-catalog --family python --format json
 The response includes a canonical catalog digest, family assumptions, and complete contracts.
 Unknown families fail closed. Catalog entries are templates for explicit review and copying into a
 repository policy; they are never enabled automatically. See the
-[Python adapter family](PYTHON_ADAPTERS.md) for its exact pins and configuration contract.
+[Python adapter family](PYTHON_ADAPTERS.md) and [shell adapter family](SHELL_ADAPTERS.md) for exact
+pins and configuration contracts.
 
 ## Contract
 
@@ -41,6 +42,7 @@ Each object conforms to `schemas/adapter-contract.schema.json` and contains:
 | `limitation`, `remediation` | Required bounded review context. |
 | `formats` | Unique lowercase suffixes covered by the adapter. |
 | `config_paths` | Unique repository-relative project configuration files that must exist. |
+| `input_mode` | Optional `explicit` default or tracked-shell path selection. |
 
 JSON Schema validates the portable shape. Zero-dependency runtime validation additionally enforces
 cross-field conditions that JSON Schema cannot express directly: both argv arrays start with the
@@ -75,7 +77,8 @@ For each eligible tier, AWQ executes eligible adapters in stable identifier orde
 2. discovers the named executable through `PATH`;
 3. runs the capped version probe and requires an exact output match;
 4. executes the configured argv from the repository root without a shell; and
-5. returns `schemas/adapter-result.schema.json` evidence.
+5. appends eligible tracked inputs when the reviewed contract selects them; and
+6. returns `schemas/adapter-result.schema.json` evidence.
 
 Standard input is closed. Check output is discarded. Probe output is merged, capped at 4096 bytes,
 used only for the exact pin comparison, and then discarded. The child receives only `PATH`, fixed
@@ -93,6 +96,7 @@ A passing result contains no findings. Failures use stable codes:
 | --- | --- |
 | `adapter-config-unsafe` | A declared configuration path escaped confinement. |
 | `adapter-config-missing` | Required project configuration was unavailable. |
+| `adapter-inputs-missing` | A tracked-input contract selected no eligible source files. |
 | `adapter-tool-unavailable` | Discovery or process startup failed. |
 | `adapter-version-timeout` | The version probe exceeded its deadline. |
 | `adapter-version-output-limit` | Probe output exceeded 4096 bytes. |

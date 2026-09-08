@@ -19,8 +19,9 @@ intentionally broken fixture which the production checker must reject.
 Evidence is content-minimized and bounded. It includes the policy and registry digests, selected
 profiles, requirement outcomes, elapsed time and limitations. Adapter results additionally identify
 the pinned tool and version. Evidence includes reviewed remediation while excluding source excerpts,
-command output, environment values, prompts, transcripts, credentials and machine paths. Status and findings are deterministic for a
-fixed tree, contract, tool and host; elapsed duration is observational and intentionally variable.
+command output, environment values, prompts, transcripts, credentials and machine paths. Status and
+findings are deterministic for a fixed tree, contract, tool and host; elapsed duration is observational
+and intentionally variable.
 
 Standards mappings are review evidence, not certification evidence. Each one names a pinned source
 edition and known control, relationship strength, rationale, evidence class, limitation, and
@@ -31,7 +32,8 @@ normal validation remains offline and deterministic.
 Adapter tests cover accepted and rejected contracts, absent and skewed tools, missing and unsafe
 configuration, deadlines, output bounds, minimal environments, normalized failures, schema
 agreement, semantic weakening, and native-command equivalence on controlled fixtures. Family ARs
-must add their own positive, negative, version-skew, and native-equivalence fixtures.
+must add their own positive, negative, version-skew, and native-equivalence fixtures. Shell-family
+tests additionally prove tracked input selection and declared fixture exclusion.
 
 Source and wheel archives are inspected without extraction for unsafe paths, development metadata
 that can expose private paths, duplicate or non-regular members, bounded size, required packaged

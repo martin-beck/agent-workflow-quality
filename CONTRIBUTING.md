@@ -3,6 +3,9 @@
 Use the coordinated process in `docs/DEVELOPMENT.md`. Changes need focused tests, hostile-path
 coverage, deterministic generated outputs, a signed commit and a matching `Signed-off-by` trailer.
 
+Install the checksum-pinned shell tools into a new prefix outside the repository and prepend its
+`bin` directory to `PATH`. This acquisition step is online; the gate itself is offline.
+
 Run the complete local gate before publication:
 
 ```sh
