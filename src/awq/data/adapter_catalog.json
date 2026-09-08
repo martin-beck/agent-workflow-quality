@@ -2,6 +2,120 @@
   "schema_version": 1,
   "families": [
     {
+      "id": "documentation",
+      "title": "Documentation quality adapters",
+      "description": "Reviewed offline commands for Markdown structure, local links, and repository-owned prose rules.",
+      "assumptions": [
+        "Documentation inputs are Git-tracked Markdown or text files; declared fixture trees are excluded.",
+        "The project keeps Markdown structure and local-link policy in .rumdl.toml.",
+        "Vale configuration, styles, vocabularies, and accepted terminology are fully repository-owned.",
+        "rumdl link rules are filesystem-only; external URL availability is not checked or claimed.",
+        "The project installs the exact reviewed tools before invoking AWQ; AWQ never installs them."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-DOCUMENTATION-RUMDL-LINKS",
+          "tool": "rumdl",
+          "version": "0.2.68",
+          "version_argv": [
+            "rumdl",
+            "--version"
+          ],
+          "version_output": "rumdl 0.2.68",
+          "argv": [
+            "rumdl",
+            "check",
+            "--config",
+            ".rumdl.toml",
+            "--no-cache",
+            "--no-code-block-tools",
+            "--color",
+            "never",
+            "--enable",
+            "MD051,MD057"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Filesystem-only rules validate relative file targets and fragments; they skip external URL availability and absolute site routes unless project policy configures them.",
+          "remediation": "Rerun the exact rumdl link contract, then repair the local target, fragment, or reviewed project link configuration.",
+          "formats": [
+            ".md",
+            ".markdown"
+          ],
+          "config_paths": [
+            ".rumdl.toml"
+          ],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-DOCUMENTATION-RUMDL-STYLE",
+          "tool": "rumdl",
+          "version": "0.2.68",
+          "version_argv": [
+            "rumdl",
+            "--version"
+          ],
+          "version_output": "rumdl 0.2.68",
+          "argv": [
+            "rumdl",
+            "check",
+            "--config",
+            ".rumdl.toml",
+            "--no-cache",
+            "--no-code-block-tools",
+            "--color",
+            "never",
+            "--extend-disable",
+            "MD051,MD057,MD074"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Markdown structure and style rules cannot establish factual correctness, rendering equivalence, link availability, or prose quality.",
+          "remediation": "Rerun the exact rumdl style contract, repair the finding, and review any narrow project suppression.",
+          "formats": [
+            ".md",
+            ".markdown"
+          ],
+          "config_paths": [
+            ".rumdl.toml"
+          ],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-DOCUMENTATION-VALE",
+          "tool": "vale",
+          "version": "3.20.0",
+          "version_argv": [
+            "vale",
+            "--version"
+          ],
+          "version_output": "vale version 3.20.0",
+          "argv": [
+            "vale",
+            "--no-global",
+            "--config=.vale.ini",
+            "--no-color"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Vale enforces only checked-in rules and vocabularies; it cannot judge truth, completeness, intent, or overall writing quality.",
+          "remediation": "Rerun Vale with the repository configuration, then repair the prose or narrowly review the owning rule and vocabulary.",
+          "formats": [
+            ".md",
+            ".markdown",
+            ".txt"
+          ],
+          "config_paths": [
+            ".vale.ini"
+          ],
+          "input_mode": "tracked-formats"
+        }
+      ]
+    },
+    {
       "id": "python",
       "title": "Python quality adapters",
       "description": "Reviewed offline commands for Python formatting, linting, strict typing, tests, and branch-aware coverage.",
