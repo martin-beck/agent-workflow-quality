@@ -20,6 +20,11 @@ confine recursive references below the repository, and test the exact native too
 new schema-to-instance mapping needs its own identifier, reviewed schema path, and non-overlapping
 compound instance suffixes.
 
+Rust adapter changes must retain the exact stable toolchain declaration, direct regular binaries,
+locked/offline Cargo resolution, a proxy-free runtime Cargo home, external scratch and target
+directories, and independent native-command equivalence. Rustup and dependency acquisition are
+installer/setup concerns and must never occur during adapter execution.
+
 Before publication run the commands in `CONTRIBUTING.md`, inspect the full diff, verify DCO and SSH
 signatures, and review privacy. Product commits reach main through a pull request. Completion requires
 the merged revision, green required workflows, a public immutable release, and a fresh-clone smoke

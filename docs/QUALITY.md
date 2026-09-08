@@ -37,7 +37,9 @@ documentation family tests additionally prove tracked input selection and declar
 documentation tests distinguish offline local-link evidence from external availability. Schema tests
 cover duplicate JSON keys, non-finite constants, restricted YAML, declared dialects, confined local
 reference graphs, format assertions, semantic instance failures, file budgets, and content-minimized
-errors.
+errors. Rust tests cover exact direct tool paths, proxy-free runtime configuration, locked/offline
+commands, independent native equivalence, format/lint/compile/doc/lock/test failures, dependency
+cache misses, bounded scratch space, manifest consumption, and atomic installer publication.
 
 Source and wheel archives are inspected without extraction for unsafe paths, development metadata
 that can expose private paths, duplicate or non-regular members, bounded size, required packaged

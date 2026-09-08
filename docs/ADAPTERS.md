@@ -8,6 +8,7 @@ families:
 - AR-0013: ShellCheck, shfmt, and Bats.
 - AR-0014: Markdown, links, and prose.
 - AR-0015: JSON, YAML, and JSON Schema.
+- AR-0020: pinned Rust stable formatting, Clippy, tests, documentation, and builds.
 
 No family adapter is enabled merely by upgrading AWQ. A project explicitly checks its contract into
 the `adapters` array in `quality/awq.json`.
@@ -25,8 +26,9 @@ The response includes a canonical catalog digest, family assumptions, and comple
 Unknown families fail closed. Catalog entries are templates for explicit review and copying into a
 repository policy; they are never enabled automatically. See the
 [Python adapter family](PYTHON_ADAPTERS.md), [shell adapter family](SHELL_ADAPTERS.md),
-[documentation adapter family](DOCUMENTATION_ADAPTERS.md), and
-[schema adapter family](SCHEMA_ADAPTERS.md) for exact pins and configuration contracts.
+[documentation adapter family](DOCUMENTATION_ADAPTERS.md),
+[schema adapter family](SCHEMA_ADAPTERS.md), and
+[Rust adapter family](RUST_ADAPTERS.md) for exact pins and configuration contracts.
 
 ## Contract
 

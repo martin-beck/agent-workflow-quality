@@ -3,14 +3,16 @@
 Use the coordinated process in `docs/DEVELOPMENT.md`. Changes need focused tests, hostile-path
 coverage, deterministic generated outputs, a signed commit and a matching `Signed-off-by` trailer.
 
-Install the checksum-pinned shell, documentation, and schema tools into new prefixes outside the
-repository and prepend their `bin` directories to `PATH`. Acquisition is online; the gates
-themselves are offline.
+Install the checksum-pinned shell, documentation, schema, and Rust tools into new prefixes
+outside the repository and prepend their `bin` directories to `PATH`. Acquisition is online; the
+gates themselves are offline. Rust contracts currently support Linux x86-64 and require any
+third-party dependency cache to be populated by a separate reviewed step.
 
 ```sh
 uv run python scripts/install_shell_tools.py --prefix /new/external/shell-tools
 uv run python scripts/install_documentation_tools.py --prefix /new/external/doc-tools
 uv run python scripts/install_schema_tools.py --prefix /new/external/schema-tools
+uv run python scripts/install_rust_tools.py --prefix /new/external/rust-tools
 ```
 
 Run the complete local gate before publication:

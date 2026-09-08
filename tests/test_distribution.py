@@ -6,14 +6,17 @@
 from __future__ import annotations
 
 import contextlib
+import importlib.metadata
 import io
 import stat
 import tarfile
 import tempfile
+import tomllib
 import unittest
 import zipfile
 from pathlib import Path
 
+from awq import __version__
 from scripts.verify_distribution import DistributionError, inspect_archive, main
 
 
@@ -62,6 +65,14 @@ class DistributionVerificationTests(unittest.TestCase):
                 info.linkname = "target"
                 archive.addfile(info)
         return path
+
+    def test_project_runtime_and_installed_versions_match(self) -> None:
+        project = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text("utf-8"))
+        self.assertEqual(project["project"]["version"], __version__)
+        self.assertEqual(
+            importlib.metadata.version("agent-workflow-quality"),
+            __version__,
+        )
 
     def test_valid_archives_include_adapter_schemas_and_empty_files(self) -> None:
         wheel = self.wheel(
