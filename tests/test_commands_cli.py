@@ -47,7 +47,13 @@ class CommandTests(unittest.TestCase):
         self.assertEqual("pass", commands.check(self.repo.root, "pr")["status"])
         envelope = commands.evidence(self.repo.root, "pr")
         self.assertEqual("pass", envelope["result"])
-        self.assertEqual("Portable text", commands.explain("AWQ-CORE-001")["requirement"]["title"])
+        explanation = commands.explain("AWQ-CORE-001")
+        self.assertEqual("Portable text", explanation["requirement"]["title"])
+        self.assertTrue(explanation["traceability"])
+        standards = commands.standards()
+        self.assertEqual("alignment-not-certification", standards["claim"])
+        self.assertTrue(standards["sources"])
+        self.assertTrue(standards["mappings"])
         with self.assertRaises(ProjectError):
             commands.explain("AWQ-NOPE-999")
 
@@ -112,6 +118,13 @@ class CommandTests(unittest.TestCase):
                 0, main(["--root", str(self.repo.root), "inspect", "--format", "json"])
             )
         self.assertEqual("ok", json.loads(buffer.getvalue())["status"])
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            self.assertEqual(
+                0,
+                main(["--root", str(self.repo.root), "standards", "--format", "json"]),
+            )
+        self.assertEqual("alignment-not-certification", json.loads(buffer.getvalue())["claim"])
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
             self.assertEqual(1, main(["--root", str(self.repo.root), "doctor", "--format", "json"]))

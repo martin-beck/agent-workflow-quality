@@ -5,6 +5,9 @@ a project's domain tests. The package contains the canonical requirement registr
 consumer checks in `quality/awq.json` plus `quality/awq.lock.json`; the lock expands every selected
 profile and binds it to the registry SHA-256 and AWQ version.
 
+`awq standards` and `awq explain` expose deterministic machine-readable traceability; generated
+`docs/STANDARDS.md` provides the human review surface and explicit gap and drift sections.
+
 ## Boundaries
 
 - Python 3.12 standard library is the complete runtime dependency set.
@@ -15,6 +18,12 @@ profile and binds it to the registry SHA-256 and AWQ version.
 - Evidence stores classifications, identifiers, timings and digests, never subprocess output.
 - `init --dry-run` is read-only. Mutating initialization refuses to overwrite existing policy.
 - A central release cannot change a consumer until its pinned lock is explicitly updated.
+
+The standards registry is a separate public contract layered over the requirement registry.
+`control_sources.json` pins source editions, URLs, and selected control identifiers;
+`requirement_mappings.json` records reviewed many-to-many relationships, rationale, evidence
+class, and limitations. Runtime validation rejects unknown, removed, stale, or certification-like
+mappings before the CLI or documentation generator can expose them.
 
 ## Components
 

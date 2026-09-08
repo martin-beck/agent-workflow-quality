@@ -23,7 +23,7 @@ from awq.project import (
     validate_policy,
     write_initialization,
 )
-from awq.registry import expand_profiles, load_registry
+from awq.registry import expand_profiles, load_registry, load_standards
 
 
 def _git() -> str:
@@ -152,15 +152,49 @@ def evidence(root: Path, tier: str) -> dict[str, Any]:
 def explain(identifier: str) -> dict[str, Any]:
     """Explain one stable shared requirement."""
     requirements, _, _ = load_registry()
+    sources, mappings, standards_digest = load_standards()
     if identifier not in requirements:
         raise ProjectError(f"unknown requirement: {identifier}")
-    return {"status": "ok", "requirement": requirements[identifier]}
+    traceability = []
+    for mapping in mappings.values():
+        if mapping["requirement"] != identifier:
+            continue
+        source = sources[mapping["source"]]
+        control = next(item for item in source["controls"] if item["id"] == mapping["control"])
+        traceability.append(
+            {
+                **mapping,
+                "source_title": source["title"],
+                "source_url": source["source_url"],
+                "control_title": control["title"],
+                "control_url": control["url"],
+            }
+        )
+    return {
+        "status": "ok",
+        "requirement": requirements[identifier],
+        "standards_registry_sha256": standards_digest,
+        "traceability": traceability,
+    }
+
+
+def standards() -> dict[str, Any]:
+    """Return deterministic machine-readable standards traceability."""
+    sources, mappings, digest = load_standards()
+    return {
+        "status": "ok",
+        "standards_registry_sha256": digest,
+        "claim": "alignment-not-certification",
+        "sources": [sources[identifier] for identifier in sorted(sources)],
+        "mappings": [mappings[identifier] for identifier in sorted(mappings)],
+    }
 
 
 def doctor(root: Path) -> dict[str, Any]:
     """Validate registry, policy, lock, exceptions and current installation."""
     policy, lock = load_project(root)
     _, _, digest = load_registry()
+    _, _, standards_digest = load_standards()
     findings: list[dict[str, str]] = []
     if lock["awq_version"] != __version__:
         findings.append(
@@ -204,6 +238,7 @@ def doctor(root: Path) -> dict[str, Any]:
         "status": "fail" if findings else "pass",
         "awq_version": __version__,
         "registry_sha256": digest,
+        "standards_registry_sha256": standards_digest,
         "findings": findings,
     }
 

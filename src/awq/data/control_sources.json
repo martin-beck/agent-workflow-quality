@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "id": "NIST-SSDF",
+      "title": "Secure Software Development Framework",
+      "publisher": "National Institute of Standards and Technology",
+      "edition": "SP-800-218-v1.1",
+      "source_url": "https://csrc.nist.gov/pubs/sp/800/218/final",
+      "scope": "Selected practices and tasks used by AWQ mappings.",
+      "limitation": "The catalogue is not a complete reproduction of SP 800-218.",
+      "controls": [
+        {"id":"PO.1.1","title":"Identify and document all security requirements for the organization's software development infrastructures and processes","url":"https://doi.org/10.6028/NIST.SP.800-218"},
+        {"id":"PO.3.1","title":"Specify which tools or tool types must or should be included in each toolchain","url":"https://doi.org/10.6028/NIST.SP.800-218"},
+        {"id":"PO.3.2","title":"Follow recommended security practices to deploy and maintain tools and toolchains","url":"https://doi.org/10.6028/NIST.SP.800-218"},
+        {"id":"PS.1.1","title":"Store all forms of code based on the principle of least privilege","url":"https://doi.org/10.6028/NIST.SP.800-218"},
+        {"id":"PS.3.1","title":"Securely archive the necessary files and supporting data for each software release","url":"https://doi.org/10.6028/NIST.SP.800-218"},
+        {"id":"PW.7.2","title":"Review the software to identify and eliminate vulnerabilities","url":"https://doi.org/10.6028/NIST.SP.800-218"}
+      ]
+    },
+    {
+      "id": "SLSA",
+      "title": "Supply-chain Levels for Software Artifacts",
+      "publisher": "SLSA community, a Linux Foundation project",
+      "edition": "v1.2",
+      "source_url": "https://slsa.dev/spec/v1.2/",
+      "scope": "Selected Build track producer and provenance requirements.",
+      "limitation": "AWQ mappings do not assert a SLSA level.",
+      "controls": [
+        {"id":"build.producer.consistent-process","title":"Follow a consistent build process","url":"https://slsa.dev/spec/v1.2/build-requirements#follow-a-consistent-build-process"},
+        {"id":"build.provenance.exists","title":"Provenance exists","url":"https://slsa.dev/spec/v1.2/build-requirements#provenance-generation"}
+      ]
+    },
+    {
+      "id": "SPDX",
+      "title": "System Package Data Exchange Specification",
+      "publisher": "Linux Foundation SPDX Workgroup",
+      "edition": "3.0.1",
+      "source_url": "https://spdx.github.io/spdx-spec/v3.0.1/",
+      "scope": "Core version-identification property relevant to machine-readable releases.",
+      "limitation": "AWQ policy locks are not SPDX documents or software bills of materials.",
+      "controls": [
+        {"id":"Core.CreationInfo.specVersion","title":"SPDX specification version identification","url":"https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Properties/specVersion/"}
+      ]
+    },
+    {
+      "id": "OPENSSF-OSPS",
+      "title": "Open Source Project Security Baseline",
+      "publisher": "Open Source Security Foundation",
+      "edition": "v2026.08.28",
+      "source_url": "https://baseline.openssf.org/versions/2026-08-28",
+      "scope": "Selected controls directly supported or related to AWQ requirements.",
+      "limitation": "Mappings do not assert OSPS Baseline compliance or maturity.",
+      "controls": [
+        {"id":"OSPS-AC-04.02","title":"Assign only minimum necessary CI/CD job privileges","url":"https://baseline.openssf.org/versions/2026-08-28#osps-ac-0402"},
+        {"id":"OSPS-BR-07.01","title":"Prevent unintentional storage of unencrypted sensitive data","url":"https://baseline.openssf.org/versions/2026-08-28#osps-br-0701"},
+        {"id":"OSPS-QA-02.01","title":"Commit a direct language dependency list when supported","url":"https://baseline.openssf.org/versions/2026-08-28#osps-qa-0201"},
+        {"id":"OSPS-QA-06.03","title":"Major changes should add or update automated tests","url":"https://baseline.openssf.org/versions/2026-08-28#osps-qa-0603"}
+      ]
+    },
+    {"id":"PYTHON-REFERENCE","title":"Python Language Reference","publisher":"Python Software Foundation","edition":"3.12.14","source_url":"https://docs.python.org/3.12/reference/","scope":"Python 3.12 grammar used by the syntax requirement.","limitation":"Compilation under one interpreter does not establish semantic conformance across implementations.","controls":[{"id":"full-grammar","title":"Full Grammar specification","url":"https://docs.python.org/3.12/reference/grammar.html"}]},
+    {"id":"IETF-RFC8259","title":"The JavaScript Object Notation Data Interchange Format","publisher":"Internet Engineering Task Force","edition":"RFC-8259-STD-90","source_url":"https://www.rfc-editor.org/info/rfc8259","scope":"JSON parser acceptance requirements.","limitation":"AWQ parsing does not validate an application-specific schema.","controls":[{"id":"section-9","title":"Parsers","url":"https://www.rfc-editor.org/rfc/rfc8259#section-9"}]},
+    {"id":"COMMONMARK","title":"CommonMark Specification","publisher":"CommonMark Project","edition":"0.31.2","source_url":"https://spec.commonmark.org/0.31.2/","scope":"Link destination syntax relevant to local documentation checks.","limitation":"AWQ does not claim full CommonMark conformance.","controls":[{"id":"section-6.3","title":"Links","url":"https://spec.commonmark.org/0.31.2/#links"}]},
+    {"id":"POSIX-SHELL","title":"POSIX Shell Command Language","publisher":"The Open Group","edition":"POSIX.1-2024-Issue-8","source_url":"https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html","scope":"Shell input and command-language execution.","limitation":"POSIX specifies hash-bang input as unspecified; AWQ shebang policy is a portability convention, not POSIX conformance.","controls":[{"id":"2.1","title":"Shell Introduction","url":"https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_01"}]}
+  ]
+}

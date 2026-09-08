@@ -24,7 +24,7 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="awq")
     result.add_argument("--root", type=Path, default=Path.cwd())
     sub = result.add_subparsers(dest="command", required=True)
-    for name in ("inspect", "doctor"):
+    for name in ("inspect", "doctor", "standards"):
         _format_argument(sub.add_parser(name))
     item = sub.add_parser("init")
     item.add_argument("--profiles", nargs="+")
@@ -60,6 +60,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "check": lambda: commands.check(root, args.tier),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
+        "standards": commands.standards,
         "doctor": lambda: commands.doctor(root),
         "update": lambda: commands.update(root, args.to, args.dry_run),
         "policy-diff": lambda: commands.policy_diff(root, args.base, args.head),

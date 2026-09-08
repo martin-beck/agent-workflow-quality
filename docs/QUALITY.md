@@ -20,6 +20,12 @@ Evidence is content-minimized and bounded. It includes the policy and registry d
 profiles, requirement outcomes, elapsed time and limitations. It excludes source excerpts, command
 output, environment values, prompts, transcripts, credentials and machine paths.
 
+Standards mappings are review evidence, not certification evidence. Each one names a pinned source
+edition and known control, relationship strength, rationale, evidence class, limitation, and
+reviewer. Schema and runtime tests reject unknown fields, floating or stale editions, removed
+controls, uncovered requirements, and stronger claims. Source text is linked, not copied into AWQ;
+normal validation remains offline and deterministic.
+
 Tool and policy updates are explicit lock diffs. Exceptions require an identifier, owner, reason,
 narrow requirement scope, creation and expiry timestamps, compensating evidence and review reference.
 Expired or unknown exceptions fail closed.
