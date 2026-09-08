@@ -16,6 +16,8 @@ uv run coverage report --fail-under=95
 uv run python scripts/generate_catalog.py --check
 uv run python -m awq --root . doctor --format json
 uv run python -m awq --root . check --tier pr --format json
+uv build
+uv run python scripts/verify_distribution.py dist/*
 ```
 
 The source-header gate checks every tracked Python and shell source, including the extensionless

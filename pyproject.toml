@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "agent-workflow-quality"
-version = "0.3.0"
+version = "0.4.0"
 description = "Versioned, agent-ready software quality policies, gates, and evidence"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,6 +22,9 @@ quality = [
   "mypy==2.3.1",
   "ruff==0.16.5",
 ]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.git"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/awq"]

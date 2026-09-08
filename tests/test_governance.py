@@ -516,16 +516,22 @@ class SemanticDiffTests(unittest.TestCase):
 
     def test_legacy_policy_migration_is_explicit_and_bounded(self) -> None:
         current = base_policy()
-        legacy = deepcopy(current)
-        legacy.pop("governance")
-        legacy["schema_version"] = 1
-        normalized = commands._policy_v2(legacy, current)
-        self.assertEqual(2, normalized["schema_version"])
+        version_two = deepcopy(current)
+        version_two.pop("adapters")
+        version_two["schema_version"] = 2
+        normalized = commands._policy_v3(version_two, current)
+        self.assertEqual(3, normalized["schema_version"])
+        self.assertEqual([], normalized["adapters"])
+        self.assertIs(current, commands._policy_v3(current, current))
+
+        version_one = deepcopy(version_two)
+        version_one.pop("governance")
+        version_one["schema_version"] = 1
+        normalized = commands._policy_v3(version_one, current)
         self.assertEqual(current["governance"], normalized["governance"])
-        self.assertIs(current, commands._policy_v2(current, current))
-        legacy["exceptions"] = [base_exception()]
+        version_one["exceptions"] = [base_exception()]
         with self.assertRaises(ProjectError):
-            commands._policy_v2(legacy, current)
+            commands._policy_v3(version_one, current)
 
     def test_doctor_flags_exception_for_inactive_requirement(self) -> None:
         repo = Repository()

@@ -17,12 +17,15 @@ from typing import Any
 from urllib.request import Request, urlopen
 
 from awq import __version__
+from awq.adapters import AdapterError, run_adapter
 from awq.checks import run_checks
 from awq.project import (
     EXCEPTION_KEYS,
     POLICY_KEYS,
     ProjectError,
     _timestamp,
+    confined_path,
+    load_json,
     load_project,
     make_policy,
     policy_paths,
@@ -132,6 +135,15 @@ def plan(root: Path, changed: bool, base: str) -> dict[str, Any]:
         "local_extensions": [
             {"id": item["id"], "tier": item["tier"]} for item in policy["extensions"]
         ],
+        "adapters": [
+            {
+                "id": item["id"],
+                "tool": item["tool"],
+                "version": item["version"],
+                "tier": item["tier"],
+            }
+            for item in sorted(policy["adapters"], key=lambda candidate: candidate["id"])
+        ],
     }
 
 
@@ -141,6 +153,15 @@ def check(root: Path, tier: str) -> dict[str, Any]:
     results = run_checks(root, policy, lock["requirements"], tier)
     failed = any(item["status"] == "fail" for item in results)
     return {"status": "fail" if failed else "pass", "tier": tier, "requirements": results}
+
+
+def adapter_run(root: Path, contract_path: str) -> dict[str, Any]:
+    """Run one repository-owned adapter contract."""
+    contract = load_json(confined_path(root, contract_path))
+    try:
+        return run_adapter(root, contract)
+    except AdapterError as error:
+        raise ProjectError(str(error)) from error
 
 
 def evidence(root: Path, tier: str) -> dict[str, Any]:
@@ -474,7 +495,7 @@ def policy_diff(root: Path, base: str, head: str) -> dict[str, Any]:
     new_policy = _git_json(root, head, "quality/awq.json")
     old_lock = _git_json(root, base, "quality/awq.lock.json")
     new_lock = _git_json(root, head, "quality/awq.lock.json")
-    old_policy = _policy_v2(old_policy, new_policy)
+    old_policy = _policy_v3(old_policy, new_policy)
     validate_policy(old_policy)
     validate_policy(new_policy)
     validate_lock(old_lock)
@@ -492,11 +513,13 @@ def policy_diff(root: Path, base: str, head: str) -> dict[str, Any]:
     }
 
 
-def _policy_v2(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
-    """Normalize the one supported v1-to-v2 migration for semantic comparison."""
-    if old.get("schema_version") == 2:
+def _policy_v3(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
+    """Normalize the supported historical policy schemas for semantic comparison."""
+    if old.get("schema_version") == 3:
         return old
-    legacy_keys = POLICY_KEYS - {"governance"}
+    if old.get("schema_version") == 2 and set(old) == POLICY_KEYS - {"adapters"}:
+        return {**old, "schema_version": 3, "adapters": []}
+    legacy_keys = POLICY_KEYS - {"governance", "adapters"}
     if (
         old.get("schema_version") != 1
         or set(old) != legacy_keys
@@ -504,7 +527,12 @@ def _policy_v2(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
         or not isinstance(new.get("governance"), dict)
     ):
         raise ProjectError("cannot compare unsupported historical policy schema")
-    return {**old, "schema_version": 2, "governance": new["governance"]}
+    return {
+        **old,
+        "schema_version": 3,
+        "governance": new["governance"],
+        "adapters": [],
+    }
 
 
 def _change(changes: list[dict[str, str]], classification: str, field: str, message: str) -> None:
@@ -523,6 +551,54 @@ def _compare_set(
         _change(changes, removed_class, field, f"removed {value}")
     for value in sorted(set(new) - set(old)):
         _change(changes, added_class, field, f"added {value}")
+
+
+def _compare_adapters(
+    old_items: list[dict[str, Any]],
+    new_items: list[dict[str, Any]],
+    changes: list[dict[str, str]],
+) -> None:
+    old = {item["id"]: item for item in old_items}
+    new = {item["id"]: item for item in new_items}
+    for identifier in sorted(old.keys() - new.keys()):
+        _change(changes, "weakening", f"adapters.{identifier}", "removed pinned adapter")
+    for identifier in sorted(new.keys() - old.keys()):
+        _change(changes, "strengthening", f"adapters.{identifier}", "added pinned adapter")
+    for identifier in sorted(old.keys() & new.keys()):
+        prefix = f"adapters.{identifier}"
+        _compare_set(
+            old[identifier]["formats"],
+            new[identifier]["formats"],
+            f"{prefix}.formats",
+            "weakening",
+            "strengthening",
+            changes,
+        )
+        old_tier, new_tier = old[identifier]["tier"], new[identifier]["tier"]
+        if old_tier != new_tier:
+            classification = (
+                "weakening" if TIERS.index(new_tier) > TIERS.index(old_tier) else "strengthening"
+            )
+            _change(changes, classification, f"{prefix}.tier", "execution tier changed")
+        old_timeout = old[identifier]["timeout_seconds"]
+        new_timeout = new[identifier]["timeout_seconds"]
+        if old_timeout != new_timeout:
+            classification = "weakening" if new_timeout < old_timeout else "strengthening"
+            _change(changes, classification, f"{prefix}.timeout_seconds", "deadline changed")
+        for field in (
+            "tool",
+            "version",
+            "version_argv",
+            "version_output",
+            "argv",
+            "evidence",
+            "limitation",
+            "config_paths",
+        ):
+            if old[identifier][field] != new[identifier][field]:
+                _change(changes, "weakening", f"{prefix}.{field}", f"{field} changed")
+        if old[identifier]["remediation"] != new[identifier]["remediation"]:
+            _change(changes, "review", f"{prefix}.remediation", "remediation changed")
 
 
 def _compare_extensions(
@@ -673,6 +749,7 @@ def _compare_policy(
                 "weakening" if new_governance[field] > old_governance[field] else "strengthening"
             )
             _change(changes, classification, f"governance.{field}", "lifetime bound changed")
+    _compare_adapters(old["adapters"], new["adapters"], changes)
     _compare_extensions(old["extensions"], new["extensions"], changes)
     _compare_exceptions(old["exceptions"], new["exceptions"], changes)
 

@@ -60,7 +60,7 @@ class Repository:
 
 def base_policy(**updates: Any) -> dict[str, Any]:
     value: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 3,
         "profiles": ["core"],
         "unknown_formats": "error",
         "fixture_paths": [],
@@ -71,6 +71,7 @@ def base_policy(**updates: Any) -> dict[str, Any]:
             "max_standard_days": 30,
             "max_emergency_hours": 24,
         },
+        "adapters": [],
     }
     value.update(updates)
     return value
