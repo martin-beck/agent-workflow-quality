@@ -305,6 +305,170 @@
       ]
     },
     {
+      "id": "rust",
+      "title": "Rust stable quality adapters",
+      "description": "Reviewed offline Rust 1.93.0 commands for formatting, compiler lint, tests, documentation and release builds.",
+      "assumptions": [
+        "Execution is limited to Linux x86-64 with the exact checksum-reviewed Rust 1.93.0 toolchain installed separately.",
+        "The workspace owns exact Cargo.toml, Cargo.lock, rust-toolchain.toml and .cargo/config.toml files.",
+        "The toolchain declaration uses the minimal profile and lists Clippy then rustfmt exactly.",
+        "Third-party dependencies are already present in the isolated Cargo home from a separate reviewed acquisition step; runtime is locked and offline.",
+        "AWQ invokes direct regular toolchain binaries with isolated target and temporary directories; runtime never invokes rustup, a shell, package installation or lockfile updates."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-RUST-BUILD",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "build"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "A successful optimized host build proves compilation only for the selected workspace and Linux x86-64 host; it does not prove runtime behavior, other features, targets or profiles.",
+          "remediation": "Repair compiler failures or the reviewed workspace and lock configuration, then rerun the exact offline release-build contract.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "id": "ADAPTER-RUST-CLIPPY",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "clippy"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Clippy with warnings denied covers the selected workspace and all host targets under the pinned lint implementation; it does not prove absence of defects.",
+          "remediation": "Repair the lint or narrowly review project-owned lint policy without weakening the pinned command, then rerun Clippy.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "id": "ADAPTER-RUST-DOC",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "doc"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Warning-free no-dependency documentation checks local rustdoc generation only; it does not validate prose truth, external links or dependency documentation.",
+          "remediation": "Repair rustdoc warnings or source documentation and rerun the exact offline no-dependency documentation contract.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "id": "ADAPTER-RUST-FMT",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "fmt"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "rustfmt checks deterministic source layout only and does not establish compilation, lint cleanliness, tests or runtime correctness.",
+          "remediation": "Run the pinned formatter on the workspace, review the source changes and rerun the formatting check.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "id": "ADAPTER-RUST-TEST",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "test"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "The pinned host test suite covers only tests and features selected by the workspace defaults; passing does not prove behavioral completeness or cross-target behavior.",
+          "remediation": "Repair failing tests or reviewed workspace configuration, then rerun the exact locked offline host test contract.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        }
+      ]
+    },
+    {
       "id": "schema",
       "title": "Schema and structured-data adapters",
       "description": "Reviewed offline checks for strict JSON, restricted YAML, JSON Schema metaschemas, and project-owned instance mappings.",
