@@ -55,6 +55,7 @@ output:
 awq --root . adapter-catalog --family python --format json
 awq --root . adapter-catalog --family shell --format json
 awq --root . adapter-catalog --family documentation --format json
+awq --root . adapter-catalog --family schema --format json
 awq --root . adapter-run quality/adapters/example.json --format json
 awq --root . plan --format json
 awq --root . check --tier pr --format json
@@ -63,8 +64,9 @@ awq --root . check --tier pr --format json
 Adapter families are delivered independently. See [pinned adapters](docs/ADAPTERS.md) for the
 contract, failure taxonomy, security boundary, and migration details. Exact commands, pins,
 configuration assumptions, and adoption recipes are documented for the
-[Python family](docs/PYTHON_ADAPTERS.md), [shell family](docs/SHELL_ADAPTERS.md), and
-[documentation family](docs/DOCUMENTATION_ADAPTERS.md). The schema-format family follows in AR-0015.
+[Python family](docs/PYTHON_ADAPTERS.md), [shell family](docs/SHELL_ADAPTERS.md),
+[documentation family](docs/DOCUMENTATION_ADAPTERS.md), and
+[schema family](docs/SCHEMA_ADAPTERS.md).
 
 Development is coordinated through
 [Agent Workflow Quality State](https://github.com/martin-beck/agent-workflow-quality-state)

@@ -305,6 +305,122 @@
       ]
     },
     {
+      "id": "schema",
+      "title": "Schema and structured-data adapters",
+      "description": "Reviewed offline checks for strict JSON, restricted YAML, JSON Schema metaschemas, and project-owned instance mappings.",
+      "assumptions": [
+        "JSON and YAML inputs are Git-tracked and declared fixture trees are excluded.",
+        "The strict YAML profile intentionally rejects flow collections, explicit tags, anchors, aliases, and duplicate keys.",
+        "Every JSON Schema uses the .schema.json suffix, declares a supported $schema dialect, and uses fragment-only or repository-relative .schema.json references.",
+        "The project replaces the example schema path and compound instance suffixes with one reviewed mapping per contract identifier.",
+        "The checksum-pinned wrapper verifies its bundled parser and validator before running; runtime execution never enables HTTP or installs tools."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-SCHEMA-JSONSCHEMA-INSTANCE",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "validate",
+            "quality/schemas/project.schema.json"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "One copied contract validates only its reviewed schema path and compound instance suffixes; format assertions are implementation-defined beyond supported standard formats.",
+          "remediation": "Repair the instance or schema, or review a separate uniquely identified mapping for another schema and suffix set.",
+          "formats": [
+            ".instance.json",
+            ".instance.yaml",
+            ".instance.yml"
+          ],
+          "config_paths": [
+            "quality/schemas/project.schema.json"
+          ],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-SCHEMA-JSONSCHEMA-METASCHEMA",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "metaschema"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Metaschema and format-assertion checks validate declared schema structure and a confined local reference graph, not instance behavior or schema design quality.",
+          "remediation": "Declare a supported dialect, repair the schema or local reference, and keep every referenced schema below the repository root.",
+          "formats": [
+            ".schema.json"
+          ],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-SCHEMA-STRICT-JSON",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "json"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Strict parsing rejects duplicate keys and non-finite constants but does not establish application semantics or JSON Schema conformance.",
+          "remediation": "Repair invalid or ambiguous JSON, then run the owning schema mapping where one exists.",
+          "formats": [
+            ".json"
+          ],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-SCHEMA-STRICT-YAML",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "yaml"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "The restricted YAML subset trades compatibility for unambiguous parsing and does not establish application semantics or schema conformance.",
+          "remediation": "Remove disallowed YAML features or choose a separately reviewed parser contract for a required broader dialect.",
+          "formats": [
+            ".yaml",
+            ".yml"
+          ],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        }
+      ]
+    },
+    {
       "id": "shell",
       "title": "Shell quality adapters",
       "description": "Reviewed offline commands for ShellCheck analysis, shfmt formatting, and Bats tests.",

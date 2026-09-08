@@ -311,6 +311,20 @@ def local_links(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[F
     return findings
 
 
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON object key")
+        result[key] = value
+    return result
+
+
+def _reject_json_constant(value: str) -> None:
+    del value
+    raise ValueError("non-finite JSON number")
+
+
 def json_parse(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     for path in paths:
@@ -318,9 +332,15 @@ def json_parse(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Fi
         if path.suffix != ".json" or _is_fixture(relative, policy):
             continue
         try:
-            json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            findings.append(Finding("invalid-json", relative, "JSON document does not parse"))
+            json.loads(
+                path.read_text(encoding="utf-8"),
+                object_pairs_hook=_unique_json_object,
+                parse_constant=_reject_json_constant,
+            )
+        except (OSError, UnicodeError, ValueError, RecursionError):
+            findings.append(
+                Finding("invalid-json", relative, "JSON document is invalid or ambiguous")
+            )
     return findings
 
 

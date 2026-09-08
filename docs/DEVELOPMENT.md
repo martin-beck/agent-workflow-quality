@@ -15,6 +15,11 @@ failure path. A profile change must be visible in `policy-diff`. Never add a run
 network-required runtime check. Explicit checksum-pinned CI setup may acquire offline-capable tools
 before tests execute; runtime contracts must neither acquire them nor contact a service.
 
+Schema adapter changes must keep parsing strict and bounded, reject duplicate keys and unsafe YAML,
+confine recursive references below the repository, and test the exact native tool invocation. A
+new schema-to-instance mapping needs its own identifier, reviewed schema path, and non-overlapping
+compound instance suffixes.
+
 Before publication run the commands in `CONTRIBUTING.md`, inspect the full diff, verify DCO and SSH
 signatures, and review privacy. Product commits reach main through a pull request. Completion requires
 the merged revision, green required workflows, a public immutable release, and a fresh-clone smoke

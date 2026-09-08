@@ -66,6 +66,10 @@ class AdapterContractTests(unittest.TestCase):
                 validate_policy(policy)
                 validate(policy, "project-policy.schema.json")
 
+        compound = python_contract(formats=[".schema.json"])
+        adapters.validate_adapter(compound)
+        validate(compound, "adapter-contract.schema.json")
+
     def test_invalid_contract_dimensions_fail_closed(self) -> None:
         base = python_contract()
         mutations: list[dict[str, Any]] = [
@@ -251,6 +255,11 @@ class AdapterRunnerTests(unittest.TestCase):
                 )
             ),
         )
+        with mock.patch.object(adapters, "MAX_CONFIG_FILE_BYTES", 1):
+            self.assertEqual(
+                "adapter-config-limit",
+                finding_code(adapters.run_adapter(self.repo.root, python_contract())),
+            )
 
         outside = self.repo.root.parent / "awq-adapter-outside"
         outside.mkdir(exist_ok=True)
@@ -345,6 +354,56 @@ class AdapterRunnerTests(unittest.TestCase):
                 result = adapters.run_adapter(self.repo.root, contract)
             self.assertEqual("adapter-inputs-limit", finding_code(result))
             execution.assert_not_called()
+
+    def test_tracked_input_content_bounds_and_missing_files_fail_before_execution(self) -> None:
+        contract = python_contract(input_mode="tracked-formats")
+        self.repo.write("one.py", "1234")
+        self.repo.write("two.py", "5678")
+        self.repo.commit()
+        cases = [
+            (
+                "missing",
+                ["missing.py"],
+                {},
+                "adapter-inputs-missing",
+            ),
+            (
+                "file",
+                ["one.py"],
+                {"MAX_SELECTED_FILE_BYTES": 3},
+                "adapter-inputs-limit",
+            ),
+            (
+                "aggregate",
+                ["one.py", "two.py"],
+                {"MAX_SELECTED_TOTAL_BYTES": 7},
+                "adapter-inputs-limit",
+            ),
+        ]
+        for name, selected, constants, expected in cases:
+            patches = [
+                mock.patch.object(adapters, constant, value)
+                for constant, value in constants.items()
+            ]
+            with (
+                self.subTest(case=name),
+                contextlib.ExitStack() as stack,
+                mock.patch.object(adapters, "_selected_inputs", return_value=selected),
+                mock.patch.object(adapters, "_execution_failure") as execution,
+            ):
+                for patch in patches:
+                    stack.enter_context(patch)
+                result = adapters.run_adapter(self.repo.root, contract)
+            self.assertEqual(expected, finding_code(result))
+            execution.assert_not_called()
+
+        with (
+            mock.patch.object(adapters, "MAX_SELECTED_FILE_BYTES", 4),
+            mock.patch.object(adapters, "MAX_SELECTED_TOTAL_BYTES", 8),
+            mock.patch.object(adapters, "_execution_failure", return_value=None) as execution,
+        ):
+            self.assertEqual("pass", adapters.run_adapter(self.repo.root, contract)["status"])
+        execution.assert_called_once()
 
     def test_environment_is_minimal_and_does_not_forward_credentials(self) -> None:
         with mock.patch.dict(
