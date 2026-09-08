@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
+from awq.adapters import run_adapter
 from awq.project import ProjectError, tracked_files
 
 TEXT_SUFFIXES = {
@@ -538,6 +539,11 @@ def run_checks(
     results.extend(
         run_extension(root, item)
         for item in policy["extensions"]
+        if TIER_INDEX[item["tier"]] <= TIER_INDEX[tier]
+    )
+    results.extend(
+        run_adapter(root, item)
+        for item in sorted(policy["adapters"], key=lambda candidate: candidate["id"])
         if TIER_INDEX[item["tier"]] <= TIER_INDEX[tier]
     )
     return results

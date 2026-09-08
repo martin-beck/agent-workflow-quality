@@ -15,6 +15,8 @@ uv run coverage report --fail-under=95
 uv run python scripts/generate_catalog.py --check
 uv run python -m awq --root . doctor --format json
 uv run python -m awq --root . check --tier pr --format json
+uv build
+uv run python scripts/verify_distribution.py dist/*
 ```
 
 Never reduce a floor, broaden an exception, suppress a finding, or regenerate expected output solely
