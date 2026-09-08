@@ -12,6 +12,20 @@ families:
 No family adapter is enabled merely by upgrading AWQ. A project explicitly checks its contract into
 the `adapters` array in `quality/awq.json`.
 
+## Reviewed catalog
+
+Installed releases expose schema-validated, agent-readable family contracts:
+
+~~~sh
+awq --root . adapter-catalog --format json
+awq --root . adapter-catalog --family python --format json
+~~~
+
+The response includes a canonical catalog digest, family assumptions, and complete contracts.
+Unknown families fail closed. Catalog entries are templates for explicit review and copying into a
+repository policy; they are never enabled automatically. See the
+[Python adapter family](PYTHON_ADAPTERS.md) for its exact pins and configuration contract.
+
 ## Contract
 
 Each object conforms to `schemas/adapter-contract.schema.json` and contains:
