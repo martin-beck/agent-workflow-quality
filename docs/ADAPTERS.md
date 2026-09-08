@@ -24,8 +24,8 @@ awq --root . adapter-catalog --family python --format json
 The response includes a canonical catalog digest, family assumptions, and complete contracts.
 Unknown families fail closed. Catalog entries are templates for explicit review and copying into a
 repository policy; they are never enabled automatically. See the
-[Python adapter family](PYTHON_ADAPTERS.md) and [shell adapter family](SHELL_ADAPTERS.md) for exact
-pins and configuration contracts.
+[Python adapter family](PYTHON_ADAPTERS.md), [shell adapter family](SHELL_ADAPTERS.md), and
+[documentation adapter family](DOCUMENTATION_ADAPTERS.md) for exact pins and configuration contracts.
 
 ## Contract
 
@@ -42,7 +42,7 @@ Each object conforms to `schemas/adapter-contract.schema.json` and contains:
 | `limitation`, `remediation` | Required bounded review context. |
 | `formats` | Unique lowercase suffixes covered by the adapter. |
 | `config_paths` | Unique repository-relative project configuration files that must exist. |
-| `input_mode` | Optional `explicit` default or tracked-shell path selection. |
+| `input_mode` | Optional `explicit` default, `tracked-formats`, or `tracked-shell` selection. |
 
 JSON Schema validates the portable shape. Zero-dependency runtime validation additionally enforces
 cross-field conditions that JSON Schema cannot express directly: both argv arrays start with the
@@ -97,6 +97,7 @@ A passing result contains no findings. Failures use stable codes:
 | `adapter-config-unsafe` | A declared configuration path escaped confinement. |
 | `adapter-config-missing` | Required project configuration was unavailable. |
 | `adapter-inputs-missing` | A tracked-input contract selected no eligible source files. |
+| `adapter-inputs-limit` | Selected paths exceeded the bounded process-argument budget. |
 | `adapter-tool-unavailable` | Discovery or process startup failed. |
 | `adapter-version-timeout` | The version probe exceeded its deadline. |
 | `adapter-version-output-limit` | Probe output exceeded 4096 bytes. |

@@ -612,7 +612,7 @@ def _compare_adapters(
         if old_mode != new_mode:
             classification = (
                 "strengthening"
-                if old_mode == "explicit" and new_mode == "tracked-shell"
+                if old_mode == "explicit" and new_mode in {"tracked-formats", "tracked-shell"}
                 else "weakening"
             )
             _change(changes, classification, f"{prefix}.input_mode", "input mode changed")

@@ -56,12 +56,15 @@ def finding_code(result: dict[str, Any]) -> str:
 
 class AdapterContractTests(unittest.TestCase):
     def test_runtime_and_schema_accept_the_same_contract(self) -> None:
-        contract = python_contract()
-        adapters.validate_adapter(contract)
-        validate(contract, "adapter-contract.schema.json")
-        policy = base_policy(adapters=[contract])
-        validate_policy(policy)
-        validate(policy, "project-policy.schema.json")
+        for mode in (None, "tracked-formats", "tracked-shell"):
+            with self.subTest(mode=mode):
+                updates = {} if mode is None else {"input_mode": mode}
+                contract = python_contract(**updates)
+                adapters.validate_adapter(contract)
+                validate(contract, "adapter-contract.schema.json")
+                policy = base_policy(adapters=[contract])
+                validate_policy(policy)
+                validate(policy, "project-policy.schema.json")
 
     def test_invalid_contract_dimensions_fail_closed(self) -> None:
         base = python_contract()
@@ -329,6 +332,20 @@ class AdapterRunnerTests(unittest.TestCase):
             )
         self.assertTrue(stream.closed)
 
+    def test_tracked_input_argv_bounds_fail_before_execution(self) -> None:
+        contract = python_contract(input_mode="tracked-formats")
+        too_many = [f"docs/{number}.py" for number in range(adapters.MAX_SELECTED_INPUTS + 1)]
+        too_large = ["x" * adapters.MAX_SELECTED_INPUT_BYTES]
+        for selected in (too_many, too_large):
+            with (
+                self.subTest(size=len(selected)),
+                mock.patch.object(adapters, "_selected_inputs", return_value=selected),
+                mock.patch.object(adapters, "_execution_failure") as execution,
+            ):
+                result = adapters.run_adapter(self.repo.root, contract)
+            self.assertEqual("adapter-inputs-limit", finding_code(result))
+            execution.assert_not_called()
+
     def test_environment_is_minimal_and_does_not_forward_credentials(self) -> None:
         with mock.patch.dict(
             os.environ,
@@ -412,20 +429,30 @@ class AdapterSemanticDiffTests(unittest.TestCase):
 
     def test_input_mode_changes_are_semantically_classified(self) -> None:
         explicit = python_contract()
-        tracked = python_contract(input_mode="tracked-shell")
-        self.assertEqual(
-            {"strengthening"},
-            self.classifications(
-                [explicit],
-                [tracked],
-                f"adapters.{explicit['id']}.input_mode",
-            ),
-        )
+        for mode in ("tracked-formats", "tracked-shell"):
+            tracked = python_contract(input_mode=mode)
+            with self.subTest(mode=mode):
+                self.assertEqual(
+                    {"strengthening"},
+                    self.classifications(
+                        [explicit],
+                        [tracked],
+                        f"adapters.{explicit['id']}.input_mode",
+                    ),
+                )
+                self.assertEqual(
+                    {"weakening"},
+                    self.classifications(
+                        [tracked],
+                        [explicit],
+                        f"adapters.{explicit['id']}.input_mode",
+                    ),
+                )
         self.assertEqual(
             {"weakening"},
             self.classifications(
-                [tracked],
-                [explicit],
+                [python_contract(input_mode="tracked-formats")],
+                [python_contract(input_mode="tracked-shell")],
                 f"adapters.{explicit['id']}.input_mode",
             ),
         )

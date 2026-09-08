@@ -36,7 +36,9 @@ ADAPTER_KEYS = {
     "formats",
     "config_paths",
 }
-INPUT_MODES = {"explicit", "tracked-shell"}
+INPUT_MODES = {"explicit", "tracked-formats", "tracked-shell"}
+MAX_SELECTED_INPUTS = 10_000
+MAX_SELECTED_INPUT_BYTES = 1_000_000
 ADAPTER_ID = re.compile(r"^ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 TOOL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*$")
 FORMAT = re.compile(r"^\.[a-z0-9]+$")
@@ -465,6 +467,12 @@ def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
     if contract.get("input_mode", "explicit") != "explicit" and not inputs:
         failure = _finding(
             "adapter-inputs-missing", "", "adapter selected no tracked project inputs"
+        )
+        return _result(contract, started, "fail", failure)
+    input_bytes = sum(len(os.fsencode(item)) + 1 for item in inputs)
+    if len(inputs) > MAX_SELECTED_INPUTS or input_bytes > MAX_SELECTED_INPUT_BYTES:
+        failure = _finding(
+            "adapter-inputs-limit", "", "adapter selected inputs exceed the argv safety bound"
         )
         return _result(contract, started, "fail", failure)
     failure = _execution_failure(root, executable, contract, environment, inputs)
