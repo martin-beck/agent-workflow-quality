@@ -1,0 +1,68 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/adapter-catalog.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AWQ reviewed adapter catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "families"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "families": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "description",
+          "assumptions",
+          "contracts"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "maxLength": 100
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "assumptions": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "contracts": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "$ref": "https://github.com/martin-beck/agent-workflow-quality/schemas/adapter-contract.schema.json"
+            }
+          }
+        }
+      },
+      "maxItems": 100
+    }
+  }
+}

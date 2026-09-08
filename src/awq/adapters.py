@@ -6,16 +6,19 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import json
 import os
 import re
 import shutil
 import subprocess
 import threading
 import time
+from importlib.resources import files as resource_files
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-from awq.registry import EVIDENCE_CLASSES, TIERS
+from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes
 
 ADAPTER_KEYS = {
     "id",
@@ -35,6 +38,9 @@ ADAPTER_KEYS = {
 ADAPTER_ID = re.compile(r"^ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 TOOL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*$")
 FORMAT = re.compile(r"^\.[a-z0-9]+$")
+FAMILY_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+CATALOG_KEYS = {"schema_version", "families"}
+FAMILY_KEYS = {"id", "title", "description", "assumptions", "contracts"}
 MAX_PROBE_BYTES = 4096
 MAX_ARGUMENTS = 100
 MAX_ARGUMENT_LENGTH = 1000
@@ -140,6 +146,83 @@ def validate_adapter(value: dict[str, Any]) -> None:
     _validate_paths(value)
 
 
+def _family_text(family: dict[str, Any], field: str, maximum: int) -> None:
+    text = family[field]
+    if not isinstance(text, str) or not text.strip() or len(text) > maximum or "\0" in text:
+        raise AdapterError(f"adapter family {field} must be bounded non-empty text")
+
+
+def _validate_adapter_family(
+    family: object, known_families: set[str], contract_ids: set[str]
+) -> tuple[str, dict[str, Any]]:
+    if not isinstance(family, dict) or set(family) != FAMILY_KEYS:
+        raise AdapterError("adapter family has unknown or missing fields")
+    identifier = family["id"]
+    if (
+        not isinstance(identifier, str)
+        or len(identifier) > 100
+        or not FAMILY_ID.fullmatch(identifier)
+        or identifier in known_families
+    ):
+        raise AdapterError("adapter family identifier is invalid or duplicated")
+    _family_text(family, "title", 200)
+    _family_text(family, "description", 500)
+    assumptions = family["assumptions"]
+    if (
+        not _strings(assumptions, nonempty=True)
+        or not assumptions
+        or len(assumptions) > 20
+        or any(len(item) > 500 for item in assumptions)
+        or len(set(assumptions)) != len(assumptions)
+    ):
+        raise AdapterError("adapter family assumptions must be unique bounded text")
+    contracts = family["contracts"]
+    if not isinstance(contracts, list) or not contracts or len(contracts) > 100:
+        raise AdapterError("adapter family contracts must be a bounded non-empty list")
+    observed_ids: list[str] = []
+    prefix = f"ADAPTER-{identifier.upper()}-"
+    for contract in contracts:
+        if not isinstance(contract, dict):
+            raise AdapterError("adapter family contract must be an object")
+        validate_adapter(contract)
+        contract_id = contract["id"]
+        if not contract_id.startswith(prefix) or contract_id in contract_ids:
+            raise AdapterError("adapter contract identifier has the wrong family or is duplicated")
+        contract_ids.add(contract_id)
+        observed_ids.append(contract_id)
+    if observed_ids != sorted(observed_ids):
+        raise AdapterError("adapter family contracts must be ordered by identifier")
+    return identifier, family
+
+
+def _validate_adapter_catalog(value: object) -> dict[str, dict[str, Any]]:
+    """Validate the closed, immutable built-in adapter catalog."""
+    if not isinstance(value, dict) or set(value) != CATALOG_KEYS:
+        raise AdapterError("adapter catalog has unknown or missing fields")
+    if value["schema_version"] != 1:
+        raise AdapterError("adapter catalog has an unsupported schema version")
+    declared = value["families"]
+    if not isinstance(declared, list) or not declared or len(declared) > 100:
+        raise AdapterError("adapter catalog families must be a bounded non-empty list")
+    families: dict[str, dict[str, Any]] = {}
+    contract_ids: set[str] = set()
+    for family in declared:
+        identifier, validated = _validate_adapter_family(family, set(families), contract_ids)
+        families[identifier] = validated
+    if list(families) != sorted(families):
+        raise AdapterError("adapter families must be ordered by identifier")
+    return families
+
+
+def load_adapter_catalog() -> tuple[dict[str, dict[str, Any]], str]:
+    """Load reviewed adapter families and their canonical digest."""
+    document = json.loads(
+        resource_files("awq.data").joinpath("adapter_catalog.json").read_text(encoding="utf-8")
+    )
+    families = _validate_adapter_catalog(document)
+    return families, hashlib.sha256(canonical_bytes(document)).hexdigest()
+
+
 def _environment() -> dict[str, str]:
     """Return a minimal locale-stable environment without credential variables."""
     result = {
@@ -221,6 +304,7 @@ def _result(
         "status": status,
         "evidence": contract["evidence"],
         "limitation": contract["limitation"],
+        "remediation": contract["remediation"],
         "duration_ms": int((time.monotonic() - started) * 1000),
         "exceptions": [],
         "findings": findings,

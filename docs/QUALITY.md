@@ -18,8 +18,8 @@ intentionally broken fixture which the production checker must reject.
 
 Evidence is content-minimized and bounded. It includes the policy and registry digests, selected
 profiles, requirement outcomes, elapsed time and limitations. Adapter results additionally identify
-the pinned tool and version. Evidence excludes source excerpts, command output, environment values,
-prompts, transcripts, credentials and machine paths. Status and findings are deterministic for a
+the pinned tool and version. Evidence includes reviewed remediation while excluding source excerpts,
+command output, environment values, prompts, transcripts, credentials and machine paths. Status and findings are deterministic for a
 fixed tree, contract, tool and host; elapsed duration is observational and intentionally variable.
 
 Standards mappings are review evidence, not certification evidence. Each one names a pinned source
@@ -34,8 +34,8 @@ agreement, semantic weakening, and native-command equivalence on controlled fixt
 must add their own positive, negative, version-skew, and native-equivalence fixtures.
 
 Source and wheel archives are inspected without extraction for unsafe paths, development metadata
-that can expose private paths, duplicate or non-regular members, bounded size, and required packaged
-adapter schemas.
+that can expose private paths, duplicate or non-regular members, bounded size, required packaged
+adapter schemas, and the immutable adapter catalog data.
 
 Tool and policy updates are explicit semantic diffs. Exceptions require an identifier, owner, reason,
 narrow requirement scope, creation and expiry timestamps, compensating evidence and review reference.
