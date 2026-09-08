@@ -29,6 +29,10 @@ jobs:
           cache-dependency-glob: uv.lock
       - name: Install locked quality environment
         run: uv sync --locked --only-group quality
+      - name: Install checksum-pinned shell quality tools
+        run: |
+          uv run python scripts/install_shell_tools.py --prefix "${RUNNER_TEMP}/awq-shell-tools"
+          echo "${RUNNER_TEMP}/awq-shell-tools/bin" >> "${GITHUB_PATH}"
       - name: Format lint and type
         run: |
           uv run ruff format --check src tests scripts

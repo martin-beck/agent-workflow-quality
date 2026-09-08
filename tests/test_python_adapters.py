@@ -49,7 +49,8 @@ class PythonCatalogTests(unittest.TestCase):
     def test_catalog_runtime_schema_digest_order_and_cli(self) -> None:
         validate(self.document, "adapter-catalog.schema.json")
         self.assertEqual(hashlib.sha256(canonical_bytes(self.document)).hexdigest(), self.digest)
-        self.assertEqual(["python"], list(self.families))
+        self.assertIn("python", self.families)
+        self.assertEqual(sorted(self.families), list(self.families))
         self.assertEqual(
             EXPECTED_IDS,
             [item["id"] for item in self.families["python"]["contracts"]],

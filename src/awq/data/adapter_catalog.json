@@ -16,91 +16,269 @@
           "id": "ADAPTER-PYTHON-COVERAGE-01-RUN",
           "tool": "coverage",
           "version": "7.16.0",
-          "version_argv": ["coverage", "--version"],
+          "version_argv": [
+            "coverage",
+            "--version"
+          ],
           "version_output": "Coverage.py, version 7.16.0 with C extension\nFull documentation is at https://coverage.readthedocs.io/en/7.16.0",
-          "argv": ["coverage", "run", "--branch", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+          "argv": [
+            "coverage",
+            "run",
+            "--branch",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_*.py"
+          ],
           "timeout_seconds": 300,
           "tier": "pr",
           "evidence": "mechanical",
           "limitation": "Coverage execution shows only code reached by the configured unittest discovery suite and does not prove behavioral completeness.",
           "remediation": "Repair failing tests or the project-owned coverage configuration, then rerun the native command.",
-          "formats": [".py"],
-          "config_paths": ["pyproject.toml"]
+          "formats": [
+            ".py"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
         },
         {
           "id": "ADAPTER-PYTHON-COVERAGE-02-REPORT",
           "tool": "coverage",
           "version": "7.16.0",
-          "version_argv": ["coverage", "--version"],
+          "version_argv": [
+            "coverage",
+            "--version"
+          ],
           "version_output": "Coverage.py, version 7.16.0 with C extension\nFull documentation is at https://coverage.readthedocs.io/en/7.16.0",
-          "argv": ["coverage", "report"],
+          "argv": [
+            "coverage",
+            "report"
+          ],
           "timeout_seconds": 120,
           "tier": "pr",
           "evidence": "mechanical",
           "limitation": "The report enforces project-owned thresholds against the existing coverage data file and is meaningful only after a matching coverage run.",
           "remediation": "Run the coverage execution contract first, add meaningful tests, and satisfy the checked-in threshold.",
-          "formats": [".py"],
-          "config_paths": ["pyproject.toml"]
+          "formats": [
+            ".py"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
         },
         {
           "id": "ADAPTER-PYTHON-MYPY",
           "tool": "mypy",
           "version": "2.3.1",
-          "version_argv": ["mypy", "--version"],
+          "version_argv": [
+            "mypy",
+            "--version"
+          ],
           "version_output": "mypy 2.3.1 (compiled: yes)",
-          "argv": ["mypy", "--config-file", "pyproject.toml"],
+          "argv": [
+            "mypy",
+            "--config-file",
+            "pyproject.toml"
+          ],
           "timeout_seconds": 300,
           "tier": "pr",
           "evidence": "mechanical",
           "limitation": "Static typing covers only files and strictness declared by the repository and cannot prove runtime behavior.",
           "remediation": "Correct typing findings or explicitly refine the reviewed project-owned mypy configuration.",
-          "formats": [".py", ".pyi"],
-          "config_paths": ["pyproject.toml"]
+          "formats": [
+            ".py",
+            ".pyi"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
         },
         {
           "id": "ADAPTER-PYTHON-RUFF-FORMAT",
           "tool": "ruff",
           "version": "0.16.5",
-          "version_argv": ["ruff", "--version"],
+          "version_argv": [
+            "ruff",
+            "--version"
+          ],
           "version_output": "ruff 0.16.5",
-          "argv": ["ruff", "format", "--check", "--config", "pyproject.toml", "."],
+          "argv": [
+            "ruff",
+            "format",
+            "--check",
+            "--config",
+            "pyproject.toml",
+            "."
+          ],
           "timeout_seconds": 120,
           "tier": "local",
           "evidence": "mechanical",
           "limitation": "Formatting checks deterministic layout only and does not establish correctness or lint cleanliness.",
           "remediation": "Run ruff format with the checked-in pyproject.toml and review the resulting source changes.",
-          "formats": [".py", ".pyi"],
-          "config_paths": ["pyproject.toml"]
+          "formats": [
+            ".py",
+            ".pyi"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
         },
         {
           "id": "ADAPTER-PYTHON-RUFF-LINT",
           "tool": "ruff",
           "version": "0.16.5",
-          "version_argv": ["ruff", "--version"],
+          "version_argv": [
+            "ruff",
+            "--version"
+          ],
           "version_output": "ruff 0.16.5",
-          "argv": ["ruff", "check", "--config", "pyproject.toml", "."],
+          "argv": [
+            "ruff",
+            "check",
+            "--config",
+            "pyproject.toml",
+            "."
+          ],
           "timeout_seconds": 120,
           "tier": "pr",
           "evidence": "mechanical",
           "limitation": "Lint rules detect configured static patterns but cannot prove runtime correctness or complete security.",
           "remediation": "Repair Ruff findings under the checked-in configuration and review any suppression narrowly.",
-          "formats": [".py", ".pyi"],
-          "config_paths": ["pyproject.toml"]
+          "formats": [
+            ".py",
+            ".pyi"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
         },
         {
           "id": "ADAPTER-PYTHON-UNITTEST",
           "tool": "python",
           "version": "3.12",
-          "version_argv": ["python", "-c", "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}')"],
+          "version_argv": [
+            "python",
+            "-c",
+            "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}')"
+          ],
           "version_output": "Python 3.12",
-          "argv": ["python", "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"],
+          "argv": [
+            "python",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_*.py"
+          ],
           "timeout_seconds": 300,
           "tier": "pr",
           "evidence": "contract-test",
           "limitation": "Discovery executes the repository's unittest suite but cannot establish that all intended behaviors or environments are covered.",
           "remediation": "Repair the failing test or implementation and extend project tests when the behavior lacks coverage.",
-          "formats": [".py"],
-          "config_paths": ["pyproject.toml"]
+          "formats": [
+            ".py"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "shell",
+      "title": "Shell quality adapters",
+      "description": "Reviewed offline commands for ShellCheck analysis, shfmt formatting, and Bats tests.",
+      "assumptions": [
+        "Shell source uses .sh suffixes or executable POSIX-style shell shebangs and is tracked by Git.",
+        "The project declares ShellCheck policy in .shellcheckrc and shfmt policy plus ignored fixture trees in .editorconfig.",
+        "Bats tests are stored below tests with .bats suffixes and may use Bash-specific test syntax.",
+        "The project installs the exact reviewed tools before invoking AWQ; AWQ never installs them."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-SHELL-BATS",
+          "tool": "bats",
+          "version": "1.14.0",
+          "version_argv": [
+            "bats",
+            "--version"
+          ],
+          "version_output": "Bats 1.14.0",
+          "argv": [
+            "bats",
+            "--recursive",
+            "tests"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Bats executes the repository test suite under Bash but cannot prove portability, complete behavior coverage, or compatibility with other shells.",
+          "remediation": "Rerun the native Bats command for details, then repair the failing test or implementation.",
+          "formats": [
+            ".bats"
+          ],
+          "config_paths": []
+        },
+        {
+          "id": "ADAPTER-SHELL-SHELLCHECK",
+          "tool": "shellcheck",
+          "version": "0.11.0",
+          "version_argv": [
+            "shellcheck",
+            "--version"
+          ],
+          "version_output": "ShellCheck - shell script analysis tool\nversion: 0.11.0\nlicense: GNU General Public License, version 3\nwebsite: https://www.shellcheck.net",
+          "argv": [
+            "shellcheck",
+            "--rcfile=.shellcheckrc",
+            "--external-sources",
+            "--source-path=SCRIPTDIR"
+          ],
+          "timeout_seconds": 120,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Static analysis follows each file's declared shell dialect and configured rules but cannot prove runtime behavior or platform portability.",
+          "remediation": "Rerun ShellCheck natively for findings, repair the source, and review any project suppression narrowly.",
+          "formats": [
+            ".sh"
+          ],
+          "config_paths": [
+            ".shellcheckrc"
+          ],
+          "input_mode": "tracked-shell"
+        },
+        {
+          "id": "ADAPTER-SHELL-SHFMT",
+          "tool": "shfmt",
+          "version": "3.14.1",
+          "version_argv": [
+            "shfmt",
+            "--version"
+          ],
+          "version_output": "v3.14.1",
+          "argv": [
+            "shfmt",
+            "--diff",
+            "--apply-ignore"
+          ],
+          "timeout_seconds": 120,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "Formatting validates deterministic layout under EditorConfig but cannot establish shell correctness, safety, or cross-shell behavior.",
+          "remediation": "Run shfmt with the checked-in EditorConfig, review the formatting changes, and rerun the adapter.",
+          "formats": [
+            ".sh"
+          ],
+          "config_paths": [
+            ".editorconfig"
+          ],
+          "input_mode": "tracked-shell"
         }
       ]
     }
