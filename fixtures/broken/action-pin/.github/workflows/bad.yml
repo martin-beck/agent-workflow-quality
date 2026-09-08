@@ -1,0 +1,7 @@
+name: Broken
+on: push
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main

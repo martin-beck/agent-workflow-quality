@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-workflow-quality"
+version = "0.1.0"
+description = "Versioned, agent-ready software quality policies, gates, and evidence"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{name = "Martin Beck"}]
+dependencies = []
+
+[project.scripts]
+awq = "awq.cli:main"
+
+[dependency-groups]
+quality = [
+  "coverage==7.16.0",
+  "jsonschema[format]==4.25.1",
+  "mypy==2.3.1",
+  "ruff==0.16.5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/awq"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "awq/schemas"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["fixtures/broken"]
+
+[tool.ruff.lint]
+select = ["A", "ARG", "B", "C4", "C90", "DTZ", "E", "F", "I", "N", "PERF", "PIE", "PTH", "RET", "RSE", "RUF", "S", "SIM", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "S607"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = "jsonschema"
+ignore_missing_imports = true
+
+[tool.coverage.run]
+branch = true
+source = ["src/awq"]
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+skip_covered = false
+exclude_also = ["if __name__ == .__main__.:", "raise SystemExit"]

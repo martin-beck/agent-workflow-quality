@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {"name":"core","description":"Portable repository baseline.","requirements":["AWQ-CORE-001","AWQ-CORE-002","AWQ-CORE-003","AWQ-CORE-004"]},
+    {"name":"github-actions","description":"GitHub Actions integrity and permissions.","requirements":["AWQ-GHA-001","AWQ-GHA-002","AWQ-GHA-003"]},
+    {"name":"python","description":"Python source baseline.","requirements":["AWQ-PY-001"]},
+    {"name":"shell","description":"Shell entry-point baseline.","requirements":["AWQ-SHELL-001"]},
+    {"name":"docs","description":"Documentation structure and local integrity.","requirements":["AWQ-DOC-001"]},
+    {"name":"schemas","description":"Machine-readable JSON baseline.","requirements":["AWQ-SCHEMA-001"]},
+    {"name":"privacy","description":"Content-minimized public repository baseline.","requirements":["AWQ-PRIV-001"]},
+    {"name":"supply-chain","description":"Pinned AWQ policy supply chain.","requirements":["AWQ-SUPPLY-001"]},
+    {"name":"formal-evidence","description":"Truthful bounded formal-evidence claims.","requirements":["AWQ-FORMAL-001"]},
+    {"name":"rust","description":"Rust dependency-integrity baseline.","requirements":["AWQ-RUST-001"]},
+    {"name":"android-jvm","description":"Gradle and Android dependency-integrity baseline.","requirements":["AWQ-JVM-001"]}
+  ]
+}
