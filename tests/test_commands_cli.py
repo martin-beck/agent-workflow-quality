@@ -12,7 +12,7 @@ from unittest import mock
 from awq import __version__, commands
 from awq.cli import main
 from awq.project import ProjectError, load_project
-from tests.support import Repository
+from tests.support import Repository, base_exception
 
 
 class CommandTests(unittest.TestCase):
@@ -65,17 +65,11 @@ class CommandTests(unittest.TestCase):
             commands.update(self.repo.root, "9.9.9", False)
         policy, _ = load_project(self.repo.root)
         policy["exceptions"] = [
-            {
-                "id": "EX-0001",
-                "requirement": "AWQ-CORE-001",
-                "owner": "owner",
-                "reason": "expired fixture",
-                "scope": ["README.md"],
-                "created_at": "2020-01-01T00:00:00+00:00",
-                "expires_at": "2020-01-02T00:00:00+00:00",
-                "compensating_evidence": "fixture",
-                "review": "review",
-            }
+            base_exception(
+                owner="@project-maintainers",
+                created_at="2020-01-01T00:00:00+00:00",
+                expires_at="2020-01-02T00:00:00+00:00",
+            )
         ]
         self.repo.json("quality/awq.json", policy)
         self.assertEqual(
@@ -89,17 +83,12 @@ class CommandTests(unittest.TestCase):
         policy["profiles"].remove("docs")
         policy["unknown_formats"] = "advisory"
         policy["exceptions"] = [
-            {
-                "id": "EX-0002",
-                "requirement": "AWQ-CORE-001",
-                "owner": "owner",
-                "reason": "test",
-                "scope": ["README.md"],
-                "created_at": datetime.now(UTC).isoformat(),
-                "expires_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
-                "compensating_evidence": "test",
-                "review": "review",
-            }
+            base_exception(
+                id="EX-0002",
+                owner="@project-maintainers",
+                created_at=datetime.now(UTC).isoformat(),
+                expires_at=(datetime.now(UTC) + timedelta(days=1)).isoformat(),
+            )
         ]
         lock["awq_version"] = "0.1.1"
         self.repo.json("quality/awq.json", policy)

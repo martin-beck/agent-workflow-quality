@@ -1,1 +1,1 @@
-{"exceptions":[],"extensions":[],"fixture_paths":["fixtures/broken"],"profiles":["core","docs","github-actions","privacy","python","schemas","shell","supply-chain"],"schema_version":1,"unknown_formats":"error"}
+{"exceptions":[],"extensions":[],"fixture_paths":["fixtures/broken"],"governance":{"max_emergency_hours":24,"max_standard_days":30,"owners":["@martin-beck"]},"profiles":["core","docs","github-actions","privacy","python","schemas","shell","supply-chain"],"schema_version":2,"unknown_formats":"error"}

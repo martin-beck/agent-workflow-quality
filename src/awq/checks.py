@@ -442,6 +442,8 @@ def _exceptions(policy: dict[str, Any], requirement: str, finding: Finding) -> l
     matched: list[str] = []
     now = time.time()
     for item in policy["exceptions"]:
+        if item.get("revocation") is not None:
+            continue
         try:
             expires = (
                 __import__("datetime")
