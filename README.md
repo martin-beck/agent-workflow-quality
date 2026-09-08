@@ -29,9 +29,9 @@ drift deterministically.
 
 ## Policy governance
 
-Policy schema version 2 adds owned lifetime bounds plus strict standard, emergency, renewal, and
-revocation records. Semantic comparison covers policy fields, local commands, thresholds, scopes,
-evidence classifications, and lock pins:
+Policy schema version 3 adds owned lifetime bounds, strict exception records, and pinned adapter
+contracts. Semantic comparison covers policy fields, local commands and adapters, thresholds,
+scopes, evidence classifications, and lock pins:
 
 ```sh
 awq --root . governance --format json
@@ -43,6 +43,23 @@ The pull-request workflow rejects weakening changes. New exceptions and append-o
 carry approval references and remain review-visible. The online hosting observation is timestamped
 environmental evidence and explicitly not offline proof. See [policy governance](docs/GOVERNANCE.md)
 for the full lifecycle and limitations.
+
+## Pinned adapters
+
+Repository-owned adapter contracts bind a portable executable name to an exact version probe,
+argument arrays, project configuration, a finite deadline, execution tier, evidence class, and
+honest limitation. The shared runner never invokes a shell, downloads a tool, or records tool
+output:
+
+```sh
+awq --root . adapter-run quality/adapters/example.json --format json
+awq --root . plan --format json
+awq --root . check --tier pr --format json
+```
+
+Adapter families are delivered independently: Python in AR-0012, shell in AR-0013, documentation
+in AR-0014, and schema formats in AR-0015. See [pinned adapters](docs/ADAPTERS.md) for the contract,
+failure taxonomy, security boundary, and migration details.
 
 Development is coordinated through
 [Agent Workflow Quality State](https://github.com/martin-beck/agent-workflow-quality-state)

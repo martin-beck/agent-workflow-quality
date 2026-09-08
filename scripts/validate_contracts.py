@@ -77,15 +77,46 @@ def main() -> int:
         "findings": [],
         "limitation": "Point-in-time fixture; not offline proof.",
     }
+    adapter = {
+        "id": "ADAPTER-PYTHON-RUFF",
+        "tool": "ruff",
+        "version": "0.16.5",
+        "version_argv": ["ruff", "--version"],
+        "version_output": "ruff 0.16.5",
+        "argv": ["ruff", "check", "--config", "pyproject.toml", "."],
+        "timeout_seconds": 120,
+        "tier": "pr",
+        "evidence": "mechanical",
+        "limitation": "Static analysis cannot prove runtime correctness.",
+        "remediation": "Repair reported findings using project-owned configuration.",
+        "formats": [".py", ".pyi"],
+        "config_paths": ["pyproject.toml"],
+    }
+    adapter_result = {
+        "id": adapter["id"],
+        "tool": adapter["tool"],
+        "version": adapter["version"],
+        "status": "pass",
+        "evidence": adapter["evidence"],
+        "limitation": adapter["limitation"],
+        "duration_ms": 1,
+        "exceptions": [],
+        "findings": [],
+    }
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(sources, "control-source-registry.schema.json")
     validate(mappings, "standards-mapping-registry.schema.json")
     validate(exception, "exception.schema.json")
     validate({**policy, "exceptions": [exception]}, "project-policy.schema.json")
+    validate({**policy, "adapters": [adapter]}, "project-policy.schema.json")
     validate(policy, "project-policy.schema.json")
     validate(lock, "lock.schema.json")
-    validate(evidence(ROOT, "pr"), "evidence.schema.json")
+    validate(adapter, "adapter-contract.schema.json")
+    validate(adapter_result, "adapter-result.schema.json")
+    envelope = evidence(ROOT, "pr")
+    envelope["requirements"].append(adapter_result)
+    validate(envelope, "evidence.schema.json")
     validate(hosting, "hosting-observation.schema.json")
     return 0
 

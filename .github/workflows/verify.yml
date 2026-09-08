@@ -53,6 +53,7 @@ jobs:
       - name: Build and install wheel
         run: |
           uv build
+          uv run python scripts/verify_distribution.py dist/*
           uv venv "${RUNNER_TEMP}/awq-smoke"
           uv pip install --python "${RUNNER_TEMP}/awq-smoke/bin/python" dist/*.whl
           "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . inspect --format json

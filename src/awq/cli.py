@@ -41,6 +41,9 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("explain")
     item.add_argument("requirement")
     _format_argument(item)
+    item = sub.add_parser("adapter-run")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("hosting-observe")
     item.add_argument("--repository", required=True)
     _format_argument(item)
@@ -67,6 +70,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "doctor": lambda: commands.doctor(root),
         "update": lambda: commands.update(root, args.to, args.dry_run),
         "governance": lambda: commands.governance(root),
+        "adapter-run": lambda: commands.adapter_run(root, args.contract),
         "hosting-observe": lambda: commands.hosting_observation(args.repository),
         "policy-diff": lambda: commands.policy_diff(root, args.base, args.head),
     }

@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from awq import __version__
+from awq.adapters import AdapterError, validate_adapter
 from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes, expand_profiles, load_registry
 
 POLICY_KEYS = {
@@ -23,6 +24,7 @@ POLICY_KEYS = {
     "extensions",
     "exceptions",
     "governance",
+    "adapters",
 }
 LOCK_KEYS = {"schema_version", "awq_version", "registry_sha256", "profiles", "requirements"}
 GOVERNANCE_KEYS = {"owners", "max_standard_days", "max_emergency_hours"}
@@ -197,9 +199,23 @@ def _validate_governance(value: object) -> dict[str, Any]:
     return value
 
 
+def _validate_adapters(adapters: list[object]) -> None:
+    seen: set[str] = set()
+    for adapter in adapters:
+        if not isinstance(adapter, dict):
+            raise ProjectError("adapter contracts must be objects")
+        try:
+            validate_adapter(adapter)
+        except AdapterError as error:
+            raise ProjectError(str(error)) from error
+        if adapter["id"] in seen:
+            raise ProjectError("adapter identifiers must be unique")
+        seen.add(adapter["id"])
+
+
 def validate_policy(value: dict[str, Any]) -> None:
     """Validate fields required at runtime without third-party dependencies."""
-    if set(value) != POLICY_KEYS or value.get("schema_version") != 2:
+    if set(value) != POLICY_KEYS or value.get("schema_version") != 3:
         raise ProjectError("project policy has unknown, missing or unsupported fields")
     if value.get("unknown_formats") not in {"error", "advisory"}:
         raise ProjectError("unknown_formats must be error or advisory")
@@ -212,7 +228,7 @@ def validate_policy(value: dict[str, Any]) -> None:
     ):
         raise ProjectError("profiles must be a non-empty unique list")
     expand_profiles(profiles)
-    for field in ("fixture_paths", "extensions", "exceptions"):
+    for field in ("fixture_paths", "extensions", "exceptions", "adapters"):
         if not isinstance(value.get(field), list):
             raise ProjectError(f"{field} must be a list")
     fixtures = value["fixture_paths"]
@@ -221,6 +237,7 @@ def validate_policy(value: dict[str, Any]) -> None:
     ):
         raise ProjectError("fixture paths must be unique safe repository-relative patterns")
     governance = _validate_governance(value["governance"])
+    _validate_adapters(value["adapters"])
     _validate_extensions(value["extensions"])
     _validate_exceptions(value["exceptions"], governance)
 
@@ -396,7 +413,7 @@ def make_policy(profiles: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
     expanded = expand_profiles(selected)
     _, _, digest = load_registry()
     policy = {
-        "schema_version": 2,
+        "schema_version": 3,
         "profiles": selected,
         "unknown_formats": "error",
         "fixture_paths": ["fixtures/broken"],
@@ -407,6 +424,7 @@ def make_policy(profiles: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
             "max_standard_days": 30,
             "max_emergency_hours": 24,
         },
+        "adapters": [],
     }
     lock = {
         "schema_version": 1,
