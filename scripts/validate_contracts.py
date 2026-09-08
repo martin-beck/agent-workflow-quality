@@ -1,3 +1,6 @@
+# Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+# SPDX-License-Identifier: MIT
+
 """Validate every shipped JSON contract and live AWQ record."""
 
 from __future__ import annotations
