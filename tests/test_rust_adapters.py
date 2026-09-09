@@ -20,11 +20,21 @@ from awq import adapters
 from scripts.validate_contracts import validate
 from tests.support import Repository
 
-EXPECTED_IDS = [
+STABLE_IDS = [
     "ADAPTER-RUST-BUILD",
     "ADAPTER-RUST-CLIPPY",
     "ADAPTER-RUST-DOC",
     "ADAPTER-RUST-FMT",
+    "ADAPTER-RUST-TEST",
+]
+EXPECTED_IDS = [
+    "ADAPTER-RUST-ADVISORY",
+    "ADAPTER-RUST-BUILD",
+    "ADAPTER-RUST-CLIPPY",
+    "ADAPTER-RUST-DOC",
+    "ADAPTER-RUST-FMT",
+    "ADAPTER-RUST-POLICY",
+    "ADAPTER-RUST-SEMVER",
     "ADAPTER-RUST-TEST",
 ]
 CONFIG_PATHS = [
@@ -149,7 +159,8 @@ class RustAdapterExecutionTests(unittest.TestCase):
             "adapter-catalog.schema.json",
         )
         self.assertEqual(EXPECTED_IDS, list(self.contracts))
-        for contract in self.contracts.values():
+        for identifier in STABLE_IDS:
+            contract = self.contracts[identifier]
             self.assertEqual("awq-rust-check", contract["tool"])
             self.assertEqual("1.0.0", contract["version"])
             self.assertEqual(CONFIG_PATHS, contract["config_paths"])
@@ -165,7 +176,7 @@ class RustAdapterExecutionTests(unittest.TestCase):
 
     def test_every_contract_matches_native_success(self) -> None:
         repository = self.fixture()
-        for identifier in EXPECTED_IDS:
+        for identifier in STABLE_IDS:
             with self.subTest(identifier=identifier):
                 contract = self.contracts[identifier]
                 self.assertTrue(self.native(repository.root, contract))

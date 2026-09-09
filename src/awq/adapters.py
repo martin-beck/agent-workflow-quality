@@ -20,7 +20,7 @@ from typing import Any
 
 from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes
 
-ADAPTER_OPTIONAL_KEYS = {"input_mode"}
+ADAPTER_OPTIONAL_KEYS = {"input_mode", "result_protocol"}
 ADAPTER_KEYS = {
     "id",
     "tool",
@@ -37,6 +37,11 @@ ADAPTER_KEYS = {
     "config_paths",
 }
 INPUT_MODES = {"explicit", "tracked-formats", "tracked-shell"}
+RESULT_PROTOCOLS = {"awq-bindings-v1"}
+BINDING_KINDS = {"advisory-db", "registry-snapshot", "semver-baseline"}
+BINDING_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,199}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+MAX_RESULT_BYTES = 4096
 MAX_SELECTED_INPUTS = 10_000
 MAX_SELECTED_INPUT_BYTES = 1_000_000
 MAX_SELECTED_FILE_BYTES = 5_000_000
@@ -154,6 +159,8 @@ def validate_adapter(value: dict[str, Any]) -> None:
         raise AdapterError("adapter has unknown or missing fields")
     if value.get("input_mode", "explicit") not in INPUT_MODES:
         raise AdapterError("adapter has an unsupported input mode")
+    if value.get("result_protocol") not in {None, *RESULT_PROTOCOLS}:
+        raise AdapterError("adapter has an unsupported result protocol")
     _validate_identity(value)
     _validate_argv(value)
     _validate_classification(value)
@@ -310,8 +317,9 @@ def _result(
     started: float,
     status: str,
     findings: list[dict[str, str]],
+    bindings: list[dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    return {
+    result: dict[str, Any] = {
         "id": contract["id"],
         "tool": contract["tool"],
         "version": contract["version"],
@@ -323,6 +331,9 @@ def _result(
         "exceptions": [],
         "findings": findings,
     }
+    if bindings is not None:
+        result["bindings"] = bindings
+    return result
 
 
 def _finding(code: str, path: str, message: str) -> list[dict[str, str]]:
@@ -442,6 +453,175 @@ def _execution_failure(
     return None
 
 
+def _bounded_execution(
+    argv: list[str],
+    root: Path,
+    environment: dict[str, str],
+    timeout: int,
+) -> tuple[int, bytes, bool, bool]:
+    process = subprocess.Popen(  # noqa: S603 - validated argv and no shell.
+        argv,
+        cwd=root,
+        env=environment,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    stream = process.stdout
+    if stream is None:
+        process.kill()
+        process.wait()
+        raise AdapterError("adapter result stream is unavailable")
+    output = bytearray()
+    overflow = threading.Event()
+
+    def drain() -> None:
+        while chunk := stream.read(1024):
+            remaining = MAX_RESULT_BYTES - len(output)
+            output.extend(chunk[:remaining])
+            if len(chunk) > remaining:
+                overflow.set()
+                with contextlib.suppress(OSError):
+                    process.kill()
+                return
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    try:
+        timed_out = False
+        try:
+            returncode = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            process.kill()
+            returncode = process.wait()
+        reader.join(timeout=1)
+        if reader.is_alive():
+            with contextlib.suppress(OSError):
+                process.kill()
+                stream.close()
+            reader.join(timeout=1)
+            raise AdapterError("adapter result stream did not terminate")
+        return returncode, bytes(output), timed_out, overflow.is_set()
+    finally:
+        with contextlib.suppress(OSError):
+            stream.close()
+
+
+def _reject_constant(value: str) -> None:
+    raise AdapterError(f"non-finite adapter result constant: {value}")
+
+
+def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise AdapterError("adapter result contains duplicate keys")
+        result[key] = value
+    return result
+
+
+def _validated_bindings(output: bytes) -> list[dict[str, str]]:
+    try:
+        document = json.loads(
+            output.decode("utf-8"),
+            object_pairs_hook=_unique_object,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeError, json.JSONDecodeError) as error:
+        raise AdapterError("adapter result is not strict JSON") from error
+    if (
+        not isinstance(document, dict)
+        or set(document) != {"bindings", "schema_version", "status"}
+        or type(document["schema_version"]) is not int
+        or document["schema_version"] != 1
+        or document["status"] != "pass"
+        or output != canonical_bytes(document)
+    ):
+        raise AdapterError("adapter result does not match the binding protocol")
+    bindings = document["bindings"]
+    if not isinstance(bindings, list) or not bindings or len(bindings) > 5:
+        raise AdapterError("adapter result bindings are invalid")
+    validated: list[dict[str, str]] = []
+    observed: set[tuple[str, str]] = set()
+    for binding in bindings:
+        if not isinstance(binding, dict) or set(binding) != {"id", "kind", "sha256"}:
+            raise AdapterError("adapter result binding is invalid")
+        kind = binding["kind"]
+        identifier = binding["id"]
+        digest = binding["sha256"]
+        if (
+            not isinstance(kind, str)
+            or kind not in BINDING_KINDS
+            or not isinstance(identifier, str)
+            or not BINDING_ID.fullmatch(identifier)
+            or not isinstance(digest, str)
+            or not SHA256.fullmatch(digest)
+            or (kind, identifier) in observed
+        ):
+            raise AdapterError("adapter result binding value is invalid")
+        observed.add((kind, identifier))
+        validated.append({"kind": kind, "id": identifier, "sha256": digest})
+    if validated != sorted(validated, key=lambda item: (item["kind"], item["id"])):
+        raise AdapterError("adapter result bindings are not ordered")
+    return validated
+
+
+def _execution_with_bindings(
+    root: Path,
+    executable: str,
+    contract: dict[str, Any],
+    environment: dict[str, str],
+    inputs: list[str],
+) -> tuple[list[dict[str, str]] | None, list[dict[str, str]]]:
+    argv = [executable, *contract["argv"][1:], *inputs]
+    try:
+        returncode, output, timed_out, overflow = _bounded_execution(
+            argv, root, environment, contract["timeout_seconds"]
+        )
+    except (OSError, AdapterError):
+        return _finding(
+            "adapter-tool-unavailable", "", "pinned adapter tool could not be completed"
+        ), []
+    if timed_out:
+        return _finding("adapter-timeout", "", "adapter exceeded its deadline"), []
+    if overflow:
+        return _finding(
+            "adapter-result-output-limit", "", "adapter result exceeded its safety bound"
+        ), []
+    if returncode:
+        return _finding("adapter-failed", "", "adapter returned a non-zero status"), []
+    try:
+        return None, _validated_bindings(output)
+    except AdapterError:
+        return _finding(
+            "adapter-result-invalid", "", "adapter result failed its safety protocol"
+        ), []
+
+
+def _execution_result(
+    root: Path,
+    executable: str,
+    contract: dict[str, Any],
+    environment: dict[str, str],
+    inputs: list[str],
+    started: float,
+) -> dict[str, Any]:
+    if contract.get("result_protocol") == "awq-bindings-v1":
+        failure, bindings = _execution_with_bindings(
+            root, executable, contract, environment, inputs
+        )
+        return _result(
+            contract,
+            started,
+            "fail" if failure else "pass",
+            failure or [],
+            bindings if failure is None else None,
+        )
+    failure = _execution_failure(root, executable, contract, environment, inputs)
+    return _result(contract, started, "fail" if failure else "pass", failure or [])
+
+
 def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
     """Run one validated adapter with exact version and content-minimized evidence."""
     validate_adapter(contract)
@@ -497,5 +677,4 @@ def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
             "adapter-inputs-limit", "", "adapter selected inputs exceed a safety bound"
         )
         return _result(contract, started, "fail", failure)
-    failure = _execution_failure(root, executable, contract, environment, inputs)
-    return _result(contract, started, "fail" if failure else "pass", failure or [])
+    return _execution_result(root, executable, contract, environment, inputs, started)

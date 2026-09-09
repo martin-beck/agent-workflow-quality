@@ -70,6 +70,10 @@ class AdapterContractTests(unittest.TestCase):
         adapters.validate_adapter(compound)
         validate(compound, "adapter-contract.schema.json")
 
+        bound = python_contract(result_protocol="awq-bindings-v1")
+        adapters.validate_adapter(bound)
+        validate(bound, "adapter-contract.schema.json")
+
     def test_invalid_contract_dimensions_fail_closed(self) -> None:
         base = python_contract()
         mutations: list[dict[str, Any]] = [
@@ -96,6 +100,7 @@ class AdapterContractTests(unittest.TestCase):
             {**base, "config_paths": ["path//config.toml"]},
             {**base, "config_paths": ["same", "same"]},
             {**base, "input_mode": "unbounded"},
+            {**base, "result_protocol": "unbounded"},
         ]
         runtime_only_cross_field_cases = {4, 5}
         for number, contract in enumerate(mutations):
@@ -156,6 +161,122 @@ class AdapterRunnerTests(unittest.TestCase):
         result = adapters.run_adapter(self.repo.root, negative)
         self.assertEqual(native.returncode == 0, result["status"] == "pass")
         self.assertEqual("adapter-failed", finding_code(result))
+
+    def test_binding_protocol_emits_only_canonical_bounded_metadata(self) -> None:
+        binding = {
+            "kind": "advisory-db",
+            "id": "rustsec:bf25f657",
+            "sha256": "a" * 64,
+        }
+        document = {"bindings": [binding], "schema_version": 1, "status": "pass"}
+        output = json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n"
+        contract = python_contract(
+            result_protocol="awq-bindings-v1",
+            argv=[
+                Path(sys.executable).name,
+                "-c",
+                f"import sys; sys.stdout.write({output!r})",
+            ],
+        )
+
+        result = adapters.run_adapter(self.repo.root, contract)
+
+        self.assertEqual("pass", result["status"])
+        self.assertEqual([binding], result["bindings"])
+        validate(result, "adapter-result.schema.json")
+        self.assertNotIn("stdout", result)
+        self.assertNotIn("stderr", result)
+
+    def test_binding_protocol_fails_closed_without_disclosing_output(self) -> None:
+        cases = [
+            (
+                "invalid-json",
+                "import sys; sys.stdout.write('private malformed output')",
+                2,
+                "adapter-result-invalid",
+            ),
+            (
+                "noncanonical",
+                'print(\'{"bindings": [], "schema_version": 1, "status": "pass"}\')',
+                2,
+                "adapter-result-invalid",
+            ),
+            (
+                "overflow",
+                "import sys; sys.stdout.write('private-' + 'x' * 4097)",
+                2,
+                "adapter-result-output-limit",
+            ),
+            (
+                "nonzero",
+                "import sys; sys.stdout.write('private failure'); raise SystemExit(3)",
+                2,
+                "adapter-failed",
+            ),
+            (
+                "timeout",
+                "import time; time.sleep(3)",
+                1,
+                "adapter-timeout",
+            ),
+        ]
+        for name, program, timeout, expected in cases:
+            with self.subTest(name=name):
+                contract = python_contract(
+                    result_protocol="awq-bindings-v1",
+                    argv=[Path(sys.executable).name, "-c", program],
+                    timeout_seconds=timeout,
+                )
+                result = adapters.run_adapter(self.repo.root, contract)
+                self.assertEqual("fail", result["status"])
+                self.assertEqual(expected, finding_code(result))
+                self.assertNotIn("bindings", result)
+                self.assertNotIn("private", json.dumps(result))
+                validate(result, "adapter-result.schema.json")
+
+    def test_binding_protocol_rejects_ambiguous_or_unsafe_documents(self) -> None:
+        digest = "a" * 64
+        documents = [
+            b'{"bindings":[],"schema_version":1,"status":"pass"}\n',
+            (
+                '{"bindings":[{"id":"../secret","kind":"advisory-db",'
+                f'"sha256":"{digest}"}}],"schema_version":1,"status":"pass"}}\n'
+            ).encode(),
+            (
+                '{"bindings":[{"id":"x","kind":"unknown",'
+                f'"sha256":"{digest}"}}],"schema_version":1,"status":"pass"}}\n'
+            ).encode(),
+            (
+                b'{"bindings":[{"id":"x","kind":"advisory-db","sha256":"bad"}],'
+                b'"schema_version":1,"status":"pass"}\n'
+            ),
+            b'{"bindings":[],"bindings":[],"schema_version":1,"status":"pass"}\n',
+            b'{"bindings":[],"schema_version":NaN,"status":"pass"}\n',
+        ]
+        unsafe_values = [
+            {
+                "bindings": [{"id": "x", "kind": "advisory-db", "sha256": digest}],
+                "schema_version": True,
+                "status": "pass",
+            },
+            {
+                "bindings": [{"id": "x", "kind": [], "sha256": digest}],
+                "schema_version": 1,
+                "status": "pass",
+            },
+            {
+                "bindings": [{"id": "x", "kind": {}, "sha256": digest}],
+                "schema_version": 1,
+                "status": "pass",
+            },
+        ]
+        documents.extend(
+            (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+            for value in unsafe_values
+        )
+        for number, output in enumerate(documents):
+            with self.subTest(case=number), self.assertRaises(adapters.AdapterError):
+                adapters._validated_bindings(output)
 
     def test_policy_check_plan_and_direct_cli_share_the_runner(self) -> None:
         contract = python_contract()
@@ -485,6 +606,13 @@ class AdapterSemanticDiffTests(unittest.TestCase):
             {"review"},
             self.classifications([base], [changed], f"adapters.{base['id']}.remediation"),
         )
+
+    def test_binding_protocol_changes_are_semantically_classified(self) -> None:
+        unbound = python_contract()
+        bound = python_contract(result_protocol="awq-bindings-v1")
+        field = f"adapters.{unbound['id']}.result_protocol"
+        self.assertEqual({"strengthening"}, self.classifications([unbound], [bound], field))
+        self.assertEqual({"weakening"}, self.classifications([bound], [unbound], field))
 
     def test_input_mode_changes_are_semantically_classified(self) -> None:
         explicit = python_contract()
