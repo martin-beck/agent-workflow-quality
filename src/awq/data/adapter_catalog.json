@@ -306,16 +306,50 @@
     },
     {
       "id": "rust",
-      "title": "Rust stable quality adapters",
-      "description": "Reviewed offline Rust 1.93.0 commands for formatting, compiler lint, tests, documentation and release builds.",
+      "title": "Rust stable and supply-chain quality adapters",
+      "description": "Reviewed offline Rust 1.93.0 formatting, lint, test, build, dependency-policy, advisory and public API compatibility commands.",
       "assumptions": [
-        "Execution is limited to Linux x86-64 with the exact checksum-reviewed Rust 1.93.0 toolchain installed separately.",
-        "The workspace owns exact Cargo.toml, Cargo.lock, rust-toolchain.toml and .cargo/config.toml files.",
+        "Execution is limited to Linux x86-64 with the exact checksum-reviewed Rust 1.93.0 toolchain and Rust supply bundle installed separately.",
+        "The workspace owns exact Cargo.toml, Cargo.lock, rust-toolchain.toml and .cargo/config.toml files plus each enabled contract's declared policy snapshot.",
         "The toolchain declaration uses the minimal profile and lists Clippy then rustfmt exactly.",
         "Third-party dependencies are already present in the isolated Cargo home from a separate reviewed acquisition step; runtime is locked and offline.",
-        "AWQ invokes direct regular toolchain binaries with isolated target and temporary directories; runtime never invokes rustup, a shell, package installation or lockfile updates."
+        "Registry yank observations, the RustSec advisory database and public API baselines are digest-bound and expire or fail closed independently.",
+        "AWQ invokes direct regular binaries with isolated target, home, cache and temporary directories; runtime never invokes rustup, a shell, package installation, advisory updates, registry lookups or lockfile updates."
       ],
       "contracts": [
+        {
+          "tool": "awq-rust-supply-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-supply-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-supply-check 1.0.0 (cargo-deny 0.20.2; cargo-audit 0.22.2; cargo-semver-checks 0.50.0; Rust 1.93.0; advisory-db bf25f6575a93a35f30796c65c0ed91bee7fa19fd)",
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-ADVISORY",
+          "argv": [
+            "awq-rust-supply-check",
+            "audit"
+          ],
+          "evidence": "environmental",
+          "limitation": "The exact Cargo.lock is checked against a digest-pinned RustSec snapshot valid through 2026-12-07; the result does not cover unpublished advisories, registry yank state, runtime exploitability or other targets.",
+          "remediation": "Update vulnerable dependencies or explicitly review the repository-owned advisory policy; refresh the pinned database through an AWQ release before its expiry.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-advisory-policy.json",
+            "rust-toolchain.toml"
+          ]
+        },
         {
           "id": "ADAPTER-RUST-BUILD",
           "tool": "awq-rust-check",
@@ -435,6 +469,73 @@
             "rust-toolchain.toml"
           ],
           "input_mode": "explicit"
+        },
+        {
+          "tool": "awq-rust-supply-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-supply-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-supply-check 1.0.0 (cargo-deny 0.20.2; cargo-audit 0.22.2; cargo-semver-checks 0.50.0; Rust 1.93.0; advisory-db bf25f6575a93a35f30796c65c0ed91bee7fa19fd)",
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-POLICY",
+          "argv": [
+            "awq-rust-supply-check",
+            "policy"
+          ],
+          "evidence": "environmental",
+          "limitation": "cargo-deny evaluates the locked graph against repository-owned license, duplicate and source policy plus a time-bounded crates.io yank snapshot; it does not establish legal advice or future registry state.",
+          "remediation": "Repair the dependency graph or narrowly review deny.toml, then regenerate the exact Cargo.lock registry snapshot through the bounded setup command.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "deny.toml",
+            "quality/rust-registry-snapshot.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "tool": "awq-rust-supply-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-supply-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-supply-check 1.0.0 (cargo-deny 0.20.2; cargo-audit 0.22.2; cargo-semver-checks 0.50.0; Rust 1.93.0; advisory-db bf25f6575a93a35f30796c65c0ed91bee7fa19fd)",
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-SEMVER",
+          "argv": [
+            "awq-rust-supply-check",
+            "semver"
+          ],
+          "evidence": "contract-test",
+          "limitation": "The comparison covers the selected library's public rustdoc API for default features on Linux x86-64 against one digest-bound baseline; it does not prove behavioral compatibility, private API stability or other feature and target combinations.",
+          "remediation": "Restore the documented public API, select the correct release type, or intentionally regenerate and review the pinned baseline from the release being superseded.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-semver-baseline.lock.json",
+            "rust-toolchain.toml"
+          ]
         },
         {
           "id": "ADAPTER-RUST-TEST",

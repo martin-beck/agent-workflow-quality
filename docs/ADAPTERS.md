@@ -1,7 +1,7 @@
 # Pinned adapters
 
 AWQ policy schema version 3 supports opt-in external quality tools without making them runtime
-dependencies of AWQ. The umbrella contract and runner are shared by four independently reviewable
+dependencies of AWQ. The umbrella contract and runner are shared by independently reviewable
 families:
 
 - AR-0012: Python formatting, lint, typing, tests, and coverage.
@@ -9,6 +9,7 @@ families:
 - AR-0014: Markdown, links, and prose.
 - AR-0015: JSON, YAML, and JSON Schema.
 - AR-0020: pinned Rust stable formatting, Clippy, tests, documentation, and builds.
+- AR-0021: pinned Rust dependency policy, advisory, and public API compatibility.
 
 No family adapter is enabled merely by upgrading AWQ. A project explicitly checks its contract into
 the `adapters` array in `quality/awq.json`.
@@ -46,6 +47,7 @@ Each object conforms to `schemas/adapter-contract.schema.json` and contains:
 | `formats` | Unique lowercase simple or compound suffixes covered by the adapter, such as `.json` or `.schema.json`. |
 | `config_paths` | Unique repository-relative project configuration files that must exist. |
 | `input_mode` | Optional `explicit` default, `tracked-formats`, or `tracked-shell` selection. |
+| `result_protocol` | Optional reviewed bounded metadata protocol; currently only `awq-bindings-v1`. |
 
 JSON Schema validates the portable shape. Zero-dependency runtime validation additionally enforces
 cross-field conditions that JSON Schema cannot express directly: both argv arrays start with the
@@ -80,13 +82,16 @@ For each eligible tier, AWQ executes eligible adapters in stable identifier orde
 2. discovers the named executable through `PATH`;
 3. runs the capped version probe and requires an exact output match;
 4. executes the configured argv from the repository root without a shell; and
-5. appends eligible tracked inputs when the reviewed contract selects them; and
-6. returns `schemas/adapter-result.schema.json` evidence.
+5. appends eligible tracked inputs when the reviewed contract selects them;
+6. validates canonical bounded binding metadata when the contract declares a result protocol; and
+7. returns `schemas/adapter-result.schema.json` evidence.
 
 Standard input is closed. Check output is discarded. Probe output is merged, capped at 4096 bytes,
 used only for the exact pin comparison, and then discarded. The child receives only `PATH`, fixed
 UTF-8 locale controls, `NO_COLOR`, and required operating-system/temp variables; credential and
-home variables are not forwarded. AWQ itself performs no download or network request.
+home variables are not forwarded. AWQ itself performs no download or network request. A protocol-enabled check may return at most five
+unique bindings, each containing only a reviewed kind, identifier, and SHA-256 digest. Protocol output
+is capped at 4096 bytes, parsed strictly, required to be canonical JSON, and otherwise discarded.
 
 The runner does not sandbox the selected executable. A reviewed project tool can still use host
 capabilities, including the network, so family contracts must choose offline-capable argv. The
@@ -109,6 +114,8 @@ A passing result contains no findings. Failures use stable codes:
 | `adapter-version-mismatch` | Probe exit or exact output differed from the pin. |
 | `adapter-timeout` | The check exceeded its deadline. |
 | `adapter-failed` | The check returned a nonzero status. |
+| `adapter-result-output-limit` | Declared protocol output exceeded 4096 bytes. |
+| `adapter-result-invalid` | Declared protocol output was malformed, noncanonical, or inconsistent. |
 
 Findings deliberately omit command output and source excerpts. The `duration_ms` measurement varies;
 the status, classifications, and messages are stable for an otherwise fixed execution context.
@@ -139,5 +146,5 @@ awq --root . evidence --tier pr --format json
 
 Policy diff treats removal, reduced format coverage, later execution, shorter deadlines, changed
 tool pins/argv/configuration/evidence/limitations, and other behavior changes as weakening. Adapter
-addition and broader or earlier execution are strengthening; remediation-only changes remain
-review-visible.
+addition, broader or earlier execution, and adding a result protocol are strengthening. Removing or
+changing a result protocol is weakening; remediation-only changes remain review-visible.

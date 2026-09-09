@@ -45,6 +45,12 @@ jobs:
         run: |
           uv run python scripts/install_rust_tools.py --prefix "${RUNNER_TEMP}/awq-rust-tools"
           echo "${RUNNER_TEMP}/awq-rust-tools/bin" >> "${GITHUB_PATH}"
+      - name: Install checksum-pinned Rust supply tools
+        run: |
+          uv run python scripts/install_rust_supply_tools.py \
+            --prefix "${RUNNER_TEMP}/awq-rust-supply-tools" \
+            --rust-tools-prefix "${RUNNER_TEMP}/awq-rust-tools"
+          echo "${RUNNER_TEMP}/awq-rust-supply-tools/bin" >> "${GITHUB_PATH}"
       - name: Source license headers
         run: uv run python scripts/check_source_headers.py
       - name: Format lint and type

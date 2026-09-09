@@ -48,8 +48,9 @@ for the full lifecycle and limitations.
 
 Repository-owned adapter contracts bind a portable executable name to an exact version probe,
 argument arrays, project configuration, a finite deadline, execution tier, evidence class, and
-honest limitation. The shared runner never invokes a shell, downloads a tool, or records tool
-output:
+honest limitation. The shared runner never invokes a shell, downloads a tool, or records native
+diagnostic output. Protocol-enabled contracts may return only canonical bounded identifiers and SHA-256
+bindings:
 
 ```sh
 awq --root . adapter-catalog --family python --format json

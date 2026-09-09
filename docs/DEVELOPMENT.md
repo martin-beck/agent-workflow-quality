@@ -22,8 +22,11 @@ compound instance suffixes.
 
 Rust adapter changes must retain the exact stable toolchain declaration, direct regular binaries,
 locked/offline Cargo resolution, a proxy-free runtime Cargo home, external scratch and target
-directories, and independent native-command equivalence. Rustup and dependency acquisition are
-installer/setup concerns and must never occur during adapter execution.
+directories, and independent native-command equivalence. Rust dependency-policy changes must keep deny policy and exact
+lock metadata review-visible; advisory changes must bind an immutable, expiring database; and API
+changes must name and digest the default-feature rustdoc baseline. Native diagnostics and private crate
+or source paths must not enter AWQ evidence. Rustup, registry/advisory lookup, baseline creation, and
+dependency acquisition are installer or setup concerns and must never occur during adapter execution.
 
 Before publication run the commands in `CONTRIBUTING.md`, inspect the full diff, verify DCO and SSH
 signatures, and review privacy. Product commits reach main through a pull request. Completion requires

@@ -575,6 +575,17 @@ def _compare_set(
         _change(changes, added_class, field, f"added {value}")
 
 
+def _compare_result_protocol(
+    old: str | None,
+    new: str | None,
+    prefix: str,
+    changes: list[dict[str, str]],
+) -> None:
+    if old != new:
+        classification = "strengthening" if old is None and new is not None else "weakening"
+        _change(changes, classification, f"{prefix}.result_protocol", "result protocol changed")
+
+
 def _compare_adapters(
     old_items: list[dict[str, Any]],
     new_items: list[dict[str, Any]],
@@ -616,6 +627,12 @@ def _compare_adapters(
                 else "weakening"
             )
             _change(changes, classification, f"{prefix}.input_mode", "input mode changed")
+        _compare_result_protocol(
+            old[identifier].get("result_protocol"),
+            new[identifier].get("result_protocol"),
+            prefix,
+            changes,
+        )
         for field in (
             "tool",
             "version",

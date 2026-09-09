@@ -6,13 +6,19 @@ coverage, deterministic generated outputs, a signed commit and a matching `Signe
 Install the checksum-pinned shell, documentation, schema, and Rust tools into new prefixes
 outside the repository and prepend their `bin` directories to `PATH`. Acquisition is online; the
 gates themselves are offline. Rust contracts currently support Linux x86-64 and require any
-third-party dependency cache to be populated by a separate reviewed step.
+third-party dependency cache to be populated by a separate reviewed step. Rust supply contracts also
+require reviewed repository policy, time-bounded registry metadata, the release-bundled RustSec
+snapshot, and a digest-bound semver baseline as documented in `docs/RUST_ADAPTERS.md`. Snapshot
+generation is a separate setup operation and must never be moved into an adapter runtime.
 
 ```sh
 uv run python scripts/install_shell_tools.py --prefix /new/external/shell-tools
 uv run python scripts/install_documentation_tools.py --prefix /new/external/doc-tools
 uv run python scripts/install_schema_tools.py --prefix /new/external/schema-tools
 uv run python scripts/install_rust_tools.py --prefix /new/external/rust-tools
+uv run python scripts/install_rust_supply_tools.py \
+  --prefix /new/external/rust-supply-tools \
+  --rust-tools-prefix /new/external/rust-tools
 ```
 
 Run the complete local gate before publication:
