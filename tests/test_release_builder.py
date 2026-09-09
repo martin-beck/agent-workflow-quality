@@ -30,7 +30,7 @@ from awq.release import (
     source_identity,
 )
 from scripts import build_release as builder
-from tests.support import Repository
+from tests.support import Repository, packaged_schema_bytes
 
 
 class ReleaseBuilderTests(unittest.TestCase):
@@ -92,7 +92,7 @@ class ReleaseBuilderTests(unittest.TestCase):
                 ),
                 "awq/data/adapter_catalog.json": b"{}\n",
                 "awq/build-marker": marker,
-                **{f"awq/schemas/{name}": b"{}\n" for name in REQUIRED_SCHEMAS},
+                **{f"awq/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS},
             }
             for name, content in members.items():
                 zip_item = zipfile.ZipInfo(name, date_time=zip_time)
@@ -109,7 +109,10 @@ class ReleaseBuilderTests(unittest.TestCase):
                 ),
                 f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
                 f"{prefix}/build-marker": marker,
-                **{f"{prefix}/schemas/{name}": b"{}\n" for name in REQUIRED_SCHEMAS},
+                **{
+                    f"{prefix}/schemas/{name}": packaged_schema_bytes(name)
+                    for name in REQUIRED_SCHEMAS
+                },
             }
             for name, content in members.items():
                 tar_item = tarfile.TarInfo(name)
@@ -357,6 +360,7 @@ class ReleaseBuilderTests(unittest.TestCase):
         self.assertEqual(2, builds.call_count)
         self.assertEqual({"source-first", "source-second"}, seen_sources)
         self.assertEqual("pass", result["status"])
+        self.assertEqual(1, result["schema_version"])
         self.assertEqual(
             {
                 names["wheel"],

@@ -9,6 +9,7 @@ import contextlib
 import io
 import json
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -24,8 +25,10 @@ from awq.release import (
     BUILD_CONSTRAINTS_SHA256,
     REGISTRY_PATHS,
     REQUIRED_SCHEMAS,
+    SBOM_SCHEMA_ASSETS,
     ReleaseError,
     canonical_bytes,
+    inspect_archive,
     load_manifest,
     make_manifest,
     registry_digests,
@@ -34,7 +37,7 @@ from awq.release import (
     validate_manifest,
     verify_release,
 )
-from tests.support import Repository
+from tests.support import Repository, packaged_schema_bytes
 
 
 class ReleaseVerificationTests(unittest.TestCase):
@@ -74,7 +77,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                 metadata,
             )
             for schema in sorted(REQUIRED_SCHEMAS):
-                write(archive, f"awq/schemas/{schema}", b"{}\n")
+                write(archive, f"awq/schemas/{schema}", packaged_schema_bytes(schema))
             write(archive, "awq/data/adapter_catalog.json", b"{}\n")
             if private:
                 write(archive, "awq/private.txt", b"/home/" + b"alice/project")
@@ -95,7 +98,9 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f'[project]\nname = "agent-workflow-quality"\nversion = "{observed}"\n'
             ).encode(),
             f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
-            **{f"{prefix}/schemas/{name}": b"{}\n" for name in REQUIRED_SCHEMAS},
+            **{
+                f"{prefix}/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS
+            },
         }
         with tarfile.open(path, mode="w:gz") as archive:
             for name, content in members.items():
@@ -182,6 +187,7 @@ class ReleaseVerificationTests(unittest.TestCase):
             set(result),
         )
         self.assertEqual("pass", result["status"])
+        self.assertEqual(1, result["schema_version"])
         self.assertEqual(self.version, result["version"])
         self.assertEqual("a" * 40, result["source_commit"])
         self.assertEqual(2, len(result["artifacts"]))
@@ -204,6 +210,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                 ),
             )
         self.assertEqual("a" * 40, json.loads(output.getvalue())["source_commit"])
+        self.assertEqual(1, json.loads(output.getvalue())["schema_version"])
 
     def test_manifest_rejects_shapes_unknowns_duplicates_and_noncanonical_bytes(self) -> None:
         baseline = self.manifest_value()
@@ -354,6 +361,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                     ),
                 )
             self.assertEqual("pass", json.loads(output.getvalue())["status"])
+            self.assertEqual(1, json.loads(output.getvalue())["schema_version"])
 
             source_mismatch = deepcopy(value)
             source = source_mismatch["source"]
@@ -433,6 +441,23 @@ class ReleaseVerificationTests(unittest.TestCase):
                     source_identity(repository.root)
         finally:
             repository.close()
+
+    def test_historical_v013_bundle_retains_its_original_schema_contract(self) -> None:
+        with mock.patch.object(
+            sys.modules[__name__], "REQUIRED_SCHEMAS", REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
+        ):
+            value = self.manifest_value()
+        path = self.write_manifest(value)
+        result = verify_release(path)
+        self.assertEqual("pass", result["status"])
+        self.assertEqual(1, result["schema_version"])
+        artifacts = value["artifacts"]
+        assert isinstance(artifacts, list)
+        for artifact in artifacts:
+            findings = inspect_archive(self.root / artifact["name"])
+            self.assertEqual(2, len(findings))
+            for name in SBOM_SCHEMA_ASSETS:
+                self.assertTrue(any(name in finding for finding in findings))
 
 
 def subprocess_result(returncode: int, output: bytes) -> subprocess.CompletedProcess[bytes]:

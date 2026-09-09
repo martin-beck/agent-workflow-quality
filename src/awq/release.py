@@ -30,6 +30,14 @@ REQUIRED_SCHEMAS = frozenset(
         "adapter-contract.schema.json",
         "adapter-result.schema.json",
         "release-manifest.schema.json",
+        "release-license-inventory.schema.json",
+        "spdx-3.0.1.schema.zip",
+    }
+)
+SBOM_SCHEMA_ASSETS = frozenset(
+    {
+        "release-license-inventory.schema.json",
+        "spdx-3.0.1.schema.zip",
     }
 )
 REQUIRED_DATA = frozenset({"adapter_catalog.json"})
@@ -200,8 +208,13 @@ def _zip_members(path: Path, epoch: int | None) -> Iterator[ArchiveMember]:
             yield member.filename, archive.read(member), metadata
 
 
-def inspect_archive(path: Path, *, source_date_epoch: int | None = None) -> list[str]:
+def inspect_archive(
+    path: Path, *, source_date_epoch: int | None = None, require_sbom_assets: bool = True
+) -> list[str]:
     """Return bounded archive findings without extracting any member."""
+    required_schemas = (
+        REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
+    )
     try:
         if path.name.endswith(".tar.gz"):
             members = _tar_members(path, source_date_epoch)
@@ -239,7 +252,7 @@ def inspect_archive(path: Path, *, source_date_epoch: int | None = None) -> list
         }
         issues.extend(
             f"{path.name}: required packaged schema is missing: {schema}"
-            for schema in sorted(REQUIRED_SCHEMAS - present_schemas)
+            for schema in sorted(required_schemas - present_schemas)
         )
         issues.extend(
             f"{path.name}: required packaged data is missing: {item}"
@@ -346,16 +359,47 @@ def _validate_artifacts(value: object, version: str) -> None:
         raise ReleaseError("distribution artifact name is invalid")
 
 
+def _validate_sbom_manifest(manifest: dict[str, Any]) -> None:
+    from awq.sbom import PROFILE, SCHEMA_SHA256, SPEC
+
+    item = _exact(
+        manifest["sbom"],
+        {
+            "profile",
+            "spec_version",
+            "schema_sha256",
+            "lock_sha256",
+            "license_inventory_sha256",
+            "source_license_sha256",
+        },
+        "SBOM binding",
+    )
+    if (item["profile"], item["spec_version"], item["schema_sha256"]) != (
+        PROFILE,
+        SPEC,
+        SCHEMA_SHA256,
+    ):
+        raise ReleaseError("SBOM format or schema identity differs")
+    for name in ("lock_sha256", "license_inventory_sha256", "source_license_sha256"):
+        _text(item[name], SHA256, "SBOM input digest")
+    records = [record for record in manifest["artifacts"] if record["kind"] == "sbom"]
+    if len(records) != 1 or records[0]["name"] != (
+        f"agent_workflow_quality-{manifest['version']}.spdx.json"
+    ):
+        raise ReleaseError("SBOM release artifact is absent or misnamed")
+
+
 def validate_manifest(value: object) -> dict[str, Any]:
     """Validate exact release-manifest semantics without third-party packages."""
     manifest = _exact(
         value,
-        {"schema_version", "package", "version", "source", "builder", "registries", "artifacts"},
+        {"schema_version", "package", "version", "source", "builder", "registries", "artifacts"}
+        | ({"sbom"} if isinstance(value, dict) and value.get("schema_version") == 2 else set()),
         "release manifest",
     )
     if (
         type(manifest["schema_version"]) is not int
-        or manifest["schema_version"] != 1
+        or manifest["schema_version"] not in {1, 2}
         or manifest["package"] != "agent-workflow-quality"
     ):
         raise ReleaseError("release identity is invalid")
@@ -364,6 +408,8 @@ def validate_manifest(value: object) -> dict[str, Any]:
     _validate_builder(manifest["builder"])
     _validate_registries(manifest["registries"])
     _validate_artifacts(manifest["artifacts"], version)
+    if manifest["schema_version"] == 2:
+        _validate_sbom_manifest(manifest)
     return manifest
 
 
@@ -556,7 +602,11 @@ def _verify_artifact(
     kind = str(item["kind"])
     if kind in {"wheel", "sdist"}:
         try:
-            issues = inspect_archive(path, source_date_epoch=source_date_epoch)
+            issues = inspect_archive(
+                path,
+                source_date_epoch=source_date_epoch,
+                require_sbom_assets=tuple(int(part) for part in version.split(".")) >= (0, 14, 0),
+            )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error
         if issues:
@@ -572,9 +622,27 @@ def _verify_artifact(
     }
 
 
+def _verify_sbom_bundle(bundle: Path, manifest: dict[str, Any], source: Path | None = None) -> None:
+    from awq.sbom import MAX_BYTES, archive_inputs, source_inputs, verify
+
+    records = {item["kind"]: item for item in manifest["artifacts"]}
+    path = bundle / records["sbom"]["name"]
+    if path.stat().st_size > MAX_BYTES:
+        raise ReleaseError("SBOM exceeds its byte bound")
+    inputs = archive_inputs(bundle / records["sdist"]["name"], manifest["version"])
+    verify(path.read_bytes(), inputs, manifest)
+    if source is not None and source_inputs(source) != inputs:
+        raise ReleaseError("SBOM source inputs differ from the checked source")
+
+
 def verify_release(manifest_path: Path, source: Path | None = None) -> dict[str, Any]:
     """Verify a complete local release bundle and optional source tree offline."""
     manifest = load_manifest(manifest_path)
+    if (
+        tuple(int(part) for part in manifest["version"].split(".")) >= (0, 14, 0)
+        and manifest["schema_version"] != 2
+    ):
+        raise ReleaseError("this release requires an SPDX SBOM")
     bundle = manifest_path.parent
     if bundle.is_symlink() or not bundle.is_dir():
         raise ReleaseError("release bundle is unavailable")
@@ -589,6 +657,8 @@ def verify_release(manifest_path: Path, source: Path | None = None) -> dict[str,
         )
         for item in manifest["artifacts"]
     ]
+    if manifest["schema_version"] == 2:
+        _verify_sbom_bundle(bundle, manifest, source)
     entries = list(bundle.iterdir())
     if len(entries) > MAX_ARTIFACTS + 1 or {entry.name for entry in entries} != declared:
         raise ReleaseError("release bundle contains undeclared entries")
@@ -601,7 +671,7 @@ def verify_release(manifest_path: Path, source: Path | None = None) -> dict[str,
             raise ReleaseError("release build constraints do not match")
     return {
         "status": "pass",
-        "schema_version": 1,
+        "schema_version": manifest["schema_version"],
         "version": manifest["version"],
         "source_commit": manifest["source"]["commit"],
         "manifest_sha256": sha256_file(manifest_path),

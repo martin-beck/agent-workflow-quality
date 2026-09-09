@@ -95,3 +95,10 @@ def base_exception(**updates: Any) -> dict[str, Any]:
     }
     value.update(updates)
     return value
+
+
+def packaged_schema_bytes(name: str) -> bytes:
+    """Return real immutable SPDX bytes and minimal JSON schema fixture content."""
+    if name == "spdx-3.0.1.schema.zip":
+        return (Path(__file__).resolve().parents[1] / "schemas" / name).read_bytes()
+    return b"{}\n"

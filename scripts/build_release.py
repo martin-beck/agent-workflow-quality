@@ -365,6 +365,33 @@ def _rename_noreplace(source: Path, target: Path) -> None:
         raise OSError(error, os.strerror(error), target)
 
 
+def _add_sbom(source: Path, stage: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    from awq.sbom import generate, metadata, source_inputs
+
+    inputs = source_inputs(source)
+    document = generate(inputs, manifest)
+    path = stage / f"agent_workflow_quality-{manifest['version']}.spdx.json"
+    path.write_bytes(canonical_bytes(document))
+    path.chmod(0o644)
+    result = dict(manifest)
+    result["schema_version"] = 2
+    result["sbom"] = metadata(inputs)
+    result["artifacts"] = sorted(
+        [
+            *manifest["artifacts"],
+            {
+                "name": path.name,
+                "kind": "sbom",
+                "media_type": ARTIFACT_MEDIA["sbom"],
+                "size": path.stat().st_size,
+                "sha256": sha256_file(path),
+            },
+        ],
+        key=lambda item: str(item["name"]),
+    )
+    return result
+
+
 def _stage_bundle(
     source: Path,
     output: Path,
@@ -378,6 +405,8 @@ def _stage_bundle(
             target = stage / path.name
             shutil.copyfile(path, target)
             target.chmod(0o644)
+        if tuple(int(part) for part in manifest["version"].split(".")) >= (0, 14, 0):
+            manifest = _add_sbom(source, stage, manifest)
         manifest_path = stage / f"agent_workflow_quality-{manifest['version']}.release.json"
         manifest_path.write_bytes(canonical_bytes(manifest))
         manifest_path.chmod(0o644)
