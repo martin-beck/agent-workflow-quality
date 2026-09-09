@@ -72,6 +72,14 @@ configuration assumptions, and adoption recipes are documented for the
 [schema family](docs/SCHEMA_ADAPTERS.md), and
 [Rust family](docs/RUST_ADAPTERS.md), and [Android/JVM family](docs/ANDROID_JVM_ADAPTERS.md).
 
+## Reproducible releases
+
+The exact Linux release recipe creates two independent clean-snapshot builds, requires byte-identical
+wheel and source archives, and publishes a canonical offline-verifiable manifest. See
+[reproducible releases](docs/RELEASES.md) for the build-input pins, commands, hostile checks, and
+trust boundary. Signing, provenance, and verified update metadata remain explicitly assigned to
+their follow-on ARs.
+
 Development is coordinated through
 [Agent Workflow Quality State](https://github.com/martin-beck/agent-workflow-quality-state)
 using the independently versioned

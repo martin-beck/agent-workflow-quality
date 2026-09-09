@@ -29,6 +29,6 @@ or source paths must not enter AWQ evidence. Rustup, registry/advisory lookup, b
 dependency acquisition are installer or setup concerns and must never occur during adapter execution.
 
 Before publication run the commands in `CONTRIBUTING.md`, inspect the full diff, verify DCO and SSH
-signatures, and review privacy. Product commits reach main through a pull request. Completion requires
+signatures, review privacy, and follow the exact recipe and trust limitations in `docs/RELEASES.md`. Product commits reach main through a pull request. Completion requires
 the merged revision, green required workflows, a public immutable release, and a fresh-clone smoke
 test. Consumer integrations use their own coordination projects and retain existing gates.

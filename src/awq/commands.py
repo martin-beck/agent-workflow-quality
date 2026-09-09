@@ -36,6 +36,7 @@ from awq.project import (
     write_initialization,
 )
 from awq.registry import TIERS, expand_profiles, load_registry, load_standards
+from awq.release import verify_release
 
 
 def _git() -> str:
@@ -179,6 +180,11 @@ def adapter_catalog(family: str | None) -> dict[str, Any]:
         "adapter_catalog_sha256": digest,
         "families": [families[identifier] for identifier in selected],
     }
+
+
+def release_verify(root: Path, manifest: Path, source: bool) -> dict[str, Any]:
+    """Verify an exact local release bundle and optional current source tree."""
+    return verify_release(manifest, root if source else None)
 
 
 def evidence(root: Path, tier: str) -> dict[str, Any]:

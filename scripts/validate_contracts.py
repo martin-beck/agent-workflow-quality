@@ -14,6 +14,7 @@ import jsonschema
 from referencing import Registry, Resource
 
 from awq.commands import evidence
+from awq.release import BUILD_CONSTRAINTS_SHA256
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DOCUMENTS: dict[str, dict[str, Any]] = {
@@ -99,6 +100,48 @@ def main() -> int:
         "formats": [".py", ".pyi"],
         "config_paths": ["pyproject.toml"],
     }
+    release = {
+        "schema_version": 1,
+        "package": "agent-workflow-quality",
+        "version": "0.13.0",
+        "source": {
+            "repository": "https://github.com/martin-beck/agent-workflow-quality",
+            "commit": "a" * 40,
+            "tree": "b" * 40,
+            "source_date_epoch": 1_788_930_927,
+        },
+        "builder": {
+            "recipe": "awq-release-v1",
+            "python_version": "3.13.15",
+            "uv_version": "0.12.8",
+            "hatchling_version": "1.27.0",
+            "host": "linux-x86_64",
+            "build_constraints_sha256": BUILD_CONSTRAINTS_SHA256,
+        },
+        "registries": {
+            "adapter_catalog": "c" * 64,
+            "profiles": "d" * 64,
+            "requirements": "e" * 64,
+            "standards_mappings": "f" * 64,
+            "standards_sources": "0" * 64,
+        },
+        "artifacts": [
+            {
+                "name": "agent_workflow_quality-0.13.0-py3-none-any.whl",
+                "kind": "wheel",
+                "media_type": "application/zip",
+                "size": 1,
+                "sha256": "1" * 64,
+            },
+            {
+                "name": "agent_workflow_quality-0.13.0.tar.gz",
+                "kind": "sdist",
+                "media_type": "application/gzip",
+                "size": 1,
+                "sha256": "2" * 64,
+            },
+        ],
+    }
     adapter_result = {
         "id": adapter["id"],
         "tool": adapter["tool"],
@@ -124,6 +167,7 @@ def main() -> int:
     validate(lock, "lock.schema.json")
     validate(adapter, "adapter-contract.schema.json")
     validate(adapter_result, "adapter-result.schema.json")
+    validate(release, "release-manifest.schema.json")
     envelope = evidence(ROOT, "pr")
     envelope["requirements"].append(adapter_result)
     validate(envelope, "evidence.schema.json")
