@@ -1,6 +1,6 @@
 # Rust adapter family
 
-The built-in `rust` family provides eight reviewed, opt-in Linux x86-64 contracts using Rust
+The built-in `rust` family provides eleven reviewed, opt-in Linux x86-64 contracts using Rust
 1.93.0. Installing or upgrading AWQ never activates them, installs a toolchain, fetches a crate,
 updates an advisory database, or changes a consumer lockfile.
 
@@ -9,8 +9,11 @@ updates an advisory database, or changes a consumer lockfile.
 | `ADAPTER-RUST-ADVISORY` | environmental | `cargo audit --no-fetch --no-yanked` against the bundled RustSec database |
 | `ADAPTER-RUST-BUILD` | mechanical | `cargo build --locked --offline --workspace --release` |
 | `ADAPTER-RUST-CLIPPY` | mechanical | `cargo clippy --locked --offline --workspace --all-targets -- -D warnings` |
+| `ADAPTER-RUST-COVERAGE` | contract-test | Exact-package all-target line floor |
 | `ADAPTER-RUST-DOC` | mechanical | `RUSTDOCFLAGS="-D warnings" cargo doc --locked --offline --workspace --no-deps` |
 | `ADAPTER-RUST-FMT` | mechanical | `cargo fmt --all -- --check` |
+| `ADAPTER-RUST-FUZZ` | property-or-fuzz | Fixed digest-bound ASan corpus regression on a dated nightly |
+| `ADAPTER-RUST-MUTATION` | contract-test | Exact selected mutation sentinels are caught |
 | `ADAPTER-RUST-POLICY` | environmental | `cargo deny --frozen check bans licenses sources` |
 | `ADAPTER-RUST-SEMVER` | contract-test | default-feature rustdoc JSON comparison |
 | `ADAPTER-RUST-TEST` | contract-test | `cargo test --locked --offline --workspace` |
@@ -209,3 +212,50 @@ Registry metadata records only one bounded observation. Semver comparison covers
 public default-feature rustdoc API for one target; it does not establish private, behavioral,
 feature-complete, or cross-target compatibility. None of these gates proves runtime correctness,
 unsafe-code soundness, provenance, performance, or complete behavior.
+
+## Bounded advanced evidence
+
+The optional advanced bundle exposes three deliberately separate contracts:
+
+| Contract | Tier | Reviewed conclusion |
+| --- | --- | --- |
+| Coverage | `pr` | Aggregate line reachability meets the repository-owned floor for its exact package list and default-feature all-target command. |
+| Fuzz regression | `scheduled` | Every named cargo-fuzz-built ASan target completes its digest-bound copied seed corpus under fixed PRNG-seed, run, wall-time, per-input, input-length, sampled-RSS and allocation limits on `nightly-2026-09-01`. |
+| Mutation sentinel | `trusted-host` | Every mutant selected by exact package, file, genre and anchored safe-filter expression is caught under single-worker build, test and outer deadlines. |
+
+All three require canonical `quality/rust-advanced.json`. Fuzz projects additionally commit
+`fuzz/Cargo.toml`, `fuzz/Cargo.lock`, `fuzz/rust-toolchain.toml`, named target sources and every seed
+listed with its SHA-256. The reviewed PRNG seed is explicit and included in the fuzz-plan binding. Setup may acquire locked project dependencies into the bundle's
+credential-free `runtime-cargo` cache. Adapter execution is always offline and never invokes
+Rustup, Cargo installation, registry updates or advisory updates.
+
+The helper requires a clean tracked tree before and after execution and verifies `Cargo.lock`
+integrity. It copies seeds to an external temporary corpus, directs Cargo targets, LLVM coverage,
+fuzz artifacts and cargo-mutants output outside the repository, closes standard input, discards
+native diagnostics and applies an explicit address-space limit to coverage, mutation and
+cargo-fuzz compilation. The ASan process instead uses libFuzzer's sampled RSS and
+single-allocation ceilings because its virtual shadow mapping is incompatible with RLIMIT_AS.
+CPU, file-size, file-descriptor and outer-wall-clock limits remain active in every mode. Cargo
+compilation uses one job and mutation uses one worker; these are concurrency constraints, not a
+misleading per-user process cap. The sampled RSS ceiling is not a hard process-tree memory limit.
+Canonical bindings contain only aggregate coverage counts, reviewed bounds, target identifiers,
+seed-set digests, selected package/operator identities and caught/survived counts.
+
+Install the independent bundle into a new external prefix:
+
+~~~sh
+uv run python scripts/install_rust_advanced_tools.py \
+  --prefix /new/external/rust-advanced-tools
+export PATH="/new/external/rust-advanced-tools/bin:$PATH"
+~~~
+
+The installer first creates the reviewed stable Rust prefix, adds only `llvm-tools-preview`, installs
+`nightly-2026-09-01` with `rust-src`, then adds checksum-verified release binaries for
+cargo-llvm-cov 0.9.1, cargo-fuzz 0.13.2 and cargo-mutants 27.1.0. Downloads and extraction are
+bounded, channel and binary digests are verified, publication is atomic, and Rustup proxies are
+removed before runtime use.
+
+Open-ended fuzzing, generated-corpus growth, broad mutant discovery, cross-target coverage and
+sanitizer campaigns are setup or trusted-host activities outside the adapter contract. Their
+artifacts may contain source-derived or sensitive content and must not be published as AWQ result
+bindings.

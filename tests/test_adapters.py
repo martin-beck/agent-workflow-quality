@@ -13,6 +13,8 @@ import platform
 import socket
 import subprocess
 import sys
+import tempfile
+import time
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -424,6 +426,31 @@ class AdapterRunnerTests(unittest.TestCase):
             "adapter-timeout",
             finding_code(adapters.run_adapter(self.repo.root, execution_timeout)),
         )
+
+        with tempfile.TemporaryDirectory(dir=os.environ.get("TMPDIR")) as name:
+            pid_file = Path(name) / "child.pid"
+            source = (
+                "import pathlib,subprocess,time;"
+                "child=subprocess.Popen(['/usr/bin/sleep','30']);"
+                f"pathlib.Path({str(pid_file)!r}).write_text(str(child.pid));"
+                "time.sleep(30)"
+            )
+            descendant_timeout = python_contract(
+                result_protocol="awq-bindings-v1",
+                argv=[tool, "-c", source],
+                timeout_seconds=1,
+            )
+            self.assertEqual(
+                "adapter-timeout",
+                finding_code(adapters.run_adapter(self.repo.root, descendant_timeout)),
+            )
+            child_pid = int(pid_file.read_text())
+            process_stat = Path(f"/proc/{child_pid}/stat")
+            for _ in range(100):
+                if not process_stat.exists() or ") Z " in process_stat.read_text():
+                    break
+                time.sleep(0.01)
+            self.assertTrue(not process_stat.exists() or ") Z " in process_stat.read_text())
 
     def test_start_failures_and_probe_invariants_are_normalized(self) -> None:
         contract = python_contract()

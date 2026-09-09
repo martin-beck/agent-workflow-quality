@@ -11,6 +11,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import threading
 import time
@@ -38,7 +39,16 @@ ADAPTER_KEYS = {
 }
 INPUT_MODES = {"explicit", "tracked-formats", "tracked-shell"}
 RESULT_PROTOCOLS = {"awq-bindings-v1"}
-BINDING_KINDS = {"advisory-db", "registry-snapshot", "semver-baseline"}
+BINDING_KINDS = {
+    "advisory-db",
+    "coverage-policy",
+    "fuzz-corpus",
+    "fuzz-plan",
+    "mutation-outcome",
+    "mutation-plan",
+    "registry-snapshot",
+    "semver-baseline",
+}
 BINDING_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,199}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 MAX_RESULT_BYTES = 4096
@@ -453,6 +463,11 @@ def _execution_failure(
     return None
 
 
+def _signal_process_group(process: subprocess.Popen[bytes]) -> None:
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGKILL)
+
+
 def _bounded_execution(
     argv: list[str],
     root: Path,
@@ -466,6 +481,7 @@ def _bounded_execution(
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
+        start_new_session=True,
     )
     stream = process.stdout
     if stream is None:
@@ -481,8 +497,7 @@ def _bounded_execution(
             output.extend(chunk[:remaining])
             if len(chunk) > remaining:
                 overflow.set()
-                with contextlib.suppress(OSError):
-                    process.kill()
+                _signal_process_group(process)
                 return
 
     reader = threading.Thread(target=drain, daemon=True)
@@ -493,12 +508,12 @@ def _bounded_execution(
             returncode = process.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
             timed_out = True
-            process.kill()
+            _signal_process_group(process)
             returncode = process.wait()
         reader.join(timeout=1)
         if reader.is_alive():
+            _signal_process_group(process)
             with contextlib.suppress(OSError):
-                process.kill()
                 stream.close()
             reader.join(timeout=1)
             raise AdapterError("adapter result stream did not terminate")
