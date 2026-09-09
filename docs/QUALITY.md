@@ -39,7 +39,7 @@ cover duplicate JSON keys, non-finite constants, restricted YAML, declared diale
 reference graphs, format assertions, semantic instance failures, file budgets, and content-minimized
 errors. Rust tests cover exact direct tool paths, proxy-free runtime configuration, locked/offline
 commands, independent native equivalence, format/lint/compile/doc/lock/test failures, dependency
-cache misses, bounded scratch space, manifest consumption, and atomic installer publication.
+cache misses, bounded scratch space, manifest consumption, and atomic installer publication. Android/JVM tests additionally cover pinned JDK and Gradle acquisition, exact wrapper and repository policy, copied-lock integrity, process-tree deadlines, hostile XML, and fresh source/report-bound device evidence.
 
 Source and wheel archives are inspected without extraction for unsafe paths, development metadata
 that can expose private paths, duplicate or non-regular members, bounded size, required packaged

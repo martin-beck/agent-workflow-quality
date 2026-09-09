@@ -2,6 +2,350 @@
   "schema_version": 1,
   "families": [
     {
+      "id": "android-jvm",
+      "title": "Android and JVM assurance adapters",
+      "description": "Reviewed offline Gradle contracts with pinned JDK, Gradle, AGP, Kotlin, integrity, ABI, coverage, and device-evidence boundaries.",
+      "assumptions": [
+        "Android SDK and project dependencies are acquired separately into isolated caches before runtime; every adapter invocation is offline.",
+        "Device execution is external environmental evidence and is accepted only through fresh canonical observations bound to source and report digests.",
+        "JDK 17.0.20.1+1, Gradle 9.1.0, AGP 9.0.1, and Kotlin 2.3.20 are exact reviewed versions.",
+        "Project tasks, integrity digests, lockfiles, repository allowlists, resource limits, and device plans are canonical in quality/android-jvm.json.",
+        "The project installs the checksum-pinned AWQ Android/JVM wrapper before invoking adapters; AWQ never installs during a check."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-ANDROID-JVM-ABI",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "abi"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "ABI checking enforces only the project-owned binary compatibility task and baseline.",
+          "remediation": "Review intentional API changes or restore compatibility, then rerun the exact ABI task.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-ANDROID-BUILD",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "android-build"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "The configured build task proves compilation only for the declared Android variant and cached dependencies.",
+          "remediation": "Repair the declared Android build or reviewed toolchain inputs, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-ANDROID-LINT",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "android-lint"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Android lint covers only enabled project-owned rules and the declared variant.",
+          "remediation": "Repair lint findings or narrowly review project lint policy, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-CONNECTED-TESTS",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "connected-tests"
+          ],
+          "timeout_seconds": 3600,
+          "tier": "scheduled",
+          "evidence": "environmental",
+          "limitation": "Connected-test evidence is time-bound environmental evidence for one exact device plan, source revision, and report set.",
+          "remediation": "Recreate the pinned device, rerun connected tests, and regenerate the canonical observation.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-COVERAGE",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "coverage"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Coverage enforces only the project-owned Kover task and thresholds.",
+          "remediation": "Add meaningful tests or intentionally review the coverage policy, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-DEPENDENCY",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "dependency"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Dependency analysis reports only the project-owned Gradle graph and configured rules.",
+          "remediation": "Repair dependency declarations or intentionally review the project-owned dependency policy.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-DEVICE-PLAN",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "device-plan"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "A validated device plan proves configuration integrity, not that a device or test run existed.",
+          "remediation": "Provision the exact reviewed device and produce fresh connected-test evidence.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-FORMAT",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "format"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "Formatting checks deterministic layout only for the configured Gradle task.",
+          "remediation": "Apply the project formatter, review changes, and rerun the exact offline task.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-INTEGRITY",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "integrity"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Integrity validates declared files, locks, repositories, wrapper, and metadata but not artifact semantics.",
+          "remediation": "Restore reviewed digests and declarations or intentionally update the canonical policy.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-STATIC",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "static"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Static analysis covers only project-configured Detekt and related tasks.",
+          "remediation": "Repair findings or narrowly review the project-owned static-analysis policy.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-TEST",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "test"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Host tests cover only the project-owned JVM test tasks and fixtures.",
+          "remediation": "Repair failing tests or add missing behavioral coverage, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        }
+      ]
+    },
+    {
       "id": "documentation",
       "title": "Documentation quality adapters",
       "description": "Reviewed offline commands for Markdown structure, local links, and repository-owned prose rules.",

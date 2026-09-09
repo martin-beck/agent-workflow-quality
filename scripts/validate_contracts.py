@@ -40,6 +40,9 @@ def main() -> int:
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
     adapter_catalog = json.loads(files("awq.data").joinpath("adapter_catalog.json").read_text())
+    android_jvm = json.loads(
+        (ROOT / "fixtures/conforming/android-jvm/quality/android-jvm.json").read_text()
+    )
     sources = json.loads(files("awq.data").joinpath("control_sources.json").read_text())
     mappings = json.loads(files("awq.data").joinpath("requirement_mappings.json").read_text())
     policy = json.loads((ROOT / "quality" / "awq.json").read_text())
@@ -111,6 +114,7 @@ def main() -> int:
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")
+    validate(android_jvm, "android-jvm-policy.schema.json")
     validate(sources, "control-source-registry.schema.json")
     validate(mappings, "standards-mapping-registry.schema.json")
     validate(exception, "exception.schema.json")

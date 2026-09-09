@@ -40,6 +40,10 @@ ADAPTER_KEYS = {
 INPUT_MODES = {"explicit", "tracked-formats", "tracked-shell"}
 RESULT_PROTOCOLS = {"awq-bindings-v1"}
 BINDING_KINDS = {
+    "android-device-plan",
+    "connected-test-summary",
+    "gradle-project",
+    "gradle-task-plan",
     "advisory-db",
     "coverage-policy",
     "fuzz-corpus",

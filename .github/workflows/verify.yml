@@ -28,7 +28,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: uv.lock
       - name: Install locked quality environment
-        run: uv sync --locked --only-group quality
+        run: uv sync --locked --group quality
       - name: Install checksum-pinned shell quality tools
         run: |
           uv run python scripts/install_shell_tools.py --prefix "${RUNNER_TEMP}/awq-shell-tools"
@@ -69,6 +69,10 @@ jobs:
             fetch --locked \
             --manifest-path fixtures/conforming/rust-advanced/fuzz/Cargo.toml
           echo "${RUNNER_TEMP}/awq-rust-advanced-tools/bin" >> "${GITHUB_PATH}"
+      - name: Install checksum-pinned Android and JVM tools
+        run: |
+          uv run python scripts/install_android_jvm_tools.py --prefix "$RUNNER_TEMP/awq-android-jvm-tools"
+          echo "$RUNNER_TEMP/awq-android-jvm-tools/bin" >> "$GITHUB_PATH"
       - name: Source license headers
         run: uv run python scripts/check_source_headers.py
       - name: Format lint and type
