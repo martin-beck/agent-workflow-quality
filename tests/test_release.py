@@ -23,6 +23,7 @@ from awq.cli import main
 from awq.release import (
     BUILD_CONSTRAINTS_PATH,
     BUILD_CONSTRAINTS_SHA256,
+    PROMOTION_SCHEMA_ASSETS,
     REGISTRY_PATHS,
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
@@ -448,7 +449,9 @@ class ReleaseVerificationTests(unittest.TestCase):
 
     def test_historical_v013_bundle_retains_its_original_schema_contract(self) -> None:
         with mock.patch.object(
-            sys.modules[__name__], "REQUIRED_SCHEMAS", REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
+            sys.modules[__name__],
+            "REQUIRED_SCHEMAS",
+            REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS - PROMOTION_SCHEMA_ASSETS,
         ):
             value = self.manifest_value()
         path = self.write_manifest(value)
@@ -459,8 +462,8 @@ class ReleaseVerificationTests(unittest.TestCase):
         assert isinstance(artifacts, list)
         for artifact in artifacts:
             findings = inspect_archive(self.root / artifact["name"])
-            self.assertEqual(2, len(findings))
-            for name in SBOM_SCHEMA_ASSETS:
+            self.assertEqual(3, len(findings))
+            for name in SBOM_SCHEMA_ASSETS | PROMOTION_SCHEMA_ASSETS:
                 self.assertTrue(any(name in finding for finding in findings))
 
 

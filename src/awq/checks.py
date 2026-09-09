@@ -549,7 +549,12 @@ def run_extension(root: Path, extension: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_checks(
-    root: Path, policy: dict[str, Any], requirement_ids: list[str], tier: str
+    root: Path,
+    policy: dict[str, Any],
+    requirement_ids: list[str],
+    tier: str,
+    *,
+    include_local: bool = True,
 ) -> list[dict[str, Any]]:
     """Run selected built-ins and applicable project-local gates."""
     from awq.registry import load_registry
@@ -561,6 +566,8 @@ def run_checks(
         for item in requirement_ids
         if TIER_INDEX[requirements[item]["tier"]] <= TIER_INDEX[tier]
     ]
+    if not include_local:
+        return results
     results.extend(
         run_extension(root, item)
         for item in policy["extensions"]

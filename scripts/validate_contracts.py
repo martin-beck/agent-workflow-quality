@@ -155,6 +155,11 @@ def main() -> int:
         "exceptions": [],
         "findings": [],
     }
+    for name in (
+        "fixtures/conforming/consumer-equivalence.json",
+        "templates/consumer-equivalence.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "consumer-equivalence.schema.json")
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")

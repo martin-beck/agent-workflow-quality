@@ -38,3 +38,11 @@ test. Consumer integrations use their own coordination projects and retain exist
 See [signed provenance and verified updates](PROVENANCE.md) for external trust, immutable
 tag pins, strict data-only candidate updates and atomic lock-only mutation. The legacy unauthenticated
 update path is disabled. Structural bundle integrity is distinct from publisher authentication.
+
+## Per-consumer promotion evidence
+
+Use [the promotion contract](PROMOTION.md) for bounded canonical evidence, controlled positive and
+negative cases, live observation windows, review expiry and exact integer budgets. Every native
+gate remains retained. Promote shared gates independently through consumer-owned review; a green
+shadow workflow is not equivalence evidence. The strict check requirement selector runs only
+explicit locked, tier-eligible requirements and fails on unknown, duplicate or incomplete selection.

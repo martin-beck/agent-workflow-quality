@@ -147,12 +147,44 @@ def plan(root: Path, changed: bool, base: str) -> dict[str, Any]:
     }
 
 
-def check(root: Path, tier: str) -> dict[str, Any]:
+def check(root: Path, tier: str, selection: list[str] | None = None) -> dict[str, Any]:
     """Run shared and local requirements and return bounded results."""
     policy, lock = load_project(root)
-    results = run_checks(root, policy, lock["requirements"], tier)
+    identifiers = lock["requirements"]
+    if selection is not None:
+        identifiers = _selected_requirements(selection, identifiers, tier)
+    results = run_checks(root, policy, identifiers, tier, include_local=selection is None)
+    if selection is not None:
+        failed = any(item["status"] != "pass" for item in results)
+        if [item["id"] for item in results] != identifiers:
+            raise ProjectError("selected requirement results are incomplete")
+        return {
+            "status": "fail" if failed else "pass",
+            "tier": tier,
+            "requirements": results,
+            "selection": identifiers,
+            "local_gates": "not-selected",
+        }
     failed = any(item["status"] == "fail" for item in results)
     return {"status": "fail" if failed else "pass", "tier": tier, "requirements": results}
+
+
+def _selected_requirements(selection: list[str], locked: list[str], tier: str) -> list[str]:
+    requirements, _, _ = load_registry()
+    if (
+        tier not in TIERS
+        or not selection
+        or len(selection) > 2000
+        or any(not isinstance(item, str) for item in selection)
+    ):
+        raise ProjectError("invalid requirement selection")
+    if len(selection) != len(set(selection)) or any(
+        item not in locked or item not in requirements for item in selection
+    ):
+        raise ProjectError("requirement selection must be unique and locked")
+    if any(TIERS.index(requirements[item]["tier"]) > TIERS.index(tier) for item in selection):
+        raise ProjectError("selected requirement is not eligible for this tier")
+    return sorted(selection)
 
 
 def adapter_run(root: Path, contract_path: str) -> dict[str, Any]:

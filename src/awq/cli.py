@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from awq import commands, verified_update
+from awq import commands, promotion, verified_update
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
 from awq.release import ReleaseError
@@ -41,6 +41,8 @@ def parser() -> argparse.ArgumentParser:
     for name in ("check", "evidence"):
         item = sub.add_parser(name)
         item.add_argument("--tier", choices=TIERS, default="pr")
+        if name == "check":
+            item.add_argument("--requirement", action="append")
         _format_argument(item)
     item = sub.add_parser("explain")
     item.add_argument("requirement")
@@ -67,6 +69,10 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("manifest", type=Path)
     item.add_argument("--source", action="store_true")
     _format_argument(item)
+    item = sub.add_parser("promotion-evaluate")
+    item.add_argument("evidence")
+    item.add_argument("--as-of", required=True)
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -85,7 +91,8 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "inspect": lambda: commands.inspect(root),
         "init": lambda: commands.initialize(root, args.profiles, args.dry_run),
         "plan": lambda: commands.plan(root, args.changed, args.base),
-        "check": lambda: commands.check(root, args.tier),
+        "check": lambda: commands.check(root, args.tier, args.requirement),
+        "promotion-evaluate": lambda: promotion.evaluate_file(root, args.evidence, args.as_of),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,
