@@ -306,15 +306,18 @@
     },
     {
       "id": "rust",
-      "title": "Rust stable and supply-chain quality adapters",
-      "description": "Reviewed offline Rust 1.93.0 formatting, lint, test, build, dependency-policy, advisory and public API compatibility commands.",
+      "title": "Rust stable, supply-chain, and advanced evidence adapters",
+      "description": "Reviewed offline Rust 1.93.0 and dated-nightly formatting, lint, test, build, dependency, API, coverage, fixed-run fuzz, and mutation-sentinel commands.",
       "assumptions": [
         "Execution is limited to Linux x86-64 with the exact checksum-reviewed Rust 1.93.0 toolchain and Rust supply bundle installed separately.",
         "The workspace owns exact Cargo.toml, Cargo.lock, rust-toolchain.toml and .cargo/config.toml files plus each enabled contract's declared policy snapshot.",
         "The toolchain declaration uses the minimal profile and lists Clippy then rustfmt exactly.",
         "Third-party dependencies are already present in the isolated Cargo home from a separate reviewed acquisition step; runtime is locked and offline.",
         "Registry yank observations, the RustSec advisory database and public API baselines are digest-bound and expire or fail closed independently.",
-        "AWQ invokes direct regular binaries with isolated target, home, cache and temporary directories; runtime never invokes rustup, a shell, package installation, advisory updates, registry lookups or lockfile updates."
+        "AWQ invokes direct regular binaries with isolated target, home, cache and temporary directories; runtime never invokes rustup, a shell, package installation, advisory updates, registry lookups or lockfile updates.",
+        "Advanced evidence uses the separate checksum-pinned AWQ bundle with stable LLVM tools, nightly-2026-09-01, cargo-llvm-cov 0.9.1, cargo-fuzz 0.13.2 and cargo-mutants 27.1.0.",
+        "Coverage is PR-bounded; fuzz regression is scheduled; mutation sentinels require a trusted host. Open-ended fuzz and broad mutation campaigns are not adapter operations.",
+        "Advanced contracts require clean tracked state, exact repository-owned policies, target lists, seed digests and mutation filters; all generated artifacts and build outputs are external and discarded."
       ],
       "contracts": [
         {
@@ -411,6 +414,39 @@
           "input_mode": "explicit"
         },
         {
+          "tool": "awq-rust-advanced-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-advanced-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-advanced-check 1.0.0 (cargo-llvm-cov 0.9.1; cargo-fuzz 0.13.2; cargo-mutants 27.1.0; Rust 1.93.0; nightly-2026-09-01)",
+          "timeout_seconds": 900,
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-COVERAGE",
+          "argv": [
+            "awq-rust-advanced-check",
+            "coverage"
+          ],
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Aggregate line reachability for reviewed packages and default features on Linux x86-64 does not prove assertion quality, branch coverage, other features, targets or behavioral completeness.",
+          "remediation": "Add focused tests or intentionally review the repository-owned line floor and package selection, then rerun the exact offline coverage contract.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-advanced.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
           "id": "ADAPTER-RUST-DOC",
           "tool": "awq-rust-check",
           "version": "1.0.0",
@@ -469,6 +505,75 @@
             "rust-toolchain.toml"
           ],
           "input_mode": "explicit"
+        },
+        {
+          "tool": "awq-rust-advanced-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-advanced-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-advanced-check 1.0.0 (cargo-llvm-cov 0.9.1; cargo-fuzz 0.13.2; cargo-mutants 27.1.0; Rust 1.93.0; nightly-2026-09-01)",
+          "timeout_seconds": 900,
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-FUZZ",
+          "argv": [
+            "awq-rust-advanced-check",
+            "fuzz"
+          ],
+          "tier": "scheduled",
+          "evidence": "property-or-fuzz",
+          "limitation": "This dated-nightly regression executes only the digest-bound seed corpus and fixed run, time, input-length and Linux x86-64 sanitizer bounds; it is not an open-ended campaign or proof of defect absence.",
+          "remediation": "Repair the crashing target, review and add a minimized non-sensitive seed, or deliberately revise the bounded target and resource policy.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "fuzz/Cargo.lock",
+            "fuzz/Cargo.toml",
+            "fuzz/rust-toolchain.toml",
+            "quality/rust-advanced.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "tool": "awq-rust-advanced-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-advanced-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-advanced-check 1.0.0 (cargo-llvm-cov 0.9.1; cargo-fuzz 0.13.2; cargo-mutants 27.1.0; Rust 1.93.0; nightly-2026-09-01)",
+          "timeout_seconds": 900,
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-MUTATION",
+          "argv": [
+            "awq-rust-advanced-check",
+            "mutation"
+          ],
+          "tier": "trusted-host",
+          "evidence": "contract-test",
+          "limitation": "The result covers only the repository-selected packages, files, regex filters and mutation genres under finite single-worker time and resource bounds; surviving unselected mutants and equivalent mutants remain outside the claim.",
+          "remediation": "Strengthen tests to catch each retained sentinel or intentionally review the exact package, file, operator, filter and expected-count policy.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-advanced.json",
+            "rust-toolchain.toml"
+          ]
         },
         {
           "tool": "awq-rust-supply-check",

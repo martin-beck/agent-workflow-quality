@@ -51,6 +51,24 @@ jobs:
             --prefix "${RUNNER_TEMP}/awq-rust-supply-tools" \
             --rust-tools-prefix "${RUNNER_TEMP}/awq-rust-tools"
           echo "${RUNNER_TEMP}/awq-rust-supply-tools/bin" >> "${GITHUB_PATH}"
+      - name: Install checksum-pinned advanced Rust tools
+        run: |
+          uv run python scripts/install_rust_advanced_tools.py \
+            --prefix "${RUNNER_TEMP}/awq-rust-advanced-tools"
+          toolchain="${RUNNER_TEMP}/awq-rust-advanced-tools/rustup/toolchains/nightly-2026-09-01-x86_64-unknown-linux-gnu/bin"
+          env -i \
+            PATH=/usr/bin:/bin \
+            LANG=C.UTF-8 \
+            LC_ALL=C.UTF-8 \
+            TMPDIR="${RUNNER_TEMP}" \
+            CARGO_HOME="${RUNNER_TEMP}/awq-rust-advanced-tools/runtime-cargo" \
+            CARGO_NET_OFFLINE=false \
+            RUSTC="${toolchain}/rustc" \
+            RUSTDOC="${toolchain}/rustdoc" \
+            "${toolchain}/cargo" \
+            fetch --locked \
+            --manifest-path fixtures/conforming/rust-advanced/fuzz/Cargo.toml
+          echo "${RUNNER_TEMP}/awq-rust-advanced-tools/bin" >> "${GITHUB_PATH}"
       - name: Source license headers
         run: uv run python scripts/check_source_headers.py
       - name: Format lint and type
