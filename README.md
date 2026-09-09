@@ -77,8 +77,8 @@ configuration assumptions, and adoption recipes are documented for the
 The exact Linux release recipe creates two independent clean-snapshot builds, requires byte-identical
 wheel and source archives, and publishes a canonical offline-verifiable manifest. See
 [reproducible releases](docs/RELEASES.md) for the build-input pins, commands, hostile checks, and
-trust boundary. Signing, provenance, and verified update metadata remain explicitly assigned to
-their follow-on ARs.
+trust boundary. Authenticated provenance and verified update metadata use the independent trust
+policy described below.
 
 Development is coordinated through
 [Agent Workflow Quality State](https://github.com/martin-beck/agent-workflow-quality-state)
@@ -94,3 +94,10 @@ Release bundles include a deterministic SPDX 3.0.1 inventory. See the
 See [signed provenance and verified updates](docs/PROVENANCE.md) for external trust, immutable
 tag pins, strict data-only candidate updates and atomic lock-only mutation. The legacy unauthenticated
 update path is disabled. Structural bundle integrity is distinct from publisher authentication.
+
+## Consumer promotion
+
+Use the [agent-ready equivalence recipe](docs/PROMOTION.md) to evaluate controlled and live
+native/shared comparisons per gate. The offline evaluator retains native gates, blocks false
+negatives, exposes reviewed false positives, and checks exact runtime, flake, freshness and rollback
+budgets. Consumer-specific required checks can select only reviewed locked requirements.
