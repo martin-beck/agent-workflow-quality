@@ -1,0 +1,1 @@
+{"assumptions":["atomic-interleaved-actions","bounded-monotonic-clock","bounded-monotonic-revisions","honest-review-records","single-policy-owner"],"bounds":{"actors":2,"max_states":20000,"review_ttl":1,"revisions":1,"ticks":2},"kind":"model","model":"review-promotion-v1","mutation":"stale-review","schema_version":1}

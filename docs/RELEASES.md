@@ -56,7 +56,7 @@ Verification has no runtime dependency and performs no network access:
 
 ```sh
 uv run awq --root . release-verify \
-  /new/external/awq-release/agent_workflow_quality-0.16.0.release.json \
+  /new/external/awq-release/agent_workflow_quality-0.17.0.release.json \
   --source \
   --format json
 ```

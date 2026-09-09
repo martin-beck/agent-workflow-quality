@@ -35,7 +35,8 @@ REQUIRED_SCHEMAS = frozenset(
 )
 PROVENANCE_SCHEMA_ASSETS = {"release-provenance.schema.json", "release-trust-policy.schema.json"}
 PROMOTION_SCHEMA_ASSETS = {"consumer-equivalence.schema.json"}
-REQUIRED_SCHEMAS |= PROVENANCE_SCHEMA_ASSETS | PROMOTION_SCHEMA_ASSETS
+FORMAL_SCHEMA_ASSETS = {"assurance-contract.schema.json"}
+REQUIRED_SCHEMAS |= PROVENANCE_SCHEMA_ASSETS | PROMOTION_SCHEMA_ASSETS | FORMAL_SCHEMA_ASSETS
 SBOM_SCHEMA_ASSETS = frozenset(
     {
         "release-license-inventory.schema.json",
@@ -211,7 +212,10 @@ def _zip_members(path: Path, epoch: int | None) -> Iterator[ArchiveMember]:
 
 
 def _required_schemas(
-    require_sbom_assets: bool, require_provenance_assets: bool, require_promotion_assets: bool
+    require_sbom_assets: bool,
+    require_provenance_assets: bool,
+    require_promotion_assets: bool,
+    require_formal_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
@@ -220,6 +224,8 @@ def _required_schemas(
         required_schemas = required_schemas - PROVENANCE_SCHEMA_ASSETS
     if not require_promotion_assets:
         required_schemas = required_schemas - PROMOTION_SCHEMA_ASSETS
+    if not require_formal_assets:
+        required_schemas = required_schemas - FORMAL_SCHEMA_ASSETS
     return required_schemas
 
 
@@ -230,10 +236,14 @@ def inspect_archive(
     require_sbom_assets: bool = True,
     require_provenance_assets: bool = True,
     require_promotion_assets: bool = True,
+    require_formal_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
-        require_sbom_assets, require_provenance_assets, require_promotion_assets
+        require_sbom_assets,
+        require_provenance_assets,
+        require_promotion_assets,
+        require_formal_assets,
     )
     try:
         if path.name.endswith(".tar.gz"):
@@ -704,6 +714,7 @@ def _verify_artifact(
                 >= (0, 15, 0),
                 require_promotion_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 16, 0),
+                require_formal_assets=tuple(int(part) for part in version.split(".")) >= (0, 17, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

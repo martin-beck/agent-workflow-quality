@@ -101,3 +101,10 @@ Use the [agent-ready equivalence recipe](docs/PROMOTION.md) to evaluate controll
 native/shared comparisons per gate. The offline evaluator retains native gates, blocks false
 negatives, exposes reviewed false positives, and checks exact runtime, flake, freshness and rollback
 budgets. Consumer-specific required checks can select only reviewed locked requirements.
+
+## Bounded formal and refactoring assurance
+
+See [the formal assurance contract](docs/FORMAL_ASSURANCE.md) for the executable finite-state model,
+reviewed counterexamples and strict before/after evidence. These checks do not establish
+implementation refinement, liveness or universal behavior preservation. Consumer-native gates
+remain unchanged; broader models and language-specific collectors require separate child tasks.

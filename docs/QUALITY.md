@@ -67,3 +67,10 @@ negative cases, live observation windows, review expiry and exact integer budget
 gate remains retained. Promote shared gates independently through consumer-owned review; a green
 shadow workflow is not equivalence evidence. The strict check requirement selector runs only
 explicit locked, tier-eligible requirements and fails on unknown, duplicate or incomplete selection.
+
+## Bounded formal and refactoring assurance
+
+See [the formal assurance contract](FORMAL_ASSURANCE.md) for the executable finite-state model,
+reviewed counterexamples and strict before/after evidence. These checks do not establish
+implementation refinement, liveness or universal behavior preservation. Consumer-native gates
+remain unchanged; broader models and language-specific collectors require separate child tasks.
