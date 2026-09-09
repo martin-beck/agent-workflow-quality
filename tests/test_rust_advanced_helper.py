@@ -250,7 +250,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
             helper._coverage_result(self.root, self.policy, "a" * 64, scratch)
 
     def test_corpus_and_fuzz_execution_are_digest_bounded(self) -> None:
-        seed = self.write("fuzz/corpus/classify/seed", b"x\n")
+        seed = self.write("fuzz/corpus/classify/seed.txt", b"x\n")
         policy = self.policy["fuzz"]
         policy["targets"][0]["seeds"][0]["sha256"] = hashlib.sha256(seed.read_bytes()).hexdigest()
         scratch = self.root / "copy"

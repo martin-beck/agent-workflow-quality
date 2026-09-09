@@ -66,7 +66,7 @@ class RustAdvancedHelperFailureTests(unittest.TestCase):
             helper._mutation({**mutation, "include_re": "^[.$"})
 
     def test_fuzz_build_executable_and_runtime_failures(self) -> None:
-        seed = self.root / "fuzz/corpus/classify/seed"
+        seed = self.root / "fuzz/corpus/classify/seed.txt"
         seed.parent.mkdir(parents=True)
         seed.write_bytes(b"x\n")
         self.config["fuzz"]["targets"][0]["seeds"][0]["sha256"] = hashlib.sha256(
@@ -108,7 +108,7 @@ class RustAdvancedHelperFailureTests(unittest.TestCase):
                 helper._fuzz_result(self.root, self.config, "a" * 64, scratch)
 
     def test_corpus_and_mutation_report_limits(self) -> None:
-        seed = self.root / "fuzz/corpus/classify/seed"
+        seed = self.root / "fuzz/corpus/classify/seed.txt"
         seed.parent.mkdir(parents=True)
         seed.write_bytes(b"xx")
         policy = self.config["fuzz"]
