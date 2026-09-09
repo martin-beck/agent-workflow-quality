@@ -33,8 +33,11 @@ mappings before the CLI or documentation generator can expose them.
 `awq.registry` loads and validates the embedded contracts. `awq.project` owns confined repository
 discovery and deterministic policy/lock generation. `awq.checks` implements shared, credential-free
 checks. `awq.adapters` validates pinned execution contracts and returns content-minimized results.
-`awq.commands` creates plans, evidence, policy diffs and doctor results. `awq.cli` is a thin stable
-command-line boundary with text and JSON output.
+`awq.commands` creates plans, evidence, policy diffs and doctor results. `awq.release` validates
+canonical release manifests and bounded distribution archives without runtime dependencies or
+network access. `awq.cli` is a thin stable command-line boundary with text and JSON output. The
+separate release builder materializes two tracked Git snapshots and binds byte-identical outputs to
+the exact source, registries, and reviewed build dependency closure.
 
 The adapter runner is an execution boundary, not a process sandbox. It does not initiate network
 access or forward credentials, but a configured third-party executable remains trusted project

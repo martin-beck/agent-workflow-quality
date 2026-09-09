@@ -16,6 +16,7 @@ from typing import Any
 from awq import commands
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
+from awq.release import ReleaseError
 
 
 def _format_argument(parser: argparse.ArgumentParser) -> None:
@@ -61,6 +62,10 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("base")
     item.add_argument("head")
     _format_argument(item)
+    item = sub.add_parser("release-verify")
+    item.add_argument("manifest", type=Path)
+    item.add_argument("--source", action="store_true")
+    _format_argument(item)
     return result
 
 
@@ -80,6 +85,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "adapter-catalog": lambda: commands.adapter_catalog(args.family),
         "hosting-observe": lambda: commands.hosting_observation(args.repository),
         "policy-diff": lambda: commands.policy_diff(root, args.base, args.head),
+        "release-verify": lambda: commands.release_verify(root, args.manifest, args.source),
     }
     return table[args.command]()
 
@@ -100,6 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     except (
         ProjectError,
         RegistryError,
+        ReleaseError,
         json.JSONDecodeError,
         OSError,
         subprocess.SubprocessError,

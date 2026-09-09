@@ -82,6 +82,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/schemas/release-manifest.schema.json", b"{}\n"),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
         )
@@ -93,6 +94,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/schemas/release-manifest.schema.json", b"{}\n"),
             ],
         )
         self.assertEqual([], inspect_archive(wheel))
@@ -115,6 +117,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/schemas/release-manifest.schema.json", b"{}\n"),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
@@ -130,6 +133,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/schemas/release-manifest.schema.json", b"{}\n"),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
@@ -153,6 +157,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/schemas/release-manifest.schema.json", b"{}\n"),
             ],
         )
         self.assertTrue(
@@ -164,6 +169,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
+                ("awq/schemas/release-manifest.schema.json", b"{}\n"),
                 ("other/data/adapter_catalog.json", b"{}\n"),
             ],
         )

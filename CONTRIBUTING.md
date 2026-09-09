@@ -34,8 +34,16 @@ uv run coverage report --fail-under=95
 uv run python scripts/generate_catalog.py --check
 uv run python -m awq --root . doctor --format json
 uv run python -m awq --root . check --tier pr --format json
-uv build
-uv run python scripts/verify_distribution.py dist/*
+release_python="$(uv python find 3.13.15)"
+PYTHONPATH=src "$release_python" scripts/build_release.py \
+  --source "$PWD" \
+  --output /new/external/awq-release \
+  --scratch /new/external/scratch \
+  --uv-cache /new/external/uv-cache \
+  --uv "$(command -v uv)"
+uv run awq --root . release-verify \
+  /new/external/awq-release/agent_workflow_quality-0.13.0.release.json \
+  --source --format json
 ```
 
 The source-header gate checks every tracked Python and shell source, including the extensionless

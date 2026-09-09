@@ -41,9 +41,12 @@ errors. Rust tests cover exact direct tool paths, proxy-free runtime configurati
 commands, independent native equivalence, format/lint/compile/doc/lock/test failures, dependency
 cache misses, bounded scratch space, manifest consumption, and atomic installer publication. Android/JVM tests additionally cover pinned JDK and Gradle acquisition, exact wrapper and repository policy, copied-lock integrity, process-tree deadlines, hostile XML, and fresh source/report-bound device evidence.
 
-Source and wheel archives are inspected without extraction for unsafe paths, development metadata
-that can expose private paths, duplicate or non-regular members, bounded size, required packaged
-adapter schemas, and the immutable adapter catalog data.
+Source and wheel archives are inspected without extraction for unsafe paths, development metadata,
+duplicate or non-regular members, bounded size, required packaged schemas, immutable catalog data,
+private-content signatures, and canonical release timestamps, permissions, ownership and compression
+metadata. A canonical manifest binds each artifact to the exact source commit/tree/epoch, public
+registries, and hash-complete build dependency closure. The release builder compares independent
+tracked-source snapshots byte for byte and publishes with atomic no-replace semantics.
 
 Tool and policy updates are explicit semantic diffs. Exceptions require an identifier, owner, reason,
 narrow requirement scope, creation and expiry timestamps, compensating evidence and review reference.
