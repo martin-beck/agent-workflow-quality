@@ -63,8 +63,9 @@ class CommandTests(unittest.TestCase):
     def test_doctor_update_and_expired_exception(self) -> None:
         self.initialize()
         self.assertEqual("pass", commands.doctor(self.repo.root)["status"])
-        self.assertFalse(commands.update(self.repo.root, __version__, True)["changed"])
-        with self.assertRaisesRegex(ProjectError, "install"):
+        with self.assertRaisesRegex(ProjectError, "verified local bundle"):
+            commands.update(self.repo.root, __version__, True)
+        with self.assertRaisesRegex(ProjectError, "verified local bundle"):
             commands.update(self.repo.root, "9.9.9", False)
         policy, _ = load_project(self.repo.root)
         policy["exceptions"] = [

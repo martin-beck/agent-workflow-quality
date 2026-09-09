@@ -200,8 +200,10 @@ class FailurePathTests(unittest.TestCase):
             {"version-drift", "registry-drift", "lock-drift"},
             {item["code"] for item in result["findings"]},
         )
-        updated = commands.update(self.repo.root, __version__, False)
-        self.assertTrue(updated["changed"])
+        before = (self.repo.root / "quality/awq.lock.json").read_bytes()
+        with self.assertRaisesRegex(ProjectError, "verified local bundle"):
+            commands.update(self.repo.root, __version__, False)
+        self.assertEqual(before, (self.repo.root / "quality/awq.lock.json").read_bytes())
 
 
 if __name__ == "__main__":

@@ -230,7 +230,7 @@ def _validate_adapter_family(
     return identifier, family
 
 
-def _validate_adapter_catalog(value: object) -> dict[str, dict[str, Any]]:
+def validate_adapter_catalog(value: object) -> dict[str, dict[str, Any]]:
     """Validate the closed, immutable built-in adapter catalog."""
     if not isinstance(value, dict) or set(value) != CATALOG_KEYS:
         raise AdapterError("adapter catalog has unknown or missing fields")
@@ -249,12 +249,15 @@ def _validate_adapter_catalog(value: object) -> dict[str, dict[str, Any]]:
     return families
 
 
+_validate_adapter_catalog = validate_adapter_catalog
+
+
 def load_adapter_catalog() -> tuple[dict[str, dict[str, Any]], str]:
     """Load reviewed adapter families and their canonical digest."""
     document = json.loads(
         resource_files("awq.data").joinpath("adapter_catalog.json").read_text(encoding="utf-8")
     )
-    families = _validate_adapter_catalog(document)
+    families = validate_adapter_catalog(document)
     return families, hashlib.sha256(canonical_bytes(document)).hexdigest()
 
 

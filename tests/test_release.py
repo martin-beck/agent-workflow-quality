@@ -178,6 +178,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         self.assertEqual(
             {
                 "artifacts",
+                "authentication",
                 "manifest_sha256",
                 "schema_version",
                 "source_commit",
@@ -435,10 +436,13 @@ class ReleaseVerificationTests(unittest.TestCase):
             nested.mkdir()
             with self.assertRaisesRegex(ReleaseError, "worktree root"):
                 source_identity(nested)
-            with mock.patch("awq.release.subprocess.run") as run:
-                run.return_value = subprocess_result(1, b"private output")
-                with self.assertRaisesRegex(ReleaseError, "unavailable"):
-                    source_identity(repository.root)
+            with (
+                mock.patch(
+                    "awq.trust.git", side_effect=ReleaseError("source Git identity is unavailable")
+                ),
+                self.assertRaisesRegex(ReleaseError, "unavailable"),
+            ):
+                source_identity(repository.root)
         finally:
             repository.close()
 

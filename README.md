@@ -88,3 +88,9 @@ using the independently versioned
 
 Release bundles include a deterministic SPDX 3.0.1 inventory. See the
 [SBOM profile and offline verification contract](docs/SBOM.md).
+
+## Authenticated release updates
+
+See [signed provenance and verified updates](docs/PROVENANCE.md) for external trust, immutable
+tag pins, strict data-only candidate updates and atomic lock-only mutation. The legacy unauthenticated
+update path is disabled. Structural bundle integrity is distinct from publisher authentication.

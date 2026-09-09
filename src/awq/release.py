@@ -9,7 +9,6 @@ import hashlib
 import json
 import re
 import stat
-import subprocess
 import tarfile
 import time
 import tomllib
@@ -34,6 +33,8 @@ REQUIRED_SCHEMAS = frozenset(
         "spdx-3.0.1.schema.zip",
     }
 )
+PROVENANCE_SCHEMA_ASSETS = {"release-provenance.schema.json", "release-trust-policy.schema.json"}
+REQUIRED_SCHEMAS |= PROVENANCE_SCHEMA_ASSETS
 SBOM_SCHEMA_ASSETS = frozenset(
     {
         "release-license-inventory.schema.json",
@@ -209,12 +210,18 @@ def _zip_members(path: Path, epoch: int | None) -> Iterator[ArchiveMember]:
 
 
 def inspect_archive(
-    path: Path, *, source_date_epoch: int | None = None, require_sbom_assets: bool = True
+    path: Path,
+    *,
+    source_date_epoch: int | None = None,
+    require_sbom_assets: bool = True,
+    require_provenance_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
     )
+    if not require_provenance_assets:
+        required_schemas = required_schemas - PROVENANCE_SCHEMA_ASSETS
     try:
         if path.name.endswith(".tar.gz"):
             members = _tar_members(path, source_date_epoch)
@@ -389,17 +396,38 @@ def _validate_sbom_manifest(manifest: dict[str, Any]) -> None:
         raise ReleaseError("SBOM release artifact is absent or misnamed")
 
 
+def _validate_provenance_manifest(manifest: dict[str, Any]) -> None:
+    item = _exact(
+        manifest["provenance"], {"name", "media_type", "size", "sha256"}, "provenance binding"
+    )
+    if (
+        item["name"] != f"agent_workflow_quality-{manifest['version']}.provenance.json"
+        or item["media_type"] != ARTIFACT_MEDIA["provenance"]
+    ):
+        raise ReleaseError("provenance identity is invalid")
+    _integer(item["size"], 1, 1_000_000, "provenance size")
+    _text(item["sha256"], SHA256, "provenance digest")
+    _text(manifest["trust_policy_sha256"], SHA256, "trust policy digest")
+    if {record["kind"] for record in manifest["artifacts"]} != {"wheel", "sdist", "sbom"}:
+        raise ReleaseError("v3 payload artifacts must be exactly wheel, sdist and SBOM")
+
+
 def validate_manifest(value: object) -> dict[str, Any]:
     """Validate exact release-manifest semantics without third-party packages."""
     manifest = _exact(
         value,
         {"schema_version", "package", "version", "source", "builder", "registries", "artifacts"}
-        | ({"sbom"} if isinstance(value, dict) and value.get("schema_version") == 2 else set()),
+        | ({"sbom"} if isinstance(value, dict) and value.get("schema_version") in {2, 3} else set())
+        | (
+            {"provenance", "trust_policy_sha256"}
+            if isinstance(value, dict) and value.get("schema_version") == 3
+            else set()
+        ),
         "release manifest",
     )
     if (
         type(manifest["schema_version"]) is not int
-        or manifest["schema_version"] not in {1, 2}
+        or manifest["schema_version"] not in {1, 2, 3}
         or manifest["package"] != "agent-workflow-quality"
     ):
         raise ReleaseError("release identity is invalid")
@@ -408,8 +436,10 @@ def validate_manifest(value: object) -> dict[str, Any]:
     _validate_builder(manifest["builder"])
     _validate_registries(manifest["registries"])
     _validate_artifacts(manifest["artifacts"], version)
-    if manifest["schema_version"] == 2:
+    if manifest["schema_version"] in {2, 3}:
         _validate_sbom_manifest(manifest)
+    if manifest["schema_version"] == 3:
+        _validate_provenance_manifest(manifest)
     return manifest
 
 
@@ -460,20 +490,72 @@ def build_constraints_digest(root: Path) -> str:
 
 
 def _git(root: Path, *arguments: str) -> str:
-    completed = subprocess.run(  # noqa: S603 - absolute Git with fixed internal argv.
-        ["/usr/bin/git", "-C", str(root), *arguments],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-        timeout=30,
-    )
-    if completed.returncode or len(completed.stdout) > 4096:
+    from awq.trust import git
+
+    output = git(root, *arguments)
+    if len(output) > 4096:
         raise ReleaseError("source Git identity is unavailable")
     try:
-        return completed.stdout.decode("ascii").strip()
+        return output.decode("ascii").strip()
     except UnicodeError as error:
         raise ReleaseError("source Git identity is invalid") from error
+
+
+def _tracked_member(root: Path, entry: bytes) -> tuple[bytes, int]:
+    from awq.trust import read_file
+
+    header, separator, name_raw = entry.partition(b"\t")
+    fields = header.split(b" ")
+    if (
+        not separator
+        or len(fields) != 3
+        or fields[0] not in {b"100644", b"100755"}
+        or fields[1] != b"blob"
+    ):
+        raise ReleaseError("source tracked member kind is unsupported")
+    try:
+        name = name_raw.decode("utf-8")
+    except UnicodeError as error:
+        raise ReleaseError("source tracked path is invalid") from error
+    path = PurePosixPath(name)
+    if (
+        not name
+        or path.is_absolute()
+        or ".." in path.parts
+        or path.as_posix() != name
+        or "\\" in name
+    ):
+        raise ReleaseError("source tracked path is unsafe")
+    raw = read_file(root / name, MAX_MEMBER_BYTES)
+    observed = (
+        hashlib.sha1(f"blob {len(raw)}\0".encode() + raw, usedforsecurity=False)
+        .hexdigest()
+        .encode()
+    )
+    executable = bool((root / name).stat().st_mode & 0o111)
+    if observed != fields[2] or executable != (fields[0] == b"100755"):
+        raise ReleaseError("source has tracked changes")
+    return fields[0] + b" " + fields[2] + b" 0\t" + name_raw + b"\0", len(raw)
+
+
+def _tracked_source(root: Path) -> None:
+    """Compare raw Git/index/worktree identities without evaluating checkout filters."""
+    from awq.trust import git
+
+    tree_raw = git(root, "ls-tree", "-r", "-z", "--full-tree", "HEAD")
+    tree = tree_raw.split(b"\0")
+    if tree[-1] != b"" or not 1 < len(tree) <= MAX_MEMBERS + 1:
+        raise ReleaseError("source tracked member count is invalid")
+    expected_index: list[bytes] = []
+    total = 0
+    for entry in tree[:-1]:
+        index_entry, size = _tracked_member(root, entry)
+        total += size
+        if total > MAX_TOTAL_BYTES:
+            raise ReleaseError("source tracked content exceeds its aggregate bound")
+        expected_index.append(index_entry)
+    if git(root, "ls-files", "--stage", "-z") != b"".join(expected_index):
+        raise ReleaseError("source has tracked changes in its index")
 
 
 def source_identity(root: Path) -> dict[str, object]:
@@ -484,8 +566,7 @@ def source_identity(root: Path) -> dict[str, object]:
     observed_root = Path(_git(resolved, "rev-parse", "--show-toplevel")).resolve(strict=True)
     if observed_root != resolved:
         raise ReleaseError("source is not the Git worktree root")
-    if _git(resolved, "status", "--porcelain=v1", "--untracked-files=no"):
-        raise ReleaseError("source has tracked changes")
+    _tracked_source(resolved)
     commit = _text(_git(resolved, "rev-parse", "HEAD"), GIT_ID, "source commit")
     tree = _text(_git(resolved, "rev-parse", "HEAD^{tree}"), GIT_ID, "source tree")
     epoch_text = _git(resolved, "show", "-s", "--format=%ct", "HEAD")
@@ -606,6 +687,8 @@ def _verify_artifact(
                 path,
                 source_date_epoch=source_date_epoch,
                 require_sbom_assets=tuple(int(part) for part in version.split(".")) >= (0, 14, 0),
+                require_provenance_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 15, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error
@@ -635,14 +718,37 @@ def _verify_sbom_bundle(bundle: Path, manifest: dict[str, Any], source: Path | N
         raise ReleaseError("SBOM source inputs differ from the checked source")
 
 
+def _verified_sidecars(
+    manifest_path: Path, manifest: dict[str, Any], source: Path | None
+) -> set[str]:
+    bundle = manifest_path.parent
+    declared: set[str] = set()
+    if manifest["schema_version"] == 3:
+        from awq.provenance import verify
+        from awq.trust import read_file
+
+        declared.add(manifest["provenance"]["name"])
+        verify(bundle, manifest, source)
+        signature = manifest_path.with_name(manifest_path.name + ".sig")
+        if signature.exists() or signature.is_symlink():
+            if not read_file(signature, 8192):
+                raise ReleaseError("release signature sidecar is empty")
+            declared.add(signature.name)
+    return declared
+
+
 def verify_release(manifest_path: Path, source: Path | None = None) -> dict[str, Any]:
     """Verify a complete local release bundle and optional source tree offline."""
     manifest = load_manifest(manifest_path)
-    if (
-        tuple(int(part) for part in manifest["version"].split(".")) >= (0, 14, 0)
-        and manifest["schema_version"] != 2
-    ):
+    if tuple(int(part) for part in manifest["version"].split(".")) >= (0, 14, 0) and manifest[
+        "schema_version"
+    ] not in {2, 3}:
         raise ReleaseError("this release requires an SPDX SBOM")
+    if (
+        tuple(int(part) for part in manifest["version"].split(".")) >= (0, 15, 0)
+        and manifest["schema_version"] != 3
+    ):
+        raise ReleaseError("this release requires signed-update provenance")
     bundle = manifest_path.parent
     if bundle.is_symlink() or not bundle.is_dir():
         raise ReleaseError("release bundle is unavailable")
@@ -657,8 +763,9 @@ def verify_release(manifest_path: Path, source: Path | None = None) -> dict[str,
         )
         for item in manifest["artifacts"]
     ]
-    if manifest["schema_version"] == 2:
+    if manifest["schema_version"] in {2, 3}:
         _verify_sbom_bundle(bundle, manifest, source)
+    declared |= _verified_sidecars(manifest_path, manifest, source)
     entries = list(bundle.iterdir())
     if len(entries) > MAX_ARTIFACTS + 1 or {entry.name for entry in entries} != declared:
         raise ReleaseError("release bundle contains undeclared entries")
@@ -675,5 +782,6 @@ def verify_release(manifest_path: Path, source: Path | None = None) -> dict[str,
         "version": manifest["version"],
         "source_commit": manifest["source"]["commit"],
         "manifest_sha256": sha256_file(manifest_path),
+        "authentication": "not-checked",
         "artifacts": results,
     }

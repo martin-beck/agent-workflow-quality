@@ -181,6 +181,13 @@ def main() -> int:
         format_checker=jsonschema.FormatChecker(),
     ).validate(sbom_document)
     validate(sbom_manifest, "release-manifest.schema.json")
+    provenance_fixture = ROOT / "fixtures/conforming/release-provenance"
+    for name, schema_name in [
+        ("manifest.json", "release-manifest.schema.json"),
+        ("trust-policy.json", "release-trust-policy.schema.json"),
+        ("statement.json", "release-provenance.schema.json"),
+    ]:
+        validate(json.loads((provenance_fixture / name).read_bytes()), schema_name)
     validate(json.loads(sbom_inputs[sbom.LICENSE_PATH]), "release-license-inventory.schema.json")
     sbom.verify(
         (ROOT / "fixtures/conforming/release-sbom/document.spdx.json").read_bytes(),

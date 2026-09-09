@@ -53,3 +53,9 @@ SPDX release graphs must match canonical regeneration and the pinned official sc
 Tool and policy updates are explicit semantic diffs. Exceptions require an identifier, owner, reason,
 narrow requirement scope, creation and expiry timestamps, compensating evidence and review reference.
 Expired or unknown exceptions fail closed.
+
+## Authenticated release updates
+
+See [signed provenance and verified updates](PROVENANCE.md) for external trust, immutable
+tag pins, strict data-only candidate updates and atomic lock-only mutation. The legacy unauthenticated
+update path is disabled. Structural bundle integrity is distinct from publisher authentication.

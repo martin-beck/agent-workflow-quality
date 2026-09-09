@@ -397,6 +397,7 @@ def _stage_bundle(
     output: Path,
     distributions: dict[str, Path],
     manifest: dict[str, Any],
+    trust_policy_sha256: str | None = None,
 ) -> dict[str, Any]:
     stage = Path(tempfile.mkdtemp(prefix=f".{output.name}-", dir=output.parent))
     published = False
@@ -407,6 +408,10 @@ def _stage_bundle(
             target.chmod(0o644)
         if tuple(int(part) for part in manifest["version"].split(".")) >= (0, 14, 0):
             manifest = _add_sbom(source, stage, manifest)
+        if tuple(int(part) for part in manifest["version"].split(".")) >= (0, 15, 0):
+            from awq.provenance import add
+
+            manifest = add(source, stage, manifest, trust_policy_sha256 or "")
         manifest_path = stage / f"agent_workflow_quality-{manifest['version']}.release.json"
         manifest_path.write_bytes(canonical_bytes(manifest))
         manifest_path.chmod(0o644)
@@ -426,6 +431,7 @@ def build_release(
     scratch: Path,
     cache: Path,
     uv_path: Path,
+    trust_policy_sha256: str | None = None,
 ) -> dict[str, Any]:
     """Build twice, compare bytes, create a manifest and publish atomically."""
     source = _exact_directory(source, "source")
@@ -485,7 +491,7 @@ def build_release(
             registries=registry_digests(source),
             artifacts=_artifact_records(first),
         )
-        return _stage_bundle(source, output, first, manifest)
+        return _stage_bundle(source, output, first, manifest, trust_policy_sha256)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -496,6 +502,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--scratch", type=Path, required=True)
     parser.add_argument("--uv-cache", type=Path, required=True)
     parser.add_argument("--uv", type=Path, required=True)
+    parser.add_argument("--trust-policy-sha256")
     args = parser.parse_args(argv)
     try:
         result = build_release(
@@ -504,6 +511,7 @@ def main(argv: list[str] | None = None) -> int:
             args.scratch,
             args.uv_cache,
             args.uv,
+            args.trust_policy_sha256,
         )
     except (
         BuildError,

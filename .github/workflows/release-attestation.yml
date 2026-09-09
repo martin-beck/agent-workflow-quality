@@ -1,0 +1,53 @@
+name: Release attestation
+
+"on":
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  attest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      AWQ_TRUST_POLICY_SHA256: ${{ vars.AWQ_RELEASE_TRUST_POLICY_SHA256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.12.8"
+          enable-cache: true
+          cache-dependency-glob: config/release-build-constraints.txt
+      - name: Acquire exact build inputs
+        run: |
+          uv python install 3.13.15
+          uv venv "${RUNNER_TEMP}/release-inputs" --python 3.13.15
+          uv pip install --python "${RUNNER_TEMP}/release-inputs/bin/python" \
+            --require-hashes -r config/release-build-constraints.txt
+      - name: Rebuild deterministic unsigned subjects
+        run: |
+          release_python="$(uv python find 3.13.15)"
+          PYTHONPATH=src "${release_python}" scripts/build_release.py \
+            --source "${PWD}" --output "${RUNNER_TEMP}/release" \
+            --scratch "${RUNNER_TEMP}" --uv-cache "$(uv cache dir)" \
+            --uv "$(command -v uv)" --trust-policy-sha256 "${AWQ_TRUST_POLICY_SHA256}"
+      - name: Attest exact CI outputs
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: ${{ runner.temp }}/release/*
+      - name: Retain exact attested outputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: unsigned-release-subjects
+          path: ${{ runner.temp }}/release/*
+          retention-days: 7
+          if-no-files-found: error
