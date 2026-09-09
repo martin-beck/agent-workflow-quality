@@ -10,6 +10,7 @@ families:
 - AR-0015: JSON, YAML, and JSON Schema.
 - AR-0020: pinned Rust stable formatting, Clippy, tests, documentation, and builds.
 - AR-0021: pinned Rust dependency policy, advisory, and public API compatibility.
+- AR-0019: pinned Android/JVM integrity, Gradle gates, and device-evidence boundaries.
 
 No family adapter is enabled merely by upgrading AWQ. A project explicitly checks its contract into
 the `adapters` array in `quality/awq.json`.
@@ -29,7 +30,7 @@ repository policy; they are never enabled automatically. See the
 [Python adapter family](PYTHON_ADAPTERS.md), [shell adapter family](SHELL_ADAPTERS.md),
 [documentation adapter family](DOCUMENTATION_ADAPTERS.md),
 [schema adapter family](SCHEMA_ADAPTERS.md), and
-[Rust adapter family](RUST_ADAPTERS.md) for exact pins and configuration contracts.
+[Rust adapter family](RUST_ADAPTERS.md), and [Android/JVM adapter family](ANDROID_JVM_ADAPTERS.md) for exact pins and configuration contracts.
 
 ## Contract
 
