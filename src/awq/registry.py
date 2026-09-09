@@ -102,6 +102,13 @@ def load_standards() -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any
     requirements, _, _ = load_registry()
     source_doc = _read("control_sources.json")
     mapping_doc = _read("requirement_mappings.json")
+    return validate_standards_documents(requirements, source_doc, mapping_doc)
+
+
+def validate_standards_documents(
+    requirements: dict[str, dict[str, Any]], source_doc: dict[str, Any], mapping_doc: dict[str, Any]
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]], str]:
+    """Validate authenticated standards data without importing candidate code."""
     if set(source_doc) != {"schema_version", "sources"}:
         raise RegistryError("control source registry has unknown or missing fields")
     if set(mapping_doc) != {"schema_version", "mappings"}:

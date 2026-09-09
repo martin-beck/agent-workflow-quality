@@ -1,7 +1,8 @@
 # Reproducible releases
 
 AWQ release recipe `awq-release-v1` produces a wheel, source archive, SPDX 3.0.1 SBOM, and canonical
-release manifest. It is intentionally narrow:
+release manifest and non-circular in-toto provenance. An external operator signs the final manifest.
+It is intentionally narrow:
 
 - Linux x86-64
 - CPython 3.13.15
@@ -38,7 +39,8 @@ PYTHONPATH=src "$release_python" scripts/build_release.py \
   --output /new/external/awq-release \
   --scratch /new/external/scratch \
   --uv-cache "$UV_CACHE_DIR" \
-  --uv "$(command -v uv)"
+  --uv "$(command -v uv)" \
+  --trust-policy-sha256 REVIEWED_CANONICAL_POLICY_SHA256
 ```
 
 The build subprocess receives a minimal environment, no credentials or proxy variables, exact
@@ -54,7 +56,7 @@ Verification has no runtime dependency and performs no network access:
 
 ```sh
 uv run awq --root . release-verify \
-  /new/external/awq-release/agent_workflow_quality-0.14.0.release.json \
+  /new/external/awq-release/agent_workflow_quality-0.15.0.release.json \
   --source \
   --format json
 ```
@@ -66,12 +68,14 @@ permissions or ownership, and credential or machine-path signatures.
 
 Schema-version-2 manifests bind the mandatory SPDX SBOM and its inventory/schema digests.
 See [the SBOM profile](SBOM.md) for exact coverage, origins, license review and limitations.
-Unique provenance and signature artifact kinds remain reserved for AR-0025.
+Version 3 adds a separate provenance identity and a manifest-bound trust-policy digest.
+See [signed provenance and updates](PROVENANCE.md) for the exact non-circular construction.
 
 ## Trust boundary
 
-A matching SHA-256 proves local byte identity against the manifest; it does not authenticate who
-published the manifest. Until signed provenance and trust-root verification land in AR-0025, obtain
-the manifest from the public GitHub release associated with the signed tag and verify that tag using
-the repository's reviewed SSH allowed-signers file. Never treat an unsigned manifest alone as
-publisher authenticity, SLSA provenance, certification, or proof that the build host was uncompromised.
+A matching SHA-256 proves byte identity, not publisher authenticity. Structural release-verify
+reports authentication not-checked. Use release-authenticate or update with independently provisioned
+external trust, the local signed manifest and bundle, exact source and independently reviewed
+annotated tag-object pin. See [the trust and rotation procedure](PROVENANCE.md).
+Clone-local allowed_signers is not a bootstrap authority. Optional GitHub attestations describe only
+the exact hosted build outputs; offline verification does not claim to validate those online records.

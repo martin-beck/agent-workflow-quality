@@ -20,7 +20,7 @@ from unittest import mock
 
 import jsonschema
 
-from awq import sbom
+from awq import provenance, sbom
 from awq.cli import main as cli_main
 from awq.release import (
     BUILD_CONSTRAINTS_PATH,
@@ -61,7 +61,7 @@ class SbomTests(unittest.TestCase):
         nodes = self.document()["@graph"]
         packages = {node["name"]: node for node in nodes if node["type"] == "software_Package"}
         self.assertEqual(31, len(packages))
-        self.assertEqual("0.14.0", packages["agent-workflow-quality"]["software_packageVersion"])
+        self.assertEqual("0.15.0", packages["agent-workflow-quality"]["software_packageVersion"])
         self.assertTrue(
             packages["arrow"]["software_downloadLocation"].startswith(
                 "https://files.pythonhosted.org/packages/"
@@ -184,7 +184,7 @@ class SbomTests(unittest.TestCase):
             (b'registry = "https://pypi.org/simple"', b'registry = "http://pypi.org/simple"'),
             (b'name = "arrow"', b'name = "../arrow"'),
             (b'version = "1.4.0"', b'version = "not-a-version"'),
-            (b'version = "0.14.0"', b'version = "0.13.0"'),
+            (b'version = "0.15.0"', b'version = "0.13.0"'),
             (b"sha256:", b"md5:"),
         ):
             self.assertIn(old, original)
@@ -252,17 +252,17 @@ class SbomTests(unittest.TestCase):
             path = root / "source.tar.gz"
             with tarfile.open(path, "w:gz") as archive:
                 for name, raw in self.inputs.items():
-                    member = tarfile.TarInfo("agent_workflow_quality-0.14.0/" + name)
+                    member = tarfile.TarInfo("agent_workflow_quality-0.15.0/" + name)
                     member.size = len(raw)
                     archive.addfile(member, io.BytesIO(raw))
-            self.assertEqual(self.inputs, sbom.archive_inputs(path, "0.14.0"))
+            self.assertEqual(self.inputs, sbom.archive_inputs(path, "0.15.0"))
             with self.assertRaises(ReleaseError):
                 sbom.archive_inputs(path, "0.13.0")
             with mock.patch("awq.sbom.MAX_BYTES", 1), self.assertRaises(ReleaseError):
-                sbom.archive_inputs(path, "0.14.0")
+                sbom.archive_inputs(path, "0.15.0")
             path.write_bytes(b"invalid")
             with self.assertRaises(ReleaseError):
-                sbom.archive_inputs(path, "0.14.0")
+                sbom.archive_inputs(path, "0.15.0")
 
     def test_builder_stages_sbom_and_manifest_without_publishing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -285,9 +285,9 @@ class SbomTests(unittest.TestCase):
             stage = Path(directory)
             manifest = deepcopy(self.manifest)
             epoch = manifest["source"]["source_date_epoch"]
-            files = {**self.inputs, "src/awq/data/adapter_catalog.json": b"{}\n"}
+            files = {**self.inputs, **provenance.source_materials(ROOT)}
             for name in REQUIRED_SCHEMAS:
-                files["schemas/" + name] = packaged_schema_bytes(name)
+                files.setdefault("schemas/" + name, packaged_schema_bytes(name))
             for artifact in manifest["artifacts"]:
                 if artifact["kind"] == "sbom":
                     continue
@@ -295,7 +295,7 @@ class SbomTests(unittest.TestCase):
                 if artifact["kind"] == "sdist":
                     with tarfile.open(path, "w:gz") as archive:
                         for name, raw in files.items():
-                            member = tarfile.TarInfo("agent_workflow_quality-0.14.0/" + name)
+                            member = tarfile.TarInfo("agent_workflow_quality-0.15.0/" + name)
                             member.size = len(raw)
                             member.mtime = epoch
                             member.mode = 0o644
@@ -307,11 +307,12 @@ class SbomTests(unittest.TestCase):
             base = deepcopy(manifest)
             base["artifacts"] = [item for item in base["artifacts"] if item["kind"] != "sbom"]
             manifest = build_release._add_sbom(ROOT, stage, base)
-            manifest_path = stage / "agent_workflow_quality-0.14.0.release.json"
+            manifest = provenance.add(ROOT, stage, manifest, "0" * 64)
+            manifest_path = stage / "agent_workflow_quality-0.15.0.release.json"
             manifest_path.write_bytes(canonical_bytes(manifest))
             result = verify_release(manifest_path)
             self.assertEqual("pass", result["status"])
-            self.assertEqual(2, result["schema_version"])
+            self.assertEqual(3, result["schema_version"])
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 self.assertEqual(
@@ -328,7 +329,7 @@ class SbomTests(unittest.TestCase):
                     ),
                 )
             self.assertEqual(result, json.loads(output.getvalue()))
-            self.assertEqual(2, json.loads(output.getvalue())["schema_version"])
+            self.assertEqual(3, json.loads(output.getvalue())["schema_version"])
             item = next(item for item in manifest["artifacts"] if item["kind"] == "sbom")
             hostile = json.loads((stage / item["name"]).read_bytes())
             hostile["@graph"].pop()
@@ -340,6 +341,8 @@ class SbomTests(unittest.TestCase):
                 verify_release(manifest_path)
             manifest["schema_version"] = 1
             manifest.pop("sbom")
+            manifest.pop("provenance")
+            manifest.pop("trust_policy_sha256")
             manifest_path.write_bytes(canonical_bytes(manifest))
             with self.assertRaisesRegex(ReleaseError, "requires an SPDX"):
                 verify_release(manifest_path)
@@ -357,8 +360,8 @@ class SbomTests(unittest.TestCase):
         )
         entries = {f"awq/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS}
         entries["awq/data/adapter_catalog.json"] = b"{}\n"
-        entries["agent_workflow_quality-0.14.0.dist-info/METADATA"] = (
-            b"Name: agent-workflow-quality\nVersion: 0.14.0\n"
+        entries["agent_workflow_quality-0.15.0.dist-info/METADATA"] = (
+            b"Name: agent-workflow-quality\nVersion: 0.15.0\n"
         )
         with zipfile.ZipFile(path, "w") as archive:
             for name, raw in entries.items():

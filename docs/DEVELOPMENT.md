@@ -32,3 +32,9 @@ Before publication run the commands in `CONTRIBUTING.md`, inspect the full diff,
 signatures, review privacy, and follow the exact recipe and trust limitations in `docs/RELEASES.md`. Product commits reach main through a pull request. Completion requires
 the merged revision, green required workflows, a public immutable release, and a fresh-clone smoke
 test. Consumer integrations use their own coordination projects and retain existing gates.
+
+## Authenticated release updates
+
+See [signed provenance and verified updates](PROVENANCE.md) for external trust, immutable
+tag pins, strict data-only candidate updates and atomic lock-only mutation. The legacy unauthenticated
+update path is disabled. Structural bundle integrity is distinct from publisher authentication.

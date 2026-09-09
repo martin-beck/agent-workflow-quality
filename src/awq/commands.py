@@ -28,7 +28,6 @@ from awq.project import (
     load_json,
     load_project,
     make_policy,
-    policy_paths,
     sha256_json,
     tracked_files,
     validate_lock,
@@ -476,29 +475,11 @@ def hosting_observation(repository: str) -> dict[str, Any]:
     }
 
 
-def update(root: Path, target: str, dry_run: bool) -> dict[str, Any]:
-    """Refresh the lock only for the explicitly installed target release."""
-    if target != __version__:
-        raise ProjectError(
-            f"installed AWQ is {__version__}; install {target} before updating the lock"
-        )
-    policy, old_lock = load_project(root)
-    _, new_lock = make_policy(policy["profiles"])
-    changed = old_lock != new_lock
-    if changed and not dry_run:
-        _, lock_path = policy_paths(root)
-        lock_path.write_text(
-            json.dumps(new_lock, sort_keys=True, separators=(",", ":")) + "\n",
-            encoding="utf-8",
-            newline="\n",
-        )
-    return {
-        "status": "ok",
-        "dry_run": dry_run,
-        "changed": changed,
-        "from": old_lock,
-        "to": new_lock,
-    }
+def update(_root: Path, _target: str, _dry_run: bool) -> dict[str, Any]:
+    """Reject the legacy unauthenticated update entry point."""
+    raise ProjectError(
+        "update requires a verified local bundle, external trust policy and pinned signed tag"
+    )
 
 
 def _git_json(root: Path, revision: str, path: str) -> dict[str, Any]:

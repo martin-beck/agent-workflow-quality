@@ -389,10 +389,39 @@ def _validate_exceptions(exceptions: list[object], governance: dict[str, Any]) -
 
 def validate_lock(value: dict[str, Any]) -> None:
     """Validate the exact lock shape."""
-    if set(value) != LOCK_KEYS or value.get("schema_version") != 1:
+    expected = LOCK_KEYS | ({"receipt"} if value.get("schema_version") == 2 else set())
+    if (
+        set(value) != expected
+        or type(value.get("schema_version")) is not int
+        or value.get("schema_version") not in {1, 2}
+    ):
         raise ProjectError("policy lock has unknown, missing or unsupported fields")
+    if not isinstance(value.get("awq_version"), str) or not re.fullmatch(
+        r"[0-9]+\.[0-9]+\.[0-9]+", value["awq_version"]
+    ):
+        raise ProjectError("policy lock version is invalid")
+    if not isinstance(value.get("registry_sha256"), str) or not re.fullmatch(
+        r"[a-f0-9]{64}", value["registry_sha256"]
+    ):
+        raise ProjectError("policy lock digest is invalid")
+    if value["schema_version"] == 2:
+        from awq.trust import validate_receipt
+
+        validate_receipt(value["receipt"])
+        if value["receipt"]["tag_ref"] != "refs/tags/v" + value["awq_version"]:
+            raise ProjectError("policy lock receipt version differs")
     for field in ("profiles", "requirements"):
-        if not isinstance(value.get(field), list) or len(set(value[field])) != len(value[field]):
+        pattern = (
+            r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}" if field == "profiles" else r"AWQ-[A-Z]+-[0-9]{3}"
+        )
+        if (
+            not isinstance(value.get(field), list)
+            or len(value[field]) > 2000
+            or not all(
+                isinstance(item, str) and re.fullmatch(pattern, item) for item in value[field]
+            )
+            or len(set(value[field])) != len(value[field])
+        ):
             raise ProjectError(f"lock {field} must be a unique list")
 
 

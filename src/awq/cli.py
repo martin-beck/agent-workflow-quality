@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from awq import commands
+from awq import commands, verified_update
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
 from awq.release import ReleaseError
@@ -56,6 +56,7 @@ def parser() -> argparse.ArgumentParser:
     _format_argument(item)
     item = sub.add_parser("update")
     item.add_argument("--to", required=True)
+    _authenticated_arguments(item)
     item.add_argument("--dry-run", action="store_true")
     _format_argument(item)
     item = sub.add_parser("policy-diff")
@@ -66,7 +67,17 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("manifest", type=Path)
     item.add_argument("--source", action="store_true")
     _format_argument(item)
+    item = sub.add_parser("release-authenticate")
+    _authenticated_arguments(item)
+    _format_argument(item)
     return result
+
+
+def _authenticated_arguments(item: argparse.ArgumentParser) -> None:
+    for name in ("manifest", "trust-policy", "source"):
+        item.add_argument("--" + name, type=Path, required=True)
+    item.add_argument("--tag", required=True)
+    item.add_argument("--tag-object", required=True)
 
 
 def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
@@ -79,7 +90,19 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,
         "doctor": lambda: commands.doctor(root),
-        "update": lambda: commands.update(root, args.to, args.dry_run),
+        "update": lambda: verified_update.update(
+            root,
+            args.to,
+            args.dry_run,
+            args.manifest,
+            args.trust_policy,
+            args.source,
+            args.tag,
+            args.tag_object,
+        ),
+        "release-authenticate": lambda: verified_update.verify(
+            args.manifest, args.trust_policy, args.source, args.tag, args.tag_object
+        ),
         "governance": lambda: commands.governance(root),
         "adapter-run": lambda: commands.adapter_run(root, args.contract),
         "adapter-catalog": lambda: commands.adapter_catalog(args.family),
