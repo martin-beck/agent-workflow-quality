@@ -17,7 +17,9 @@ import zipfile
 from pathlib import Path
 
 from awq import __version__
+from awq.release import REQUIRED_SCHEMAS, SBOM_SCHEMA_ASSETS
 from scripts.verify_distribution import DistributionError, inspect_archive, main
+from tests.support import packaged_schema_bytes
 
 
 class DistributionVerificationTests(unittest.TestCase):
@@ -83,6 +85,11 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
+                ("awq/schemas/release-license-inventory.schema.json", b"{}\n"),
+                (
+                    "awq/schemas/spdx-3.0.1.schema.zip",
+                    packaged_schema_bytes("spdx-3.0.1.schema.zip"),
+                ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
         )
@@ -95,6 +102,11 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
+                ("awq/schemas/release-license-inventory.schema.json", b"{}\n"),
+                (
+                    "awq/schemas/spdx-3.0.1.schema.zip",
+                    packaged_schema_bytes("spdx-3.0.1.schema.zip"),
+                ),
             ],
         )
         self.assertEqual([], inspect_archive(wheel))
@@ -118,6 +130,11 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
+                ("awq/schemas/release-license-inventory.schema.json", b"{}\n"),
+                (
+                    "awq/schemas/spdx-3.0.1.schema.zip",
+                    packaged_schema_bytes("spdx-3.0.1.schema.zip"),
+                ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
@@ -134,6 +151,11 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
+                ("awq/schemas/release-license-inventory.schema.json", b"{}\n"),
+                (
+                    "awq/schemas/spdx-3.0.1.schema.zip",
+                    packaged_schema_bytes("spdx-3.0.1.schema.zip"),
+                ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
@@ -158,6 +180,11 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
+                ("awq/schemas/release-license-inventory.schema.json", b"{}\n"),
+                (
+                    "awq/schemas/spdx-3.0.1.schema.zip",
+                    packaged_schema_bytes("spdx-3.0.1.schema.zip"),
+                ),
             ],
         )
         self.assertTrue(
@@ -170,6 +197,11 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
+                ("awq/schemas/release-license-inventory.schema.json", b"{}\n"),
+                (
+                    "awq/schemas/spdx-3.0.1.schema.zip",
+                    packaged_schema_bytes("spdx-3.0.1.schema.zip"),
+                ),
                 ("other/data/adapter_catalog.json", b"{}\n"),
             ],
         )
@@ -182,6 +214,25 @@ class DistributionVerificationTests(unittest.TestCase):
             inspect_archive(bad)
         with self.assertRaisesRegex(DistributionError, "unsupported"):
             inspect_archive(self.root / "archive.txt")
+
+    def test_each_sbom_schema_asset_is_required_in_both_archive_formats(self) -> None:
+        for omitted in sorted(SBOM_SCHEMA_ASSETS):
+            members = [
+                (f"awq/schemas/{name}", packaged_schema_bytes(name))
+                for name in sorted(REQUIRED_SCHEMAS)
+                if name != omitted
+            ]
+            members.append(("awq/data/adapter_catalog.json", b"{}\n"))
+            for archive in (
+                self.wheel("missing-sbom-asset.whl", members),
+                self.tarball("missing-sbom-asset.tar.gz", members),
+            ):
+                with self.subTest(omitted=omitted, archive=archive.suffix):
+                    findings = inspect_archive(archive)
+                    self.assertEqual(
+                        [f"{archive.name}: required packaged schema is missing: {omitted}"],
+                        findings,
+                    )
 
 
 if __name__ == "__main__":

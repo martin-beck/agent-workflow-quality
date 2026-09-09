@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `5ce6475e6f2bda4b3c4d32745076976ca15defe823e63a331933c7781f7dff40`
+Standards registry SHA-256: `4f44c86a008bbde79f1086d3032874da1062c211aac7bbb1459d347d7d1a7462`
 
 ## Pinned sources
 
@@ -17,7 +17,7 @@ Standards registry SHA-256: `5ce6475e6f2bda4b3c4d32745076976ca15defe823e63a33193
 | [POSIX-SHELL](https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html) | `POSIX.1-2024-Issue-8` | Shell input and command-language execution. | POSIX specifies hash-bang input as unspecified; AWQ shebang policy is a portability convention, not POSIX conformance. |
 | [PYTHON-REFERENCE](https://docs.python.org/3.12/reference/) | `3.12.14` | Python 3.12 grammar used by the syntax requirement. | Compilation under one interpreter does not establish semantic conformance across implementations. |
 | [SLSA](https://slsa.dev/spec/v1.2/) | `v1.2` | Selected Build track producer and provenance requirements. | AWQ mappings do not assert a SLSA level. |
-| [SPDX](https://spdx.github.io/spdx-spec/v3.0.1/) | `3.0.1` | Core version-identification property relevant to machine-readable releases. | AWQ policy locks are not SPDX documents or software bills of materials. |
+| [SPDX](https://spdx.github.io/spdx-spec/v3.0.1/) | `3.0.1` | Pinned Core, Software and Simple Licensing graph profile for deterministic release SBOMs. | The AWQ profile is schema-validated evidence, not SPDX trademark certification or complete license compliance analysis. |
 
 ## Profile matrices
 

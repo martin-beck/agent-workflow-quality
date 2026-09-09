@@ -85,3 +85,6 @@ Development is coordinated through
 using the independently versioned
 [Agent Workflow Coordinator](https://github.com/martin-beck/agent-workflow-coordinator).
 
+
+Release bundles include a deterministic SPDX 3.0.1 inventory. See the
+[SBOM profile and offline verification contract](docs/SBOM.md).

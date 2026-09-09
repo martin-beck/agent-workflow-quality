@@ -47,6 +47,8 @@ private-content signatures, and canonical release timestamps, permissions, owner
 metadata. A canonical manifest binds each artifact to the exact source commit/tree/epoch, public
 registries, and hash-complete build dependency closure. The release builder compares independent
 tracked-source snapshots byte for byte and publishes with atomic no-replace semantics.
+SPDX release graphs must match canonical regeneration and the pinned official schema; see
+[the SBOM profile](SBOM.md) for inventory, license, origin and scope boundaries.
 
 Tool and policy updates are explicit semantic diffs. Exceptions require an identifier, owner, reason,
 narrow requirement scope, creation and expiry timestamps, compensating evidence and review reference.

@@ -13,6 +13,7 @@ from typing import Any
 import jsonschema
 from referencing import Registry, Resource
 
+from awq import sbom
 from awq.commands import evidence
 from awq.release import BUILD_CONSTRAINTS_SHA256
 
@@ -168,6 +169,24 @@ def main() -> int:
     validate(adapter, "adapter-contract.schema.json")
     validate(adapter_result, "adapter-result.schema.json")
     validate(release, "release-manifest.schema.json")
+    sbom_inputs = sbom.source_inputs(ROOT)
+    sbom_document = json.loads(
+        (ROOT / "fixtures/conforming/release-sbom/document.spdx.json").read_bytes()
+    )
+    sbom_manifest = json.loads(
+        (ROOT / "fixtures/conforming/release-sbom/manifest.json").read_bytes()
+    )
+    jsonschema.Draft202012Validator(
+        sbom.schema_document(sbom_inputs[sbom.SCHEMA_PATH]),
+        format_checker=jsonschema.FormatChecker(),
+    ).validate(sbom_document)
+    validate(sbom_manifest, "release-manifest.schema.json")
+    validate(json.loads(sbom_inputs[sbom.LICENSE_PATH]), "release-license-inventory.schema.json")
+    sbom.verify(
+        (ROOT / "fixtures/conforming/release-sbom/document.spdx.json").read_bytes(),
+        sbom_inputs,
+        sbom_manifest,
+    )
     envelope = evidence(ROOT, "pr")
     envelope["requirements"].append(adapter_result)
     validate(envelope, "evidence.schema.json")

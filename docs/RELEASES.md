@@ -1,7 +1,7 @@
 # Reproducible releases
 
-AWQ release recipe `awq-release-v1` produces a wheel, source archive, and canonical release
-manifest. It is intentionally narrow:
+AWQ release recipe `awq-release-v1` produces a wheel, source archive, SPDX 3.0.1 SBOM, and canonical
+release manifest. It is intentionally narrow:
 
 - Linux x86-64
 - CPython 3.13.15
@@ -54,7 +54,7 @@ Verification has no runtime dependency and performs no network access:
 
 ```sh
 uv run awq --root . release-verify \
-  /new/external/awq-release/agent_workflow_quality-0.13.0.release.json \
+  /new/external/awq-release/agent_workflow_quality-0.14.0.release.json \
   --source \
   --format json
 ```
@@ -64,9 +64,9 @@ unknown or noncanonical manifest fields, undeclared bundle files, digest/size/ve
 duplicate archive paths, links, development metadata, bounds violations, noncanonical timestamps,
 permissions or ownership, and credential or machine-path signatures.
 
-The manifest reserves unique artifact kinds for SPDX SBOMs, in-toto provenance, and signatures so
-later releases can extend the same bundle without weakening reject-unknown semantics. AR-0024 and
-AR-0025 supply those artifacts.
+Schema-version-2 manifests bind the mandatory SPDX SBOM and its inventory/schema digests.
+See [the SBOM profile](SBOM.md) for exact coverage, origins, license review and limitations.
+Unique provenance and signature artifact kinds remain reserved for AR-0025.
 
 ## Trust boundary
 

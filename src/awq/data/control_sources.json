@@ -37,8 +37,8 @@
       "publisher": "Linux Foundation SPDX Workgroup",
       "edition": "3.0.1",
       "source_url": "https://spdx.github.io/spdx-spec/v3.0.1/",
-      "scope": "Core version-identification property relevant to machine-readable releases.",
-      "limitation": "AWQ policy locks are not SPDX documents or software bills of materials.",
+      "scope": "Pinned Core, Software and Simple Licensing graph profile for deterministic release SBOMs.",
+      "limitation": "The AWQ profile is schema-validated evidence, not SPDX trademark certification or complete license compliance analysis.",
       "controls": [
         {"id":"Core.CreationInfo.specVersion","title":"SPDX specification version identification","url":"https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Properties/specVersion/"}
       ]
