@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from awq import assurance, commands, promotion, verified_update
+from awq import assurance, commands, promotion, refactor, verified_update
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
 from awq.release import ReleaseError
@@ -69,6 +69,10 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("manifest", type=Path)
     item.add_argument("--source", action="store_true")
     _format_argument(item)
+    item = sub.add_parser("refactor-collect")
+    item.add_argument("contract")
+    item.add_argument("--tools", type=Path, required=True)
+    _format_argument(item)
     item = sub.add_parser("assurance-check")
     item.add_argument("contract")
     _format_argument(item)
@@ -92,6 +96,7 @@ def _authenticated_arguments(item: argparse.ArgumentParser) -> None:
 def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     table: dict[str, Callable[[], dict[str, Any]]] = {
         "inspect": lambda: commands.inspect(root),
+        "refactor-collect": lambda: refactor.collect(root, args.contract, args.tools),
         "assurance-check": lambda: assurance.evaluate_file(root, args.contract),
         "init": lambda: commands.initialize(root, args.profiles, args.dry_run),
         "plan": lambda: commands.plan(root, args.changed, args.base),
