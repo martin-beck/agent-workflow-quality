@@ -1,0 +1,112 @@
+{
+  "$id": "https://martin-beck.github.io/agent-workflow-quality/schemas/execution-receipt.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AWQ bounded execution budget and process receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "evaluated_step", "dimensions", "reservations", "process", "sandbox", "limitation"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "receipt_id": {"type": "string", "maxLength": 100, "pattern": "^RECEIPT-[A-Z0-9]+(?:-[A-Z0-9]+)*$"},
+    "evaluated_step": {"type": "integer", "minimum": 0, "maximum": 1000000000000000},
+    "dimensions": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {"$ref": "#/$defs/dimension"}
+    },
+    "reservations": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/reservation"}
+    },
+    "process": {"$ref": "#/$defs/process"},
+    "sandbox": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/sandbox"}
+    },
+    "limitation": {
+      "const": "Receipt validation checks bounded caller-declared records, not portable containment, billing reconciliation, benchmark scheduling, host enforcement or trusted-executable behavior."
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "sha256"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"},
+        "version": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "unit", "classification", "limit", "used", "measurement"],
+      "properties": {
+        "id": {"enum": ["actions", "cost", "cpu", "disk", "memory", "output", "pids", "tokens", "wall"]},
+        "unit": {"enum": ["count", "microunits", "milliseconds", "bytes"]},
+        "classification": {"enum": ["enforced", "observed", "estimated", "unavailable"]},
+        "limit": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000000000}, {"type": "null"}]},
+        "used": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000000000}, {"type": "null"}]},
+        "measurement": {"oneOf": [{"$ref": "#/$defs/tool"}, {"type": "null"}]}
+      }
+    },
+    "reservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "dimension", "amount", "state", "created_step", "expires_step", "effect", "effect_step", "settlement_step", "settled", "refunded"],
+      "properties": {
+        "id": {"type": "string", "maxLength": 100, "pattern": "^RES-[A-Z0-9]+(?:-[A-Z0-9]+)*$"},
+        "dimension": {"enum": ["actions", "cost", "cpu", "disk", "memory", "output", "pids", "tokens", "wall"]},
+        "amount": {"type": "integer", "minimum": 1, "maximum": 1000000000000000},
+        "state": {"enum": ["reserved", "settled", "refunded", "stale"]},
+        "created_step": {"type": "integer", "minimum": 0, "maximum": 1000000000000000},
+        "expires_step": {"type": "integer", "minimum": 0, "maximum": 1000000000000000},
+        "effect": {"enum": ["none", "external"]},
+        "effect_step": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000000000}, {"type": "null"}]},
+        "settlement_step": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000000000}, {"type": "null"}]},
+        "settled": {"type": "integer", "minimum": 0, "maximum": 1000000000000000},
+        "refunded": {"type": "integer", "minimum": 0, "maximum": 1000000000000000}
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["argv_sha256", "environment", "process_scope", "deadline_seconds", "termination"],
+      "properties": {
+        "argv_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "environment": {"enum": ["minimal-reviewed", "caller-filtered", "unknown"]},
+        "process_scope": {"enum": ["new-session", "new-process-group", "none"]},
+        "deadline_seconds": {"type": "integer", "minimum": 1, "maximum": 900},
+        "termination": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deadline_reached", "term_sent", "kill_sent", "descendants", "orphan_outcome"],
+          "properties": {
+            "deadline_reached": {"type": "boolean"},
+            "term_sent": {"type": "boolean"},
+            "kill_sent": {"type": "boolean"},
+            "descendants": {"enum": ["none", "reaped", "surviving", "unknown"]},
+            "orphan_outcome": {"enum": ["none", "prevented", "reaped", "surviving", "unknown"]}
+          }
+        }
+      }
+    },
+    "sandbox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["boundary", "classification", "outcome", "tool", "claim"],
+      "properties": {
+        "boundary": {"enum": ["network", "filesystem", "capabilities"]},
+        "classification": {"enum": ["observed", "unavailable"]},
+        "outcome": {"enum": ["blocked", "allowed", "unavailable"]},
+        "tool": {"oneOf": [{"$ref": "#/$defs/tool"}, {"type": "null"}]},
+        "claim": {"const": "observation-not-portable-isolation"}
+      }
+    }
+  }
+}
