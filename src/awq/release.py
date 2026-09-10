@@ -39,6 +39,7 @@ FORMAL_SCHEMA_ASSETS = {"assurance-contract.schema.json"}
 LIFECYCLE_SCHEMA_ASSETS = {"lifecycle-model.schema.json"}
 REFINEMENT_SCHEMA_ASSETS = {"refinement-map.schema.json"}
 PYTHON_REFACTOR_SCHEMA_ASSETS = {"python-refactor.schema.json"}
+ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
@@ -46,6 +47,7 @@ REQUIRED_SCHEMAS |= (
     | LIFECYCLE_SCHEMA_ASSETS
     | REFINEMENT_SCHEMA_ASSETS
     | PYTHON_REFACTOR_SCHEMA_ASSETS
+    | ADVERSARIAL_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -229,6 +231,7 @@ def _required_schemas(
     require_lifecycle_assets: bool,
     require_refinement_assets: bool,
     require_python_refactor_assets: bool,
+    require_adversarial_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
@@ -245,6 +248,8 @@ def _required_schemas(
         required_schemas = required_schemas - REFINEMENT_SCHEMA_ASSETS
     if not require_python_refactor_assets:
         required_schemas = required_schemas - PYTHON_REFACTOR_SCHEMA_ASSETS
+    if not require_adversarial_assets:
+        required_schemas = required_schemas - ADVERSARIAL_SCHEMA_ASSETS
     return required_schemas
 
 
@@ -259,6 +264,7 @@ def inspect_archive(
     require_lifecycle_assets: bool = True,
     require_refinement_assets: bool = True,
     require_python_refactor_assets: bool = True,
+    require_adversarial_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -269,6 +275,7 @@ def inspect_archive(
         require_lifecycle_assets,
         require_refinement_assets,
         require_python_refactor_assets,
+        require_adversarial_assets,
     )
     try:
         if path.name.endswith(".tar.gz"):
@@ -746,6 +753,8 @@ def _verify_artifact(
                 >= (0, 19, 0),
                 require_python_refactor_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 20, 0),
+                require_adversarial_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 21, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

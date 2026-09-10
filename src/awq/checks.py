@@ -214,7 +214,7 @@ def action_pins(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[F
                     Finding(
                         "mutable-action",
                         relative,
-                        f"remote action is not pinned to a full SHA: {value}",
+                        "remote action is not pinned to a full SHA",
                     )
                 )
     return findings

@@ -201,6 +201,14 @@ def main() -> int:
         "fixtures/nonconforming/refactoring/property.json",
     ):
         validate(json.loads((ROOT / name).read_bytes()), "python-refactor.schema.json")
+    for name in (
+        "templates/adversarial-pr.json",
+        "templates/adversarial-scheduled.json",
+        "fixtures/conforming/adversarial/pr.json",
+        "fixtures/conforming/adversarial/scheduled.json",
+        "fixtures/conforming/adversarial/workflow-redaction.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "adversarial-campaign.schema.json")
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")

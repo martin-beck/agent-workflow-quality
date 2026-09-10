@@ -18,6 +18,7 @@ from pathlib import Path
 
 from awq import __version__
 from awq.release import (
+    ADVERSARIAL_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     PROMOTION_SCHEMA_ASSETS,
@@ -102,6 +103,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
+                ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -126,6 +128,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
+                ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -161,6 +164,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
+                ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -189,6 +193,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
+                ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -225,6 +230,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
+                ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -249,6 +255,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
+                ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -274,6 +281,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | FORMAL_SCHEMA_ASSETS
             | LIFECYCLE_SCHEMA_ASSETS
             | REFINEMENT_SCHEMA_ASSETS
+            | ADVERSARIAL_SCHEMA_ASSETS
             | PYTHON_REFACTOR_SCHEMA_ASSETS
         ):
             members = [

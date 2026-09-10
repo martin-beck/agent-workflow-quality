@@ -93,3 +93,10 @@ A passing correspondence check is not an implementation-refinement theorem and r
 AWQ 0.20 adds [the bounded CPython collector](PYTHON_REFACTORING.md) for a restricted integer-function
 profile. Exact pinned offline execution collects all four refactoring evidence methods while
 retaining native gates and making no universal behavior-preservation claim.
+
+## Bounded adversarial campaigns
+
+See [adversarial assurance](ADVERSARIAL.md) for deterministic PR and scheduled
+campaigns, independent construction oracles, minimized public-safe regressions,
+and the mandatory seven-of-seven boundary-fault sensitivity floor. Native gates
+remain required; these campaigns do not establish universal correctness.
