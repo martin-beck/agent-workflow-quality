@@ -1,0 +1,1 @@
+{"assumptions":["finite model scope"],"bounds":{"max_states":1000},"correspondence":"not-proven","evidence_class":"bounded-model","limitations":["bounded execution only"],"non_claims":["does not prove implementation correctness"],"schema_version":1,"scope":"formal-model-contract"}
