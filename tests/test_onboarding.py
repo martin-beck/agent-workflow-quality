@@ -79,8 +79,8 @@ class OnboardingTests(unittest.TestCase):
                     "const"
                 ],
                 "native_gate_mapping_schema": schema_versions["native-gate-mapping.schema.json"][
-                    "const"
-                ],
+                    "enum"
+                ][-1],
                 "release_manifest_schemas": schema_versions["release-manifest.schema.json"]["enum"],
             },
             value["contracts"],

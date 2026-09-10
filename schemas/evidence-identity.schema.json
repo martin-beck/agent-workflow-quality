@@ -1,0 +1,53 @@
+{
+  "$id": "https://martin-beck.github.io/agent-workflow-quality/schemas/evidence-identity.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AWQ content-minimized evidence identity envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "correlation_sha256",
+    "producer_sha256",
+    "tool_sha256",
+    "run_id",
+    "attempt",
+    "evidence_class",
+    "platform_class",
+    "collected_at",
+    "freshness",
+    "evidence_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "correlation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "producer_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tool_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "run_id": {"type": "string", "maxLength": 100, "pattern": "^RUN-[A-Z0-9]+(?:-[A-Z0-9]+)*$"},
+    "attempt": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "evidence_class": {
+      "enum": ["mechanical", "contract-test", "property-or-fuzz", "bounded-model", "environmental"]
+    },
+    "platform_class": {
+      "enum": ["native", "emulated", "hosted-portability", "build-only", "partial"]
+    },
+    "collected_at": {
+      "type": "string",
+      "pattern": "^20[0-9]{2}-(?:0[1-9]|1[0-2])-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "format": "date-time"
+    },
+    "freshness": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["max_age_seconds"],
+          "properties": {
+            "max_age_seconds": {"type": "integer", "minimum": 1, "maximum": 2678400}
+          }
+        }
+      ]
+    },
+    "evidence_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

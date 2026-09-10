@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Never
 
@@ -26,7 +27,13 @@ TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,63}", re.ASCII)
 SCOPE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*", re.ASCII)
 CLAIM = "bounded-equivalence-not-certification"
 STATUSES = ("pass", "fail", "error", "skip")
+PLATFORM_CLASSES = ("native", "emulated", "hosted-portability", "build-only", "partial")
 PRIVATE_MARKERS = ("/home/", "/users/", "token=", "password=", "secret=", "authorization:")
+RUN_ID = re.compile(r"RUN-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
+TIMESTAMP = re.compile(
+    r"20[0-9]{2}-(?:0[1-9]|1[0-2])-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", re.ASCII
+)
+OBSERVATION_SET = re.compile(r"SET-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
 
 
 def _fail(code: str) -> Never:
@@ -135,6 +142,48 @@ def _mapping(
     }
 
 
+def _correlation(value: Any) -> dict[str, Any]:
+    correlation = _object(
+        value,
+        "observation_set_id source_commit source_tree reviewed_base tree_state "
+        "gate_definition_sha256 configuration_sha256 input_sha256 platform_class",
+    )
+    if (
+        not isinstance(correlation["observation_set_id"], str)
+        or len(correlation["observation_set_id"]) > 100
+        or OBSERVATION_SET.fullmatch(correlation["observation_set_id"]) is None
+    ):
+        _fail("observation-set")
+    for field in ("source_commit", "source_tree", "reviewed_base"):
+        if (
+            not isinstance(correlation[field], str)
+            or re.fullmatch(r"[0-9a-f]{40}", correlation[field]) is None
+        ):
+            _fail("correlation-source")
+    if correlation["tree_state"] != "clean":
+        _fail("correlation-tree-state")
+    for field in ("gate_definition_sha256", "configuration_sha256", "input_sha256"):
+        if not isinstance(correlation[field], str) or HASH.fullmatch(correlation[field]) is None:
+            _fail("correlation-digest")
+    if correlation["platform_class"] not in PLATFORM_CLASSES:
+        _fail("correlation-platform-class")
+    return correlation
+
+
+def _mapping_v2(
+    value: Any, requirements: dict[str, dict[str, Any]], adapters: set[str]
+) -> dict[str, Any]:
+    mapping = _object(
+        value,
+        "id requirement awq_result native_command tool_pin tier evidence_class input_scope "
+        "deadline_seconds limitation claim correlation",
+    )
+    base = _mapping(
+        {key: item for key, item in mapping.items() if key != "correlation"}, requirements, adapters
+    )
+    return {**base, "correlation": _correlation(mapping["correlation"])}
+
+
 def _observation(value: Any, mapping_ids: set[str]) -> dict[str, str]:
     observation = _object(value, "mapping source status evidence_sha256")
     if not isinstance(observation["mapping"], str) or observation["mapping"] not in mapping_ids:
@@ -153,26 +202,127 @@ def _observation(value: Any, mapping_ids: set[str]) -> dict[str, str]:
     return {key: str(observation[key]) for key in observation}
 
 
-def evaluate(value: Any) -> dict[str, Any]:
-    """Validate one mapping document and normalize its paired observations."""
-    document = _object(value, "schema_version mappings observations")
-    if type(document["schema_version"]) is not int or document["schema_version"] != 1:
-        _fail("schema-version")
-    if (
-        not isinstance(document["mappings"], list)
-        or not 1 <= len(document["mappings"]) <= MAX_MAPPINGS
+def _timestamp(value: Any) -> datetime:
+    if not isinstance(value, str) or TIMESTAMP.fullmatch(value) is None:
+        _fail("timestamp")
+    try:
+        observed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ProjectError("native-gate mapping invalid: timestamp") from error
+    if observed.tzinfo != UTC:
+        _fail("timestamp")
+    return observed
+
+
+def validate_identity(value: Any) -> dict[str, Any]:
+    """Validate and normalize one content-minimized evidence identity envelope."""
+    identity = _object(
+        value,
+        "schema_version correlation_sha256 producer_sha256 tool_sha256 run_id attempt "
+        "evidence_class platform_class collected_at freshness evidence_sha256",
+    )
+    if type(identity["schema_version"]) is not int or identity["schema_version"] != 1:
+        _fail("identity-schema-version")
+    for field in (
+        "correlation_sha256",
+        "producer_sha256",
+        "tool_sha256",
+        "evidence_sha256",
     ):
-        _fail("mappings")
+        if not isinstance(identity[field], str) or HASH.fullmatch(identity[field]) is None:
+            _fail("identity-digest")
+    if (
+        not isinstance(identity["run_id"], str)
+        or len(identity["run_id"]) > 100
+        or RUN_ID.fullmatch(identity["run_id"]) is None
+    ):
+        _fail("identity-run")
+    if type(identity["attempt"]) is not int or not 1 <= identity["attempt"] <= 10_000:
+        _fail("identity-attempt")
+    if identity["evidence_class"] not in EVIDENCE_CLASSES:
+        _fail("identity-evidence-class")
+    if identity["platform_class"] not in PLATFORM_CLASSES:
+        _fail("identity-platform-class")
+    _timestamp(identity["collected_at"])
+    freshness = identity["freshness"]
+    if freshness is not None:
+        freshness = _object(freshness, "max_age_seconds")
+        if (
+            type(freshness["max_age_seconds"]) is not int
+            or not 1 <= freshness["max_age_seconds"] <= 2_678_400
+        ):
+            _fail("identity-freshness")
+    return {**identity, "freshness": freshness}
+
+
+def _observation_v2(value: Any, mapping_ids: set[str]) -> dict[str, Any]:
+    observation = _object(value, "mapping source status identity")
+    common = _observation(
+        {
+            "mapping": observation["mapping"],
+            "source": observation["source"],
+            "status": observation["status"],
+            "evidence_sha256": "0" * 64,
+        },
+        mapping_ids,
+    )
+    return {key: common[key] for key in ("mapping", "source", "status")} | {
+        "identity": validate_identity(observation["identity"])
+    }
+
+
+def _correlation_mismatches(
+    awq: dict[str, Any], native: dict[str, Any], mapping: dict[str, Any], evaluated_at: datetime
+) -> list[str]:
+    awq_identity = awq["identity"]
+    native_identity = native["identity"]
+    correlation_sha256 = hashlib.sha256(canonical_bytes(mapping["correlation"])).hexdigest()
+    mismatches: list[str] = []
+    for source, identity in (("awq", awq_identity), ("native", native_identity)):
+        if identity["correlation_sha256"] != correlation_sha256:
+            mismatches.append(source + "-correlation")
+        if identity["evidence_class"] != mapping["evidence_class"]:
+            mismatches.append(source + "-evidence-class")
+        if identity["platform_class"] != mapping["correlation"]["platform_class"]:
+            mismatches.append(source + "-platform-class-promotion")
+    if native_identity["tool_sha256"] != mapping["tool_pin"]["sha256"]:
+        mismatches.append("native-tool-pin")
+    for source, identity in (("awq", awq_identity), ("native", native_identity)):
+        collected_at = _timestamp(identity["collected_at"])
+        if collected_at > evaluated_at:
+            mismatches.append(source + "-collected-in-future")
+        freshness = identity["freshness"]
+        if (
+            freshness is not None
+            and (evaluated_at - collected_at).total_seconds() > freshness["max_age_seconds"]
+        ):
+            mismatches.append(source + "-stale")
+    return sorted(set(mismatches))
+
+
+def _evaluate_v1(document: dict[str, Any]) -> dict[str, Any]:
+    return _evaluate_version(document, 1, None)
+
+
+def _evaluate_version(
+    document: dict[str, Any], version: int, evaluated_at: datetime | None
+) -> dict[str, Any]:
     requirements, _, _ = load_registry()
     families, _ = load_adapter_catalog()
     adapters = {contract["id"] for family in families.values() for contract in family["contracts"]}
-    mappings = [_mapping(item, requirements, adapters) for item in document["mappings"]]
+    mapping_parser = _mapping if version == 1 else _mapping_v2
+    mappings = [mapping_parser(item, requirements, adapters) for item in document["mappings"]]
     mapping_ids = [item["id"] for item in mappings]
     if mapping_ids != sorted(mapping_ids) or len(mapping_ids) != len(set(mapping_ids)):
         _fail("mapping-order-or-duplicate")
+    if version == 2:
+        observation_sets = [item["correlation"]["observation_set_id"] for item in mappings]
+        if len(observation_sets) != len(set(observation_sets)):
+            _fail("observation-set-duplicate")
     if not isinstance(document["observations"], list):
         _fail("observations")
-    observations = [_observation(item, set(mapping_ids)) for item in document["observations"]]
+    parser = _observation if version == 1 else _observation_v2
+    observations = [parser(item, set(mapping_ids)) for item in document["observations"]]
     keys = [(item["mapping"], item["source"]) for item in observations]
     if keys != sorted(keys) or len(keys) != len(set(keys)):
         _fail("observation-order-or-contradiction")
@@ -183,27 +333,41 @@ def evaluate(value: Any) -> dict[str, Any]:
         if [item["source"] for item in pair] != [expected_awq, "native-gate"]:
             _fail("missing-or-wrong-evidence")
         awq, native = pair
-        equivalent = awq["status"] == native["status"] and awq["status"] in ("pass", "fail")
-        rows.append(
-            {
-                "mapping": mapping["id"],
-                "requirement": mapping["requirement"],
-                "awq_result": mapping["awq_result"],
-                "native_status": native["status"],
-                "awq_status": awq["status"],
-                "equivalent": equivalent,
-                "evidence_class": mapping["evidence_class"],
-                "input_scope": mapping["input_scope"],
-                "limitation": mapping["limitation"],
-                "native_gate": "retain",
-            }
+        mismatches = (
+            []
+            if version == 1
+            else _correlation_mismatches(
+                awq, native, mapping, evaluated_at or datetime.min.replace(tzinfo=UTC)
+            )
         )
+        equivalent = (
+            not mismatches
+            and awq["status"] == native["status"]
+            and awq["status"] in ("pass", "fail")
+        )
+        row = {
+            "mapping": mapping["id"],
+            "requirement": mapping["requirement"],
+            "awq_result": mapping["awq_result"],
+            "native_status": native["status"],
+            "awq_status": awq["status"],
+            "equivalent": equivalent,
+            "evidence_class": mapping["evidence_class"],
+            "input_scope": mapping["input_scope"],
+            "limitation": mapping["limitation"],
+            "native_gate": "retain",
+        }
+        if version == 2:
+            row["platform_class"] = mapping["correlation"]["platform_class"]
+            row["observation_set_id"] = mapping["correlation"]["observation_set_id"]
+            row["correlation_mismatches"] = mismatches
+        rows.append(row)
     matched = sum(row["equivalent"] for row in rows)
     return {
         "status": "pass" if matched == len(rows) else "fail",
-        "schema_version": 1,
+        "schema_version": version,
         "awq_version": __version__,
-        "contract_sha256": hashlib.sha256(canonical_bytes(value)).hexdigest(),
+        "contract_sha256": hashlib.sha256(canonical_bytes(document)).hexdigest(),
         "coverage": {
             "mapped": len(rows),
             "equivalent": matched,
@@ -213,6 +377,27 @@ def evaluate(value: Any) -> dict[str, Any]:
         "native_gate": "retain",
         "claim": CLAIM,
     }
+
+
+def evaluate(value: Any) -> dict[str, Any]:
+    """Validate one mapping document and normalize its paired observations."""
+    if not isinstance(value, dict) or type(value.get("schema_version")) is not int:
+        _fail("schema-version")
+    version = value["schema_version"]
+    if version == 1:
+        document = _object(value, "schema_version mappings observations")
+    elif version == 2:
+        document = _object(value, "schema_version evaluated_at mappings observations")
+    else:
+        _fail("schema-version")
+    if (
+        not isinstance(document["mappings"], list)
+        or not 1 <= len(document["mappings"]) <= MAX_MAPPINGS
+    ):
+        _fail("mappings")
+    if version == 1:
+        return _evaluate_v1(document)
+    return _evaluate_version(document, 2, _timestamp(document["evaluated_at"]))
 
 
 def evaluate_file(root: Path, relative: str) -> dict[str, Any]:

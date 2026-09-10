@@ -105,6 +105,9 @@ Use the [agent-ready equivalence recipe](docs/PROMOTION.md) to evaluate controll
 native/shared comparisons per gate. The offline evaluator retains native gates, blocks false
 negatives, exposes reviewed false positives, and checks exact runtime, flake, freshness and rollback
 budgets. Consumer-specific required checks can select only reviewed locked requirements.
+Native mapping v2 additionally binds both observations to one exact reviewed source, tree, base,
+definition, configuration, input set and platform class while retaining separate producer, tool,
+run, attempt and collection provenance.
 
 ## Bounded formal and refactoring assurance
 

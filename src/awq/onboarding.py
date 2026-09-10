@@ -427,9 +427,9 @@ def _recipe_contracts() -> dict[str, int | list[int]]:
         terminology = schemas["terminology-registry.schema.json"]["properties"]["schema_version"][
             "const"
         ]
-        native_mapping = schemas["native-gate-mapping.schema.json"]["properties"]["schema_version"][
-            "const"
-        ]
+        native_versions = schemas["native-gate-mapping.schema.json"]["properties"][
+            "schema_version"
+        ]["enum"]
         release_manifests = schemas["release-manifest.schema.json"]["properties"]["schema_version"][
             "enum"
         ]
@@ -438,12 +438,16 @@ def _recipe_contracts() -> dict[str, int | list[int]]:
     if (
         type(project_policy) is not int
         or type(terminology) is not int
-        or type(native_mapping) is not int
+        or not isinstance(native_versions, list)
+        or not native_versions
+        or any(type(item) is not int for item in native_versions)
+        or native_versions != sorted(set(native_versions))
         or not isinstance(release_manifests, list)
         or not release_manifests
         or any(type(item) is not int for item in release_manifests)
     ):
         raise project.ProjectError("agent recipe schema metadata is invalid")
+    native_mapping = native_versions[-1]
     return {
         "project_policy_schema": project_policy,
         "terminology_registry_schema": terminology,
