@@ -38,7 +38,13 @@ class PortableOnboardingTests(unittest.TestCase):
             )
             commands.initialize(root, ["core"], False)
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
-            self.assertEqual("pass", commands.check(root, "pr")["status"])
+            checked = commands.check(root, "pr")
+            findings = {
+                item["id"]: [finding["code"] for finding in item["findings"]]
+                for item in checked["requirements"]
+                if item["status"] != "pass"
+            }
+            self.assertEqual("pass", checked["status"], findings)
             for command in (["inspect"], ["onboarding"], ["explain", "AWQ-CORE-001"]):
                 with redirect_stdout(io.StringIO()) as output:
                     status = main(["--root", str(root), *command, "--format", "json"])
