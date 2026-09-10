@@ -178,7 +178,7 @@ class ReleaseBoundaryTests(unittest.TestCase):
         before = fixture.consumer_bytes()
         manifest = deepcopy(fixture.manifest)
         receipt = verified_update.authenticated_release(*fixture.arguments())[1]
-        manifest["version"] = "0.21.9"
+        manifest["version"] = "0.22.9"
         with (
             mock.patch(
                 "awq.verified_update.authenticated_release", return_value=(manifest, receipt)
