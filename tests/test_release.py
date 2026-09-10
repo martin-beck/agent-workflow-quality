@@ -24,6 +24,7 @@ from awq.release import (
     ADVERSARIAL_SCHEMA_ASSETS,
     BUILD_CONSTRAINTS_PATH,
     BUILD_CONSTRAINTS_SHA256,
+    CONTRACT_CATALOG_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -35,6 +36,7 @@ from awq.release import (
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
     ReleaseError,
+    _verify_artifact,
     canonical_bytes,
     inspect_archive,
     load_manifest,
@@ -64,6 +66,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         timestamp: tuple[int, int, int, int, int, int] = (2026, 9, 9, 5, 15, 26),
         mode: int | None = None,
         private: bool = False,
+        include_contract_catalog: bool = True,
     ) -> Path:
         observed = version or self.version
         path = self.root / f"agent_workflow_quality-{self.version}-py3-none-any.whl"
@@ -84,10 +87,15 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f"agent_workflow_quality-{observed}.dist-info/METADATA",
                 metadata,
             )
-            for schema in sorted(REQUIRED_SCHEMAS):
+            for schema in sorted(
+                REQUIRED_SCHEMAS
+                if include_contract_catalog
+                else REQUIRED_SCHEMAS - CONTRACT_CATALOG_SCHEMA_ASSETS
+            ):
                 write(archive, f"awq/schemas/{schema}", packaged_schema_bytes(schema))
             write(archive, "awq/data/adapter_catalog.json", b"{}\n")
-            write(archive, "awq/data/contract_catalog.json", b"{}\n")
+            if include_contract_catalog:
+                write(archive, "awq/data/contract_catalog.json", b"{}\n")
             write(archive, "awq/data/compatibility.json", b"{}\n")
             write(archive, "awq/data/agent_recipes.json", b"{}\n")
             if private:
@@ -100,6 +108,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         version: str | None = None,
         mtime: int = 1_788_930_927,
         mode: int = 0o644,
+        include_contract_catalog: bool = True,
     ) -> Path:
         observed = version or self.version
         path = self.root / f"agent_workflow_quality-{self.version}.tar.gz"
@@ -109,13 +118,20 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f'[project]\nname = "agent-workflow-quality"\nversion = "{observed}"\n'
             ).encode(),
             f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
-            f"{prefix}/src/awq/data/contract_catalog.json": b"{}\n",
             f"{prefix}/src/awq/data/compatibility.json": b"{}\n",
             f"{prefix}/src/awq/data/agent_recipes.json": b"{}\n",
             **{
                 f"{prefix}/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS
             },
         }
+        if include_contract_catalog:
+            members[f"{prefix}/src/awq/data/contract_catalog.json"] = b"{}\n"
+        if not include_contract_catalog:
+            members = {
+                name: content
+                for name, content in members.items()
+                if not name.endswith("/contract-catalog.schema.json")
+            }
         with tarfile.open(path, mode="w:gz") as archive:
             for name, content in members.items():
                 item = tarfile.TarInfo(name)
@@ -135,17 +151,20 @@ class ReleaseVerificationTests(unittest.TestCase):
         sdist_mtime: int = 1_788_930_927,
         sdist_mode: int = 0o644,
         private: bool = False,
+        include_contract_catalog: bool = True,
     ) -> dict[str, object]:
         wheel = self.wheel(
             version=wheel_version,
             timestamp=wheel_timestamp,
             mode=wheel_mode,
             private=private,
+            include_contract_catalog=include_contract_catalog,
         )
         sdist = self.sdist(
             version=sdist_version,
             mtime=sdist_mtime,
             mode=sdist_mode,
+            include_contract_catalog=include_contract_catalog,
         )
         artifacts = [
             {
@@ -473,9 +492,10 @@ class ReleaseVerificationTests(unittest.TestCase):
             - PYTHON_REFACTOR_SCHEMA_ASSETS
             - ADVERSARIAL_SCHEMA_ASSETS
             - RELIABILITY_SCHEMA_ASSETS
-            - ONBOARDING_SCHEMA_ASSETS,
+            - ONBOARDING_SCHEMA_ASSETS
+            - CONTRACT_CATALOG_SCHEMA_ASSETS,
         ):
-            value = self.manifest_value()
+            value = self.manifest_value(include_contract_catalog=False)
         path = self.write_manifest(value)
         result = verify_release(path)
         self.assertEqual("pass", result["status"])
@@ -484,7 +504,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         assert isinstance(artifacts, list)
         for artifact in artifacts:
             findings = inspect_archive(self.root / artifact["name"])
-            self.assertEqual(10, len(findings))
+            self.assertEqual(12, len(findings))
             for name in (
                 SBOM_SCHEMA_ASSETS
                 | PROMOTION_SCHEMA_ASSETS
@@ -495,8 +515,29 @@ class ReleaseVerificationTests(unittest.TestCase):
                 | RELIABILITY_SCHEMA_ASSETS
                 | ADVERSARIAL_SCHEMA_ASSETS
                 | PYTHON_REFACTOR_SCHEMA_ASSETS
+                | CONTRACT_CATALOG_SCHEMA_ASSETS
             ):
                 self.assertTrue(any(name in finding for finding in findings))
+            self.assertTrue(any("contract_catalog.json" in finding for finding in findings))
+
+    def test_contract_catalog_assets_are_required_starting_with_v030(self) -> None:
+        for version, required in (("0.29.0", False), ("0.30.0", True)):
+            with self.subTest(version=version):
+                self.version = version
+                wheel = self.wheel(include_contract_catalog=False)
+                item = {
+                    "name": wheel.name,
+                    "kind": "wheel",
+                    "media_type": "application/zip",
+                    "size": wheel.stat().st_size,
+                    "sha256": sha256_file(wheel),
+                }
+                with mock.patch("awq.release.inspect_archive", return_value=[]) as inspect:
+                    _verify_artifact(self.root, item, version, 1_788_930_927)
+                self.assertEqual(
+                    required,
+                    inspect.call_args.kwargs["require_contract_catalog_assets"],
+                )
 
 
 def subprocess_result(returncode: int, output: bytes) -> subprocess.CompletedProcess[bytes]:

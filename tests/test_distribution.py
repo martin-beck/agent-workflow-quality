@@ -19,6 +19,8 @@ from pathlib import Path
 from awq import __version__
 from awq.release import (
     ADVERSARIAL_SCHEMA_ASSETS,
+    CONTRACT_CATALOG_DATA_ASSETS,
+    CONTRACT_CATALOG_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -396,6 +398,55 @@ class DistributionVerificationTests(unittest.TestCase):
         ):
             self.assertEqual([], inspect_archive(archive, require_onboarding_assets=False))
             self.assertEqual(3, len(inspect_archive(archive)))
+
+    def test_pre_catalog_v029_archives_retain_their_original_asset_contract(self) -> None:
+        schemas = frozenset(
+            {
+                "adapter-catalog.schema.json",
+                "adapter-contract.schema.json",
+                "adapter-result.schema.json",
+                "adversarial-campaign.schema.json",
+                "assurance-contract.schema.json",
+                "consumer-equivalence.schema.json",
+                "evidence-identity.schema.json",
+                "lifecycle-model.schema.json",
+                "native-gate-mapping.schema.json",
+                "onboarding.schema.json",
+                "python-refactor.schema.json",
+                "refinement-map.schema.json",
+                "release-license-inventory.schema.json",
+                "release-manifest.schema.json",
+                "release-provenance.schema.json",
+                "release-trust-policy.schema.json",
+                "reliability-budget.schema.json",
+                "spdx-3.0.1.schema.zip",
+            }
+        )
+        data = frozenset({"adapter_catalog.json", "agent_recipes.json", "compatibility.json"})
+        self.assertEqual(
+            {"contract-catalog.schema.json"},
+            CONTRACT_CATALOG_SCHEMA_ASSETS,
+        )
+        self.assertEqual({"contract_catalog.json"}, CONTRACT_CATALOG_DATA_ASSETS)
+        members = [
+            (f"awq/schemas/{name}", packaged_schema_bytes(name)) for name in sorted(schemas)
+        ] + [(f"awq/data/{name}", b"{}\n") for name in sorted(data)]
+        for archive in (
+            self.wheel("agent_workflow_quality-0.29.0-py3-none-any.whl", members),
+            self.tarball("agent_workflow_quality-0.29.0.tar.gz", members),
+        ):
+            self.assertEqual(
+                [],
+                inspect_archive(archive, require_contract_catalog_assets=False),
+            )
+            self.assertEqual(
+                [
+                    f"{archive.name}: required packaged schema is missing: "
+                    "contract-catalog.schema.json",
+                    f"{archive.name}: required packaged data is missing: contract_catalog.json",
+                ],
+                inspect_archive(archive),
+            )
 
 
 if __name__ == "__main__":
