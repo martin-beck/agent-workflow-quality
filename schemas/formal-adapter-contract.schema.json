@@ -1,0 +1,92 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/formal-adapter-contract.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AWQ bounded TLC adapter contract",
+  "allOf": [
+    {
+      "$ref": "adapter-contract.schema.json"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "id": {
+          "const": "ADAPTER-FORMAL-MODEL-TLC"
+        },
+        "tool": {
+          "const": "tlc"
+        },
+        "argv": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "prefixItems": [
+            {
+              "const": "tlc"
+            },
+            {
+              "const": "-workers"
+            },
+            {
+              "type": "string",
+              "pattern": "^(?:[1-9]|1[0-6])$"
+            },
+            {
+              "const": "-depth"
+            },
+            {
+              "type": "string",
+              "pattern": "^(?:[1-9][0-9]{0,5}|1000000)$"
+            },
+            {
+              "const": "-config"
+            },
+            {
+              "type": "string",
+              "pattern": "\\.cfg$"
+            },
+            {
+              "type": "string",
+              "pattern": "\\.tla$"
+            }
+          ]
+        },
+        "timeout_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "evidence": {
+          "const": "bounded-model"
+        },
+        "formats": {
+          "const": [
+            ".cfg",
+            ".tla"
+          ]
+        },
+        "config_paths": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "prefixItems": [
+            {
+              "type": "string",
+              "pattern": "\\.cfg$"
+            },
+            {
+              "type": "string",
+              "pattern": "\\.tla$"
+            }
+          ],
+          "items": false
+        },
+        "input_mode": {
+          "const": "explicit"
+        }
+      },
+      "required": [
+        "input_mode"
+      ]
+    }
+  ]
+}

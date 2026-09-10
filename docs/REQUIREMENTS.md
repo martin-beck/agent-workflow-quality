@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `a8780bc8ee4f0c6e30bade722c3a75142e8971fe42b67eaa7f7f034d05e6cd11`
+Registry SHA-256: `8a31c9c8902bc63db468ba55a1e9d3bc996db76035e40dd93b1fd6bbea3838d8`
 
 ## Profiles
 
@@ -12,6 +12,7 @@ Registry SHA-256: `a8780bc8ee4f0c6e30bade722c3a75142e8971fe42b67eaa7f7f034d05e6c
 | `core` | Portable repository baseline. | 4 |
 | `docs` | Documentation structure and local integrity. | 1 |
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
+| `formal-model` | Bounded external formal-model execution contracts. | 1 |
 | `github-actions` | GitHub Actions integrity and permissions. | 3 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
@@ -96,7 +97,7 @@ Relative Markdown links resolve inside the repository.
 
 Formal-method documentation classifies bounds, assumptions and non-claims.
 
-- Profiles: `formal-evidence`
+- Profiles: `formal-evidence`, `formal-model`
 - Tier: `pr`
 - Evidence: `mechanical`
 - Deterministic: `true`

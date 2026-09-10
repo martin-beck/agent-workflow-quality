@@ -48,6 +48,12 @@ Standards registry SHA-256: `4f44c86a008bbde79f1086d3032874da1062c211aac7bbb1459
 | --- | --- | --- | --- | --- |
 | [AWQ-FORMAL-001](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `mechanical` | Documentation checks do not execute a model or prove implementation refinement. |
 
+### `formal-model`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-FORMAL-001](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `mechanical` | Documentation checks do not execute a model or prove implementation refinement. |
+
 ### `github-actions`
 
 | Requirement | Source control | Relationship | Evidence | Limitation |
