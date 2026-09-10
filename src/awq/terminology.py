@@ -268,16 +268,21 @@ def _segments(path: Path, text: str, base_scope: str) -> list[tuple[str, str]]:
     if path.suffix != ".md" or base_scope in {"example", "quotation"}:
         return [(base_scope, text)]
     segments: list[tuple[str, str]] = []
-    fenced = False
     fence = ""
     for line in text.splitlines(keepends=True):
-        marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
-        if marker and (not fenced or marker.group(1).startswith(fence[0])):
-            fenced = not fenced
-            fence = marker.group(1) if fenced else ""
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)", line)
+        if not fence and marker and (marker.group(1)[0] == "~" or "`" not in marker.group(2)):
+            fence = marker.group(1)
             segments.append(("example", line))
-        elif fenced:
+        elif fence:
             segments.append(("example", line))
+            if (
+                marker
+                and marker.group(1)[0] == fence[0]
+                and len(marker.group(1)) >= len(fence)
+                and not marker.group(2).strip()
+            ):
+                fence = ""
         elif re.match(r"^ {0,3}>", line):
             segments.append(("quotation", line))
         else:

@@ -131,6 +131,38 @@ class TerminologyTests(unittest.TestCase):
             {"quotation", "example"}, {item["message"].split()[-2] for item in findings}
         )
 
+    def test_markdown_fence_closing_marker_is_exactly_classified(self) -> None:
+        document = self.repo.write(
+            "fences.md",
+            "````text\n"
+            "master in example\n"
+            "```\n"
+            "master after a short marker\n"
+            "````python\n"
+            "master after an info-string marker\n"
+            "`````   \n"
+            "master after a valid longer close\n",
+        )
+        findings, _ = terminology.evaluate(self.repo.root, [document])
+        self.assertEqual(1, len(findings))
+        self.assertIn("normative scope", findings[0]["message"])
+
+        equal_close = self.repo.write(
+            "equal-close.md",
+            "~~~text\nmaster in example\n~~~\nmaster after an equal close\n",
+        )
+        findings, _ = terminology.evaluate(self.repo.root, [equal_close])
+        self.assertEqual(1, len(findings))
+        self.assertIn("normative scope", findings[0]["message"])
+
+        invalid_open = self.repo.write(
+            "invalid-open.md",
+            "```bad`info\nmaster remains normative\n",
+        )
+        findings, _ = terminology.evaluate(self.repo.root, [invalid_open])
+        self.assertEqual(1, len(findings))
+        self.assertIn("normative scope", findings[0]["message"])
+
     def test_generated_fixture_json_and_selected_formats(self) -> None:
         generated = self.repo.write("generated/catalog.json", '{"role":"slave"}\n')
         fixture = self.repo.write("fixtures/history.txt", "master\n")
