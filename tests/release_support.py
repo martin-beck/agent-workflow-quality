@@ -83,7 +83,7 @@ class SignedRelease:
         self.manifest_path = self.bundle / "unset"
         self.manifest: dict[str, Any] = {}
         self.tag_object = ""
-        self.build("0.23.1", self.policy, 0)
+        self.build("0.24.1", self.policy, 0)
 
     def close(self) -> None:
         self.temporary.cleanup()
