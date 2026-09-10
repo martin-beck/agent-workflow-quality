@@ -13,7 +13,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 
-from awq import commands, onboarding
+from awq import checks, commands, onboarding
 from awq.cli import main, parser
 
 
@@ -28,8 +28,7 @@ class PortableOnboardingTests(unittest.TestCase):
             (root / "README.md").write_text(
                 "Public onboarding fixture.\n", encoding="utf-8", newline="\n"
             )
-            diagnosis = onboarding.diagnose()
-            self.assertEqual("pass", diagnosis["status"], diagnosis["findings"])
+            self.assertEqual("pass", onboarding.diagnose()["status"])
             before = sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
             preview = commands.initialize(root, ["core"], True)
             self.assertTrue(preview["dry_run"])
@@ -38,13 +37,7 @@ class PortableOnboardingTests(unittest.TestCase):
             )
             commands.initialize(root, ["core"], False)
             subprocess.run(["git", "-C", str(root), "add", "."], check=True)
-            checked = commands.check(root, "pr")
-            findings = {
-                item["id"]: [finding["code"] for finding in item["findings"]]
-                for item in checked["requirements"]
-                if item["status"] != "pass"
-            }
-            self.assertEqual("pass", checked["status"], findings)
+            self.assertEqual("pass", commands.check(root, "pr")["status"])
             for command in (["inspect"], ["onboarding"], ["explain", "AWQ-CORE-001"]):
                 with redirect_stdout(io.StringIO()) as output:
                     status = main(["--root", str(root), *command, "--format", "json"])
@@ -81,6 +74,25 @@ class PortableOnboardingTests(unittest.TestCase):
                 expected = canonical if use_attributes else canonical.replace(b"\n", b"\r\n")
                 self.assertEqual(expected, (root / "metadata.json").read_bytes())
                 self.assertEqual(binary, (root / "schema.zip").read_bytes())
+
+    def test_extensionless_shebang_format_does_not_require_posix_execute_bits(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            script = root / "wrapper"
+            script.write_bytes(b"#!/bin/sh\nexit 0\n")
+            script.chmod(0o644)
+            policy: dict[str, list[object]] = {"fixture_paths": [], "extensions": []}
+            self.assertEqual([], checks.classified_formats(root, [script], policy))
+            self.assertEqual([], checks.portable_text(root, [script], policy))
+            script.write_bytes(b"#!/bin/sh\r\nexit 0\r\n")
+            self.assertEqual(
+                ["non-lf"], [item.code for item in checks.portable_text(root, [script], policy)]
+            )
+            script.write_bytes(b"unknown opaque bytes")
+            self.assertEqual(
+                ["unknown-format"],
+                [item.code for item in checks.classified_formats(root, [script], policy)],
+            )
 
     def test_all_agent_argv_recipes_match_the_actual_parser(self) -> None:
         for recipe in onboarding.recipes()["recipes"]:

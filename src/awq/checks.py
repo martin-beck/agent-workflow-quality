@@ -110,7 +110,9 @@ def _read_text(path: Path) -> str | None:
 
 def _is_shebang_script(path: Path) -> bool:
     try:
-        return path.stat().st_mode & 0o111 != 0 and path.read_bytes().startswith(b"#!")
+        # Format recognition must not depend on unavailable Windows POSIX mode bits.
+        with path.open("rb") as stream:
+            return stream.read(2) == b"#!"
     except OSError:
         return False
 
