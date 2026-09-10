@@ -46,6 +46,7 @@ PYTHON_REFACTOR_SCHEMA_ASSETS = {"python-refactor.schema.json"}
 ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 RELIABILITY_SCHEMA_ASSETS = {"reliability-budget.schema.json"}
 ONBOARDING_SCHEMA_ASSETS = {"onboarding.schema.json"}
+EVIDENCE_LIFECYCLE_SCHEMA_ASSETS = {"evidence-lifecycle.schema.json"}
 ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
 CONTRACT_CATALOG_DATA_ASSETS = {"contract_catalog.json"}
@@ -60,6 +61,7 @@ REQUIRED_SCHEMAS |= (
     | ADVERSARIAL_SCHEMA_ASSETS
     | RELIABILITY_SCHEMA_ASSETS
     | ONBOARDING_SCHEMA_ASSETS
+    | EVIDENCE_LIFECYCLE_SCHEMA_ASSETS
     | CONTRACT_CATALOG_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
@@ -247,6 +249,7 @@ def _required_schemas(
     require_adversarial_assets: bool,
     require_reliability_assets: bool,
     require_onboarding_assets: bool,
+    require_evidence_lifecycle_assets: bool,
     require_contract_catalog_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
@@ -270,6 +273,8 @@ def _required_schemas(
         required_schemas = required_schemas - RELIABILITY_SCHEMA_ASSETS
     if not require_onboarding_assets:
         required_schemas = required_schemas - ONBOARDING_SCHEMA_ASSETS
+    if not require_evidence_lifecycle_assets:
+        required_schemas = required_schemas - EVIDENCE_LIFECYCLE_SCHEMA_ASSETS
     return (
         required_schemas
         if require_contract_catalog_assets
@@ -291,6 +296,7 @@ def inspect_archive(
     require_adversarial_assets: bool = True,
     require_reliability_assets: bool = True,
     require_onboarding_assets: bool = True,
+    require_evidence_lifecycle_assets: bool = True,
     require_contract_catalog_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
@@ -305,6 +311,7 @@ def inspect_archive(
         require_adversarial_assets,
         require_reliability_assets,
         require_onboarding_assets,
+        require_evidence_lifecycle_assets,
         require_contract_catalog_assets,
     )
     required_data = (
@@ -797,6 +804,8 @@ def _verify_artifact(
                 >= (0, 22, 0),
                 require_onboarding_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 23, 0),
+                require_evidence_lifecycle_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 33, 0),
                 require_contract_catalog_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 30, 0),
             )

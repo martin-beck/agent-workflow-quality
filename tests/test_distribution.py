@@ -21,6 +21,7 @@ from awq.release import (
     ADVERSARIAL_SCHEMA_ASSETS,
     CONTRACT_CATALOG_DATA_ASSETS,
     CONTRACT_CATALOG_SCHEMA_ASSETS,
+    EVIDENCE_LIFECYCLE_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -113,6 +114,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -147,6 +149,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -190,6 +193,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -227,6 +231,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -272,6 +277,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -304,6 +310,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -335,6 +342,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | RELIABILITY_SCHEMA_ASSETS
             | ADVERSARIAL_SCHEMA_ASSETS
             | PYTHON_REFACTOR_SCHEMA_ASSETS
+            | EVIDENCE_LIFECYCLE_SCHEMA_ASSETS
         ):
             members = [
                 (f"awq/schemas/{name}", packaged_schema_bytes(name))
