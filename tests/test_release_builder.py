@@ -91,6 +91,8 @@ class ReleaseBuilderTests(unittest.TestCase):
                     b"Name: agent-workflow-quality\nVersion: 0.13.0\n"
                 ),
                 "awq/data/adapter_catalog.json": b"{}\n",
+                "awq/data/compatibility.json": b"{}\n",
+                "awq/data/agent_recipes.json": b"{}\n",
                 "awq/build-marker": marker,
                 **{f"awq/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS},
             }
@@ -108,6 +110,8 @@ class ReleaseBuilderTests(unittest.TestCase):
                     b'[project]\nname = "agent-workflow-quality"\nversion = "0.13.0"\n'
                 ),
                 f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
+                f"{prefix}/src/awq/data/compatibility.json": b"{}\n",
+                f"{prefix}/src/awq/data/agent_recipes.json": b"{}\n",
                 f"{prefix}/build-marker": marker,
                 **{
                     f"{prefix}/schemas/{name}": packaged_schema_bytes(name)

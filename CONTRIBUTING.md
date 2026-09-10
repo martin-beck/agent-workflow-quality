@@ -32,6 +32,7 @@ uv run mypy src tests scripts
 uv run coverage run --branch -m unittest discover -s tests -p 'test_*.py'
 uv run coverage report --fail-under=95
 uv run python scripts/generate_catalog.py --check
+uv run python scripts/generate_onboarding.py --check
 uv run python scripts/generate_sbom_fixture.py --check
 uv run python scripts/generate_provenance_fixture.py --check
 uv run python scripts/check_assurance_models.py
@@ -46,7 +47,7 @@ PYTHONPATH=src "$release_python" scripts/build_release.py \
   --uv-cache /new/external/uv-cache \
   --uv "$(command -v uv)"
 uv run awq --root . release-verify \
-  /new/external/awq-release/agent_workflow_quality-0.22.0.release.json \
+  /new/external/awq-release/agent_workflow_quality-0.23.0.release.json \
   --source --format json
 ```
 

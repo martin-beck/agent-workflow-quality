@@ -13,7 +13,16 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from awq import adversarial, assurance, commands, promotion, refactor, reliability, verified_update
+from awq import (
+    adversarial,
+    assurance,
+    commands,
+    onboarding,
+    promotion,
+    refactor,
+    reliability,
+    verified_update,
+)
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
 from awq.release import ReleaseError
@@ -30,6 +39,12 @@ def parser() -> argparse.ArgumentParser:
     sub = result.add_subparsers(dest="command", required=True)
     for name in ("inspect", "doctor", "standards", "governance"):
         _format_argument(sub.add_parser(name))
+    item = sub.add_parser("onboarding")
+    item.add_argument("--capability", choices=onboarding.CAPABILITIES, default="core")
+    _format_argument(item)
+    item = sub.add_parser("migration-preview")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("init")
     item.add_argument("--profiles", nargs="+")
     item.add_argument("--dry-run", action="store_true")
@@ -107,6 +122,8 @@ def _authenticated_arguments(item: argparse.ArgumentParser) -> None:
 
 def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     table: dict[str, Callable[[], dict[str, Any]]] = {
+        "onboarding": lambda: onboarding.diagnose(args.capability),
+        "migration-preview": lambda: onboarding.migration_file(root, args.contract),
         "inspect": lambda: commands.inspect(root),
         "refactor-collect": lambda: refactor.collect(root, args.contract, args.tools),
         "reliability-collect": lambda: reliability.run_file(

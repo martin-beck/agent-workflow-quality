@@ -1,0 +1,40 @@
+name: Reviewed AWQ core recipe
+
+"on":
+  workflow_call:
+    inputs:
+      awq_commit:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  awq:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Require independently reviewed full source pin
+        env:
+          AWQ_COMMIT: ${{ inputs.awq_commit }}
+        run: python -c 'import os,re; raise SystemExit(0 if re.fullmatch("[0-9a-f]{40}",os.environ["AWQ_COMMIT"]) else 1)'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: martin-beck/agent-workflow-quality
+          ref: ${{ inputs.awq_commit }}
+          path: quality-runtime
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.12.8"
+          enable-cache: false
+      - name: Install reviewed source policy bundle
+        run: uv sync --directory quality-runtime --locked --python 3.12.14
+      - name: Run core preflight and existing locked gates
+        run: |
+          uv run --directory quality-runtime --frozen python -m awq --root .. onboarding --format json
+          uv run --directory quality-runtime --frozen python -m awq --root .. check --tier pr --format json

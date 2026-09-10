@@ -1,0 +1,34 @@
+name: Portable onboarding
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-14, windows-2022]
+        python: ["3.12.14", "3.13.15"]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.12.8"
+          enable-cache: false
+      - name: Install exact locked source environment
+        run: uv sync --locked --python "${{ matrix.python }}"
+      - name: Fresh core onboarding smoke
+        run: uv run --frozen python -B -m unittest tests.test_onboarding_portable
+      - name: Packaged compatibility diagnosis
+        run: uv run --frozen python -B -m awq onboarding --format json
