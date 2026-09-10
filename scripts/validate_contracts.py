@@ -78,7 +78,6 @@ def main() -> int:
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
     adapter_catalog = json.loads(files("awq.data").joinpath("adapter_catalog.json").read_text())
-    formal_adapter = json.loads(files("awq.data").joinpath("formal_adapter.json").read_text())
     android_jvm = json.loads(
         (ROOT / "fixtures/conforming/android-jvm/quality/android-jvm.json").read_text()
     )
@@ -252,6 +251,9 @@ def main() -> int:
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")
+    formal_adapter = next(
+        family for family in adapter_catalog["families"] if family["id"] == "formal-model"
+    )
     validate(formal_adapter["contracts"][0], "formal-adapter-contract.schema.json")
     validate(android_jvm, "android-jvm-policy.schema.json")
     validate(sources, "control-source-registry.schema.json")

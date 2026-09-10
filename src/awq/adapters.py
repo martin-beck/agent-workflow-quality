@@ -289,11 +289,6 @@ def load_adapter_catalog() -> tuple[dict[str, dict[str, Any]], str]:
     document = json.loads(
         resource_files("awq.data").joinpath("adapter_catalog.json").read_text(encoding="utf-8")
     )
-    formal = json.loads(
-        resource_files("awq.data").joinpath("formal_adapter.json").read_text(encoding="utf-8")
-    )
-    document["families"].append(formal)
-    document["families"].sort(key=lambda family: family["id"])
     families = validate_adapter_catalog(document)
     return families, hashlib.sha256(canonical_bytes(document)).hexdigest()
 

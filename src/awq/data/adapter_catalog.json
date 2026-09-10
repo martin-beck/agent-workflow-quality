@@ -460,6 +460,53 @@
       ]
     },
     {
+      "id": "formal-model",
+      "title": "Bounded formal-model adapter",
+      "description": "A reviewed direct TLC command with explicit worker, depth, model, configuration, version, and deadline bounds.",
+      "assumptions": [
+        "The separately installed tlc launcher is pinned to TLA+ Tools 1.8.0 and its version probe has the exact reviewed output.",
+        "The checked-in configuration names every invariant and finite constant required for the selected model.",
+        "A completed bounded exploration is evidence about the declared TLA+ model only, not proof that an implementation refines it.",
+        "The adapter invokes the reviewed command offline and never retains TLC output in AWQ evidence."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-FORMAL-MODEL-TLC",
+          "tool": "tlc",
+          "version": "1.8.0",
+          "version_argv": [
+            "tlc",
+            "--version"
+          ],
+          "version_output": "TLC 1.8.0",
+          "argv": [
+            "tlc",
+            "-workers",
+            "1",
+            "-depth",
+            "1000",
+            "-config",
+            "formal/Model.cfg",
+            "formal/Model.tla"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "bounded-model",
+          "limitation": "TLC explores only the declared model within one worker, depth 1000, its finite constants, and a 300 second deadline; this does not prove implementation refinement.",
+          "remediation": "Rerun the exact native TLC argv for private diagnostics, then repair the model, configuration, bound, or implementation correspondence outside AWQ evidence.",
+          "formats": [
+            ".cfg",
+            ".tla"
+          ],
+          "config_paths": [
+            "formal/Model.cfg",
+            "formal/Model.tla"
+          ],
+          "input_mode": "explicit"
+        }
+      ]
+    },
+    {
       "id": "python",
       "title": "Python quality adapters",
       "description": "Reviewed offline commands for Python formatting, linting, strict typing, tests, and branch-aware coverage.",

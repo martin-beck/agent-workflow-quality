@@ -23,8 +23,6 @@ from tests.support import Repository
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = """#!/usr/bin/env python3
-# Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-# SPDX-License-Identifier: MIT
 import pathlib
 import sys
 import time

@@ -42,12 +42,15 @@ TLA_TOOLS = Artifact(
     "https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar",
     "8836549e83db7f0b3f9fdde679ab56270d18e06198366d217d960738c02b9dbe",
 )
+GENERATED_HEADER = (
+    "# Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.\n"
+    "# SPDX-License-Identifier: MIT\n"
+)
 
 
 def _wrapper(digest: str) -> bytes:
     return f"""#!/usr/bin/env python3
-# Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-# SPDX-License-Identifier: MIT
+{GENERATED_HEADER}\
 import hashlib
 import os
 from pathlib import Path

@@ -86,6 +86,14 @@ class FormalToolInstallerTests(unittest.TestCase):
         ):
             installer.install(prefix)
         self.assertEqual(content, (prefix / "lib/tla2tools.jar").read_bytes())
+        self.assertEqual(
+            [
+                "#!/usr/bin/env python3",
+                "# Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.",
+                "# SPDX-License-Identifier: MIT",
+            ],
+            (prefix / "bin/tlc").read_text(encoding="utf-8").splitlines()[:3],
+        )
         completed = subprocess.run(
             [str(prefix / "bin/tlc"), "--version"],
             stdin=subprocess.DEVNULL,
