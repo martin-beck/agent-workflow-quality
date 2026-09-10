@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from awq import assurance, lifecycle_model
+from awq.project import ProjectError
 from awq.sbom import strict_json
 from awq.trust import read_file
 
@@ -36,9 +37,15 @@ def check(root: Path) -> dict[str, Any]:
         }
     expected = strict_json(read_file(root / "formal/counterexamples.json"))
     lifecycle = check_lifecycle(root)
+    correspondence = check_refinement(root)
     return {
-        "status": "pass" if observed == expected and lifecycle["status"] == "pass" else "fail",
+        "status": "pass"
+        if observed == expected
+        and lifecycle["status"] == "pass"
+        and correspondence["status"] == "pass"
+        else "fail",
         "lifecycle": lifecycle,
+        "correspondence": correspondence,
         "model": baseline["model"],
         "states": baseline["states"],
         "transitions": baseline["transitions"],
@@ -67,6 +74,36 @@ def check_lifecycle(root: Path) -> dict[str, Any]:
         "known_bad_mutations": 10,
         "composition": "not-proven",
         "refinement": "not-proven",
+    }
+
+
+def check_refinement(root: Path) -> dict[str, Any]:
+    """Require reviewed positive correspondence and each hostile rejection."""
+    positive = assurance.evaluate_file(root, "fixtures/conforming/refinement/map.json")
+    template = assurance.evaluate_file(root, "templates/refinement-map.json")
+    bad = assurance.evaluate_file(
+        root, "fixtures/nonconforming/refinement/contradictory-trace.json"
+    )
+    rejected = 0
+    for name in ("missing-map", "out-of-bound"):
+        try:
+            assurance.evaluate_file(root, "fixtures/nonconforming/refinement/" + name + ".json")
+        except ProjectError:
+            rejected += 1
+    passed = (
+        positive == template
+        and positive["status"] == "pass"
+        and positive["traces"] == 4
+        and positive["transitions"] == 7
+        and bad["status"] == "fail"
+        and bad["findings"] == ["state-projection", "transition-simulation"]
+        and rejected == 2
+    )
+    return {
+        "status": "pass" if passed else "fail",
+        "negative_fixtures": 3,
+        "refinement": "not-proven",
+        "execution": "caller-declared-not-run",
     }
 
 

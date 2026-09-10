@@ -142,3 +142,9 @@ exception expiry to publication or mapping the two abstract writers to real proc
 models, crash-aware implementation refinement, liveness/fairness, real-time constraints and
 language-specific refactoring execution remain separately reviewed work. All native gates remain
 retained, and no result claims unbounded safety, universal equivalence or compliance certification.
+
+## Reviewed implementation trace correspondence
+
+AWQ 0.19 adds [strict paired trace maps](REFINEMENT.md) for the review/promotion model.
+Complete state/action maps and reviewed obligations bind bounded caller-declared observations.
+A passing correspondence check is not an implementation-refinement theorem and retains native gates.

@@ -37,11 +37,13 @@ PROVENANCE_SCHEMA_ASSETS = {"release-provenance.schema.json", "release-trust-pol
 PROMOTION_SCHEMA_ASSETS = {"consumer-equivalence.schema.json"}
 FORMAL_SCHEMA_ASSETS = {"assurance-contract.schema.json"}
 LIFECYCLE_SCHEMA_ASSETS = {"lifecycle-model.schema.json"}
+REFINEMENT_SCHEMA_ASSETS = {"refinement-map.schema.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
     | FORMAL_SCHEMA_ASSETS
     | LIFECYCLE_SCHEMA_ASSETS
+    | REFINEMENT_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -223,6 +225,7 @@ def _required_schemas(
     require_promotion_assets: bool,
     require_formal_assets: bool,
     require_lifecycle_assets: bool,
+    require_refinement_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
@@ -235,6 +238,8 @@ def _required_schemas(
         required_schemas = required_schemas - FORMAL_SCHEMA_ASSETS
     if not require_lifecycle_assets:
         required_schemas = required_schemas - LIFECYCLE_SCHEMA_ASSETS
+    if not require_refinement_assets:
+        required_schemas = required_schemas - REFINEMENT_SCHEMA_ASSETS
     return required_schemas
 
 
@@ -247,6 +252,7 @@ def inspect_archive(
     require_promotion_assets: bool = True,
     require_formal_assets: bool = True,
     require_lifecycle_assets: bool = True,
+    require_refinement_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -255,6 +261,7 @@ def inspect_archive(
         require_promotion_assets,
         require_formal_assets,
         require_lifecycle_assets,
+        require_refinement_assets,
     )
     try:
         if path.name.endswith(".tar.gz"):
@@ -728,6 +735,8 @@ def _verify_artifact(
                 require_formal_assets=tuple(int(part) for part in version.split(".")) >= (0, 17, 0),
                 require_lifecycle_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 18, 0),
+                require_refinement_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 19, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

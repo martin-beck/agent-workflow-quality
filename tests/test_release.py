@@ -26,6 +26,7 @@ from awq.release import (
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     PROMOTION_SCHEMA_ASSETS,
+    REFINEMENT_SCHEMA_ASSETS,
     REGISTRY_PATHS,
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
@@ -457,7 +458,8 @@ class ReleaseVerificationTests(unittest.TestCase):
             - SBOM_SCHEMA_ASSETS
             - PROMOTION_SCHEMA_ASSETS
             - FORMAL_SCHEMA_ASSETS
-            - LIFECYCLE_SCHEMA_ASSETS,
+            - LIFECYCLE_SCHEMA_ASSETS
+            - REFINEMENT_SCHEMA_ASSETS,
         ):
             value = self.manifest_value()
         path = self.write_manifest(value)
@@ -468,12 +470,13 @@ class ReleaseVerificationTests(unittest.TestCase):
         assert isinstance(artifacts, list)
         for artifact in artifacts:
             findings = inspect_archive(self.root / artifact["name"])
-            self.assertEqual(5, len(findings))
+            self.assertEqual(6, len(findings))
             for name in (
                 SBOM_SCHEMA_ASSETS
                 | PROMOTION_SCHEMA_ASSETS
                 | FORMAL_SCHEMA_ASSETS
                 | LIFECYCLE_SCHEMA_ASSETS
+                | REFINEMENT_SCHEMA_ASSETS
             ):
                 self.assertTrue(any(name in finding for finding in findings))
 
