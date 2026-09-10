@@ -25,6 +25,7 @@ from awq.release import (
     PROVENANCE_SCHEMA_ASSETS,
     PYTHON_REFACTOR_SCHEMA_ASSETS,
     REFINEMENT_SCHEMA_ASSETS,
+    RELIABILITY_SCHEMA_ASSETS,
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
 )
@@ -104,6 +105,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
+                ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -129,6 +131,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
+                ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -165,6 +168,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
+                ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -194,6 +198,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
+                ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -231,6 +236,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
+                ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -256,6 +262,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
+                ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -281,6 +288,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | FORMAL_SCHEMA_ASSETS
             | LIFECYCLE_SCHEMA_ASSETS
             | REFINEMENT_SCHEMA_ASSETS
+            | RELIABILITY_SCHEMA_ASSETS
             | ADVERSARIAL_SCHEMA_ASSETS
             | PYTHON_REFACTOR_SCHEMA_ASSETS
         ):

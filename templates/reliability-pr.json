@@ -1,0 +1,1 @@
+{"kind":"reliability-budget","profile":"pr","reference_ns":{"large":{"checks":200000000,"discovery":200000000,"evidence":200000000,"policy-diff":200000000},"medium":{"checks":200000000,"discovery":200000000,"evidence":200000000,"policy-diff":200000000},"small":{"checks":200000000,"discovery":200000000,"evidence":200000000,"policy-diff":200000000}},"schema_version":1}

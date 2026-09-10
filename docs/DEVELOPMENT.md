@@ -79,3 +79,9 @@ See [adversarial assurance](ADVERSARIAL.md) for deterministic PR and scheduled
 campaigns, independent construction oracles, minimized public-safe regressions,
 and the mandatory seven-of-seven boundary-fault sensitivity floor. Native gates
 remain required; these campaigns do not establish universal correctness.
+
+## Reliability and retention budgets
+
+See [bounded reliability observations](RELIABILITY.md) for representative synthetic
+repositories, integer timing ceilings, repeat determinism, declared extension
+observations and metadata-only retention guidance. Native gates remain required.

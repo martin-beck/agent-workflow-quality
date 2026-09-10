@@ -38,6 +38,22 @@ def validate(instance: object, schema_name: str) -> None:
     ).validate(instance)
 
 
+def _validate_reliability_fixtures() -> None:
+    for name in (
+        "templates/reliability-pr.json",
+        "templates/reliability-scheduled.json",
+        "fixtures/conforming/reliability/pr.json",
+        "fixtures/conforming/reliability/scheduled.json",
+        "fixtures/conforming/reliability/observation.json",
+        "fixtures/nonconforming/reliability/runtime-regression.json",
+        "fixtures/nonconforming/reliability/timeout.json",
+        "fixtures/nonconforming/reliability/truncation.json",
+        "fixtures/nonconforming/reliability/nondeterministic.json",
+        "fixtures/nonconforming/reliability/retention.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "reliability-budget.schema.json")
+
+
 def main() -> int:
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
@@ -209,6 +225,7 @@ def main() -> int:
         "fixtures/conforming/adversarial/workflow-redaction.json",
     ):
         validate(json.loads((ROOT / name).read_bytes()), "adversarial-campaign.schema.json")
+    _validate_reliability_fixtures()
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")
