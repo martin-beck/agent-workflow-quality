@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from awq import assurance
+from awq import assurance, lifecycle_model
 from awq.sbom import strict_json
 from awq.trust import read_file
 
@@ -35,12 +35,37 @@ def check(root: Path) -> dict[str, Any]:
             for key in ("status", "outcome", "counterexample", "violated_invariants")
         }
     expected = strict_json(read_file(root / "formal/counterexamples.json"))
+    lifecycle = check_lifecycle(root)
     return {
-        "status": "pass" if observed == expected else "fail",
+        "status": "pass" if observed == expected and lifecycle["status"] == "pass" else "fail",
+        "lifecycle": lifecycle,
         "model": baseline["model"],
         "states": baseline["states"],
         "transitions": baseline["transitions"],
         "known_bad_mutations": 3,
+        "refinement": "not-proven",
+    }
+
+
+def check_lifecycle(root: Path) -> dict[str, Any]:
+    baseline = assurance.evaluate_file(root, "fixtures/conforming/lifecycle/model.json")
+    observed: dict[str, Any] = {
+        "model": baseline["model"],
+        "bounds": baseline["bounds"],
+        "baseline": baseline["components"],
+        "mutations": {},
+    }
+    for mutation in lifecycle_model.MUTATIONS[1:]:
+        result = assurance.evaluate_file(
+            root, "fixtures/nonconforming/lifecycle/" + mutation + ".json"
+        )
+        observed["mutations"][mutation] = result["components"]
+    expected = strict_json(read_file(root / "formal/lifecycle-counterexamples.json"))
+    return {
+        "status": "pass" if observed == expected else "fail",
+        "components": baseline["components"],
+        "known_bad_mutations": 10,
+        "composition": "not-proven",
         "refinement": "not-proven",
     }
 

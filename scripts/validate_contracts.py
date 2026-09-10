@@ -13,7 +13,7 @@ from typing import Any
 import jsonschema
 from referencing import Registry, Resource
 
-from awq import sbom
+from awq import lifecycle_model, sbom
 from awq.commands import evidence
 from awq.release import BUILD_CONSTRAINTS_SHA256
 
@@ -174,6 +174,16 @@ def main() -> int:
             ),
             "assurance-contract.schema.json",
         )
+    for name in ("fixtures/conforming/lifecycle/model.json", "templates/lifecycle-model.json"):
+        value = json.loads((ROOT / name).read_bytes())
+        validate(value, "lifecycle-model.schema.json")
+        validate(value, "assurance-contract.schema.json")
+    for mutation in lifecycle_model.MUTATIONS[1:]:
+        value = json.loads(
+            (ROOT / "fixtures/nonconforming/lifecycle" / (mutation + ".json")).read_bytes()
+        )
+        validate(value, "lifecycle-model.schema.json")
+        validate(value, "assurance-contract.schema.json")
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")

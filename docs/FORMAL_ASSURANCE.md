@@ -154,3 +154,10 @@ exception expiry and renewal, tier transitions/evidence freshness, multi-reviewe
 crash behavior, explicit implementation refinement, and language-specific refactoring collectors/
 adapters with independent native equivalence and hostile tests. Those children must use the
 coordinator, preserve current gates and retain these proof limits until stronger evidence exists.
+
+## Policy lifecycle components
+
+AWQ 0.18 adds [bounded lifecycle components](LIFECYCLE_MODELS.md) for exception renewal/expiry,
+two-reviewer tier and freshness decisions, rollback deadlines, and staged crash/restart publication.
+Each component has an exhaustive bounded baseline and reviewed counterexamples. Their success is
+not a composition or implementation-refinement proof and never removes a native gate.

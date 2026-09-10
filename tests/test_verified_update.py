@@ -79,10 +79,10 @@ class AuthenticatedUpdateTests(unittest.TestCase):
         self.update(False)
         old = deepcopy(fixture.policy)
         added = fixture.policy_value([0, 1], old)
-        fixture.build("0.17.2", added, 0)
+        fixture.build("0.18.2", added, 0)
         self.update(False)
         retired = fixture.policy_value([1], added)
-        fixture.build("0.17.3", retired, 1)
+        fixture.build("0.18.3", retired, 1)
         self.update(False)
         _, lock = load_project(fixture.consumer)
         self.assertEqual(3, lock["receipt"]["policy_generation"])
@@ -94,7 +94,7 @@ class AuthenticatedUpdateTests(unittest.TestCase):
         self.update(False)
         before = fixture.consumer_bytes()
         added = fixture.policy_value([0, 1], fixture.policy)
-        fixture.build("0.17.2", added, 1)
+        fixture.build("0.18.2", added, 1)
         with self.assertRaisesRegex(ReleaseError, "not authorized"):
             self.update(False)
         self.assertEqual(before, fixture.consumer_bytes())
@@ -292,7 +292,7 @@ class AuthenticatedUpdateTests(unittest.TestCase):
     def test_same_authorized_principal_but_different_manifest_and_tag_keys_fail(self) -> None:
         fixture = self.fixture
         policy = fixture.policy_value([0, 1])
-        fixture.build("0.17.2", policy, 1)
+        fixture.build("0.18.2", policy, 1)
         fixture.sign(0)
         before = fixture.consumer_bytes()
         with self.assertRaisesRegex(ReleaseError, "verification failed"):
@@ -456,7 +456,7 @@ class TrustBoundaryTests(unittest.TestCase):
             trust.run(["/usr/bin/true"])
         with mock.patch("awq.verified_update.os.name", "nt"), self.assertRaises(ReleaseError):
             verified_update.update(fixture.consumer, fixture.version, True, *fixture.arguments())
-        for value in ["main", "v0.17.0", "01.1.0", "1.2", True, "1.2.3.4"]:
+        for value in ["main", "v0.18.0", "01.1.0", "1.2", True, "1.2.3.4"]:
             with self.subTest(value=value), self.assertRaises(ReleaseError):
                 verified_update.version_tuple(value)
 

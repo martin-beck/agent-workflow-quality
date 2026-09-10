@@ -108,3 +108,10 @@ See [the formal assurance contract](docs/FORMAL_ASSURANCE.md) for the executable
 reviewed counterexamples and strict before/after evidence. These checks do not establish
 implementation refinement, liveness or universal behavior preservation. Consumer-native gates
 remain unchanged; broader models and language-specific collectors require separate child tasks.
+
+## Policy lifecycle components
+
+AWQ 0.18 adds [bounded lifecycle components](docs/LIFECYCLE_MODELS.md) for exception renewal/expiry,
+two-reviewer tier and freshness decisions, rollback deadlines, and staged crash/restart publication.
+Each component has an exhaustive bounded baseline and reviewed counterexamples. Their success is
+not a composition or implementation-refinement proof and never removes a native gate.

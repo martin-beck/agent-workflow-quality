@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any, Never
 
-from awq import __version__, formal_model
+from awq import __version__, formal_model, lifecycle_model
 from awq.project import ProjectError
 from awq.registry import canonical_bytes
 from awq.release import ReleaseError
@@ -59,6 +59,8 @@ def _identities(value: Any) -> None:
 
 
 def _model(value: dict[str, Any]) -> dict[str, Any]:
+    if value.get("model") == lifecycle_model.MODEL:
+        return _lifecycle(value)
     contract = _object(value, "schema_version kind model mutation bounds assumptions")
     if (
         contract["model"] != formal_model.MODEL
@@ -87,6 +89,35 @@ def _model(value: dict[str, Any]) -> dict[str, Any]:
         "refinement": "not-proven",
         "model_sha256": hashlib.sha256(
             read_file(Path(formal_model.__file__), MAX_BYTES)
+        ).hexdigest(),
+    }
+
+
+def _lifecycle(value: dict[str, Any]) -> dict[str, Any]:
+    contract = _object(value, "schema_version kind model mutation bounds assumptions")
+    if contract["mutation"] not in lifecycle_model.MUTATIONS:
+        _fail("lifecycle-mutation")
+    if contract["assumptions"] != list(lifecycle_model.ASSUMPTIONS):
+        _fail("lifecycle-assumptions")
+    bounds = _object(contract["bounds"], "ticks revisions ttl tiers rollback_deadline max_states")
+    for key, high in (
+        ("ticks", 3),
+        ("revisions", 3),
+        ("ttl", 3),
+        ("tiers", 2),
+        ("rollback_deadline", 3),
+        ("max_states", 20_000),
+    ):
+        _integer(bounds[key], 1, high)
+    result = lifecycle_model.explore(bounds, contract["mutation"])
+    return {
+        **result,
+        "model": lifecycle_model.MODEL,
+        "mutation": contract["mutation"],
+        "bounds": bounds,
+        "assumptions": list(lifecycle_model.ASSUMPTIONS),
+        "model_sha256": hashlib.sha256(
+            read_file(Path(lifecycle_model.__file__), MAX_BYTES)
         ).hexdigest(),
     }
 
