@@ -14,11 +14,17 @@ report path and digest set, required modules, count floors, skip policy, collect
 age. The caller supplies `--as-of`, making freshness evaluation deterministic.
 
 Each report is a regular confined UTF-8 file no larger than 5 MB. At most 1,000 reports and 50 MB
-total are accepted. XML depth, nodes, suites and testcase counts are bounded; DTDs and entities are
-forbidden. Suite attributes must agree with actual direct testcase outcomes. Missing, extra,
+total are accepted. XML depth, nodes, suites and testcase counts are bounded across the complete
+declared report set, and discovery stops at the report bound. DTDs and entities are forbidden.
+Nested suite attributes must agree with their complete subtree while every direct testcase is
+counted exactly once. Missing, extra,
 symlinked, empty, malformed, stale, wrong-revision, failing, erroneous and all-skipped evidence
 fails closed. `allow` permits some skips only when the positive executed floor remains satisfied;
 `forbid` permits none.
+
+Report roots and report paths use the same repository-relative ASCII grammar. Every segment starts
+with an alphanumeric character; dot-prefixed segments, repeated separators, backslashes and parent
+traversals are rejected.
 
 Passing output contains only classifications, source/producer/report/suite digests, freshness,
 module identifiers and aggregate counts. Testcase names, messages, stack traces, standard streams,

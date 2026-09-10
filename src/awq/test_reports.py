@@ -29,6 +29,7 @@ SHA256 = re.compile(r"^[0-9a-f]{64}$")
 GIT_REVISION = re.compile(r"^[0-9a-f]{40}$")
 IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,99}$")
 MODULE = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$")
+REPORT_PATH = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$")
 TIMESTAMP = re.compile(r"^20[0-9]{2}-(?:0[1-9]|1[0-2])-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 CONTRACT_KEYS = {
     "collected_at",
@@ -79,7 +80,7 @@ def _integer(value: object, minimum: int, maximum: int, label: str) -> int:
 
 
 def _relative(value: object) -> str:
-    if not isinstance(value, str) or not value or "\\" in value:
+    if not isinstance(value, str) or REPORT_PATH.fullmatch(value) is None:
         raise TestReportError("report path is not repository-relative POSIX")
     path = PurePosixPath(value)
     if path.is_absolute() or ".." in path.parts or value != path.as_posix() or value == ".":
@@ -161,6 +162,41 @@ def _count_value(suite: ElementTree.Element, name: str) -> int:
     return result
 
 
+def _suite_observation(suite: ElementTree.Element) -> dict[str, int]:
+    cases = list(suite.findall("./testcase"))
+    children = list(suite.findall("./testsuite"))
+    if not cases and not children:
+        raise TestReportError("JUnit report contains an empty suite")
+    observed = {"discovered": len(cases), "failures": 0, "errors": 0, "skipped": 0}
+    for case in cases:
+        outcomes = [
+            outcome for outcome in ("failure", "error", "skipped") if case.find(outcome) is not None
+        ]
+        if len(outcomes) > 1:
+            raise TestReportError("JUnit testcase has contradictory outcomes")
+        if outcomes:
+            key = {"failure": "failures", "error": "errors", "skipped": "skipped"}[outcomes[0]]
+            observed[key] += 1
+    for child in children:
+        nested = _suite_observation(child)
+        for key in observed:
+            observed[key] += nested[key]
+            if observed[key] > MAX_CASES:
+                raise TestReportError("JUnit aggregate count exceeds its bound")
+    declared = {
+        "discovered": _count_value(suite, "tests"),
+        "failures": _count_value(suite, "failures"),
+        "errors": _count_value(suite, "errors"),
+        "skipped": _count_value(suite, "skipped"),
+    }
+    if (
+        declared != observed
+        or sum(declared[key] for key in ("failures", "errors", "skipped")) > declared["discovered"]
+    ):
+        raise TestReportError("JUnit suite counts are inconsistent")
+    return observed
+
+
 def parse_junit_report(path: Path) -> dict[str, Any]:  # noqa: C901
     """Parse one report into content-minimized suite and count evidence."""
     raw = path.read_bytes()
@@ -179,14 +215,14 @@ def parse_junit_report(path: Path) -> dict[str, Any]:  # noqa: C901
         raise TestReportError("JUnit report is malformed") from error
     _xml_depth_and_nodes(document)
     if document.tag == "testsuite":
-        suites = [document]
+        roots = [document]
+        suites = [document, *document.findall(".//testsuite")]
     elif document.tag == "testsuites":
-        suites = [
-            suite for suite in document.findall(".//testsuite") if not suite.findall("./testsuite")
-        ]
+        roots = list(document.findall("./testsuite"))
+        suites = list(document.findall(".//testsuite"))
     else:
         raise TestReportError("JUnit report root is unsupported")
-    if not suites or len(suites) > MAX_SUITES:
+    if not roots or not suites or len(suites) > MAX_SUITES:
         raise TestReportError("JUnit report suite count is outside its bound")
     totals = dict.fromkeys(("discovered", "failures", "errors", "skipped"), 0)
     suite_names: list[str] = []
@@ -194,34 +230,9 @@ def parse_junit_report(path: Path) -> dict[str, Any]:  # noqa: C901
         name = suite.attrib.get("name")
         if not isinstance(name, str) or not name or len(name) > 500:
             raise TestReportError("JUnit suite name is missing or oversized")
-        cases = list(suite.findall("./testcase"))
-        if not cases:
-            raise TestReportError("JUnit report contains an empty suite")
-        observed = {"discovered": len(cases), "failures": 0, "errors": 0, "skipped": 0}
-        for case in cases:
-            outcomes = [
-                outcome
-                for outcome in ("failure", "error", "skipped")
-                if case.find(outcome) is not None
-            ]
-            if len(outcomes) > 1:
-                raise TestReportError("JUnit testcase has contradictory outcomes")
-            if outcomes:
-                key = {"failure": "failures", "error": "errors", "skipped": "skipped"}[outcomes[0]]
-                observed[key] += 1
-        declared = {
-            "discovered": _count_value(suite, "tests"),
-            "failures": _count_value(suite, "failures"),
-            "errors": _count_value(suite, "errors"),
-            "skipped": _count_value(suite, "skipped"),
-        }
-        if (
-            declared != observed
-            or sum(declared[key] for key in ("failures", "errors", "skipped"))
-            > declared["discovered"]
-        ):
-            raise TestReportError("JUnit suite counts are inconsistent")
         suite_names.append(name)
+    for suite in roots:
+        observed = _suite_observation(suite)
         for key in totals:
             totals[key] += observed[key]
             if totals[key] > MAX_CASES:
@@ -234,6 +245,14 @@ def parse_junit_report(path: Path) -> dict[str, Any]:  # noqa: C901
     }
 
 
+def _check_summary_bounds(summary: dict[str, Any], label: str) -> None:
+    if summary["suites"] > MAX_SUITES or any(
+        summary[key] > MAX_CASES
+        for key in ("discovered", "executed", "skipped", "failures", "errors")
+    ):
+        raise TestReportError(f"{label} aggregate exceeds its bound")
+
+
 def summarize_declared_reports(root: Path, reports: list[dict[str, str]]) -> dict[str, Any]:
     """Verify declared report digests and summarize their bounded JUnit contents."""
     if not reports or len(reports) > MAX_REPORTS:
@@ -241,6 +260,9 @@ def summarize_declared_reports(root: Path, reports: list[dict[str, str]]) -> dic
     total_bytes = 0
     modules: dict[str, dict[str, Any]] = {}
     suite_digests: list[str] = []
+    aggregate = dict.fromkeys(
+        ("suites", "discovered", "executed", "skipped", "failures", "errors"), 0
+    )
     for record in reports:
         path = _confined(root, record["path"])
         size = path.stat().st_size
@@ -250,6 +272,10 @@ def summarize_declared_reports(root: Path, reports: list[dict[str, str]]) -> dic
         if _sha256(path) != record["sha256"]:
             raise TestReportError("declared report digest mismatch")
         counts = parse_junit_report(path)
+        aggregate["suites"] += counts["suite_count"]
+        for key in ("discovered", "executed", "skipped", "failures", "errors"):
+            aggregate[key] += counts[key]
+        _check_summary_bounds(aggregate, "cross-report")
         suite_digests.append(counts["suite_sha256"])
         module = modules.setdefault(
             record["module"],
@@ -265,11 +291,14 @@ def summarize_declared_reports(root: Path, reports: list[dict[str, str]]) -> dic
                 "suite_digests": [],
             },
         )
+        if len(modules) > MAX_MODULES:
+            raise TestReportError("cross-report module count exceeds its bound")
         module["reports"] += 1
         module["suites"] += counts["suite_count"]
         module["suite_digests"].append(counts["suite_sha256"])
         for key in ("discovered", "executed", "skipped", "failures", "errors"):
             module[key] += counts[key]
+        _check_summary_bounds(module, "module report")
     normalized_modules = []
     for module in modules.values():
         digests = module.pop("suite_digests")
@@ -279,11 +308,7 @@ def summarize_declared_reports(root: Path, reports: list[dict[str, str]]) -> dic
     totals = {
         "reports": len(reports),
         "modules": len(normalized_modules),
-        "suites": sum(item["suites"] for item in normalized_modules),
-        **{
-            key: sum(item[key] for item in normalized_modules)
-            for key in ("discovered", "executed", "skipped", "failures", "errors")
-        },
+        **aggregate,
     }
     return {
         "modules": normalized_modules,
@@ -380,9 +405,13 @@ def evaluate(root: Path, value: object, as_of: str) -> dict[str, Any]:  # noqa: 
         raise TestReportError("test-report evidence is from the wrong source revision")
     declared = {item["path"] for item in contract["reports"]}
     discovered: set[str] = set()
+    visited = 0
     for relative in contract["report_roots"]:
         directory = _confined(root, relative, directory=True)
         for path in directory.rglob("*"):
+            visited += 1
+            if visited > MAX_REPORTS:
+                raise TestReportError("report discovery exceeds its bound")
             metadata = path.lstat()
             if path.is_symlink():
                 raise TestReportError("report root contains a non-regular entry")

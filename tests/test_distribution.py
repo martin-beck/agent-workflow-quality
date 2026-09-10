@@ -407,7 +407,7 @@ class DistributionVerificationTests(unittest.TestCase):
             self.assertEqual([], inspect_archive(archive, require_onboarding_assets=False))
             self.assertEqual(3, len(inspect_archive(archive)))
 
-    def test_pre_catalog_v029_archives_retain_their_original_asset_contract(self) -> None:
+    def test_public_v029_archives_retain_their_original_asset_contract(self) -> None:
         schemas = frozenset(
             {
                 "adapter-catalog.schema.json",
@@ -445,12 +445,18 @@ class DistributionVerificationTests(unittest.TestCase):
         ):
             self.assertEqual(
                 [],
-                inspect_archive(archive, require_contract_catalog_assets=False),
+                inspect_archive(
+                    archive,
+                    require_contract_catalog_assets=False,
+                    require_test_report_assets=False,
+                ),
             )
             self.assertEqual(
                 [
                     f"{archive.name}: required packaged schema is missing: "
                     "contract-catalog.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
+                    "test-report-evidence.schema.json",
                     f"{archive.name}: required packaged data is missing: contract_catalog.json",
                 ],
                 inspect_archive(archive),

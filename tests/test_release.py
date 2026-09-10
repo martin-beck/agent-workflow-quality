@@ -35,6 +35,7 @@ from awq.release import (
     RELIABILITY_SCHEMA_ASSETS,
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
+    TEST_REPORT_SCHEMA_ASSETS,
     ReleaseError,
     _verify_artifact,
     canonical_bytes,
@@ -67,6 +68,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         mode: int | None = None,
         private: bool = False,
         include_contract_catalog: bool = True,
+        include_test_report: bool = True,
     ) -> Path:
         observed = version or self.version
         path = self.root / f"agent_workflow_quality-{self.version}-py3-none-any.whl"
@@ -87,11 +89,12 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f"agent_workflow_quality-{observed}.dist-info/METADATA",
                 metadata,
             )
-            for schema in sorted(
-                REQUIRED_SCHEMAS
-                if include_contract_catalog
-                else REQUIRED_SCHEMAS - CONTRACT_CATALOG_SCHEMA_ASSETS
-            ):
+            schemas = REQUIRED_SCHEMAS
+            if not include_contract_catalog:
+                schemas = schemas - CONTRACT_CATALOG_SCHEMA_ASSETS
+            if not include_test_report:
+                schemas = schemas - TEST_REPORT_SCHEMA_ASSETS
+            for schema in sorted(schemas):
                 write(archive, f"awq/schemas/{schema}", packaged_schema_bytes(schema))
             write(archive, "awq/data/adapter_catalog.json", b"{}\n")
             if include_contract_catalog:
@@ -109,6 +112,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         mtime: int = 1_788_930_927,
         mode: int = 0o644,
         include_contract_catalog: bool = True,
+        include_test_report: bool = True,
     ) -> Path:
         observed = version or self.version
         path = self.root / f"agent_workflow_quality-{self.version}.tar.gz"
@@ -132,6 +136,12 @@ class ReleaseVerificationTests(unittest.TestCase):
                 for name, content in members.items()
                 if not name.endswith("/contract-catalog.schema.json")
             }
+        if not include_test_report:
+            members = {
+                name: content
+                for name, content in members.items()
+                if not name.endswith("/test-report-evidence.schema.json")
+            }
         with tarfile.open(path, mode="w:gz") as archive:
             for name, content in members.items():
                 item = tarfile.TarInfo(name)
@@ -152,6 +162,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         sdist_mode: int = 0o644,
         private: bool = False,
         include_contract_catalog: bool = True,
+        include_test_report: bool = True,
     ) -> dict[str, object]:
         wheel = self.wheel(
             version=wheel_version,
@@ -159,12 +170,14 @@ class ReleaseVerificationTests(unittest.TestCase):
             mode=wheel_mode,
             private=private,
             include_contract_catalog=include_contract_catalog,
+            include_test_report=include_test_report,
         )
         sdist = self.sdist(
             version=sdist_version,
             mtime=sdist_mtime,
             mode=sdist_mode,
             include_contract_catalog=include_contract_catalog,
+            include_test_report=include_test_report,
         )
         artifacts = [
             {
@@ -493,9 +506,13 @@ class ReleaseVerificationTests(unittest.TestCase):
             - ADVERSARIAL_SCHEMA_ASSETS
             - RELIABILITY_SCHEMA_ASSETS
             - ONBOARDING_SCHEMA_ASSETS
-            - CONTRACT_CATALOG_SCHEMA_ASSETS,
+            - CONTRACT_CATALOG_SCHEMA_ASSETS
+            - TEST_REPORT_SCHEMA_ASSETS,
         ):
-            value = self.manifest_value(include_contract_catalog=False)
+            value = self.manifest_value(
+                include_contract_catalog=False,
+                include_test_report=False,
+            )
         path = self.write_manifest(value)
         result = verify_release(path)
         self.assertEqual("pass", result["status"])
@@ -504,7 +521,7 @@ class ReleaseVerificationTests(unittest.TestCase):
         assert isinstance(artifacts, list)
         for artifact in artifacts:
             findings = inspect_archive(self.root / artifact["name"])
-            self.assertEqual(12, len(findings))
+            self.assertEqual(13, len(findings))
             for name in (
                 SBOM_SCHEMA_ASSETS
                 | PROMOTION_SCHEMA_ASSETS
@@ -516,6 +533,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                 | ADVERSARIAL_SCHEMA_ASSETS
                 | PYTHON_REFACTOR_SCHEMA_ASSETS
                 | CONTRACT_CATALOG_SCHEMA_ASSETS
+                | TEST_REPORT_SCHEMA_ASSETS
             ):
                 self.assertTrue(any(name in finding for finding in findings))
             self.assertTrue(any("contract_catalog.json" in finding for finding in findings))
@@ -538,6 +556,24 @@ class ReleaseVerificationTests(unittest.TestCase):
                     required,
                     inspect.call_args.kwargs["require_contract_catalog_assets"],
                 )
+
+    def test_test_report_schema_is_required_starting_with_v031(self) -> None:
+        for version, passes in (("0.30.0", True), ("0.31.0", False)):
+            with self.subTest(version=version):
+                self.version = version
+                wheel = self.wheel(include_test_report=False)
+                item = {
+                    "name": wheel.name,
+                    "kind": "wheel",
+                    "media_type": "application/zip",
+                    "size": wheel.stat().st_size,
+                    "sha256": sha256_file(wheel),
+                }
+                if passes:
+                    _verify_artifact(self.root, item, version, 1_788_930_927)
+                else:
+                    with self.assertRaisesRegex(ReleaseError, "bounded archive"):
+                        _verify_artifact(self.root, item, version, 1_788_930_927)
 
 
 def subprocess_result(returncode: int, output: bytes) -> subprocess.CompletedProcess[bytes]:

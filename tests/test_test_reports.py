@@ -10,9 +10,13 @@ import hashlib
 import json
 import subprocess
 import unittest
+from collections.abc import Iterator
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest import mock
+
+import jsonschema
 
 from awq import test_reports
 from awq.cli import main
@@ -121,6 +125,42 @@ class TestReportEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(test_reports.TestReportError, "inconsistent"):
             test_reports.evaluate(self.repository.root, value, "2026-09-10T20:30:00Z")
 
+    def test_nested_direct_parent_failure_is_counted_once(self) -> None:
+        value = self.contract([("module", "runner", ("",))])
+        path = self.repository.root / "reports/module/runner.xml"
+        path.write_text(
+            '<testsuites><testsuite name="parent" tests="2" failures="1" '
+            'errors="0" skipped="0"><testcase name="direct"><failure/></testcase>'
+            + report("child", ("",))
+            + "</testsuite></testsuites>"
+        )
+        counts = test_reports.parse_junit_report(path)
+        self.assertEqual(2, counts["discovered"])
+        self.assertEqual(1, counts["failures"])
+        self.assertEqual(2, counts["suite_count"])
+        value["reports"][0]["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        with self.assertRaisesRegex(test_reports.TestReportError, "failures"):
+            test_reports.evaluate(self.repository.root, value, "2026-09-10T20:30:00Z")
+
+    def test_cross_report_count_suite_and_module_bounds_fail(self) -> None:
+        value = self.contract([("first", "runner", ("",)), ("second", "runner", ("",))])
+        reports = value["reports"]
+        with (
+            mock.patch.object(test_reports, "MAX_CASES", 1),
+            self.assertRaisesRegex(test_reports.TestReportError, "cross-report aggregate"),
+        ):
+            test_reports.summarize_declared_reports(self.repository.root, reports)
+        with (
+            mock.patch.object(test_reports, "MAX_SUITES", 1),
+            self.assertRaisesRegex(test_reports.TestReportError, "cross-report aggregate"),
+        ):
+            test_reports.summarize_declared_reports(self.repository.root, reports)
+        with (
+            mock.patch.object(test_reports, "MAX_MODULES", 1),
+            self.assertRaisesRegex(test_reports.TestReportError, "module count"),
+        ):
+            test_reports.summarize_declared_reports(self.repository.root, reports)
+
     def test_exact_set_modules_freshness_revision_paths_and_entities_fail(self) -> None:
         value = self.contract([("module", "runner", ("",))])
         mutations = []
@@ -135,7 +175,7 @@ class TestReportEvidenceTests(unittest.TestCase):
         mutations.append((wrong, "revision"))
         unsafe = copy.deepcopy(value)
         unsafe["reports"][0]["path"] = "../escape.xml"
-        mutations.append((unsafe, "escapes"))
+        mutations.append((unsafe, "report path"))
         artifact = copy.deepcopy(value)
         artifact["artifact_available"] = True
         mutations.append((artifact, "unknown"))
@@ -296,7 +336,14 @@ class TestReportEvidenceTests(unittest.TestCase):
             test_reports._git_revision(self.repository.root / "not-a-repository")
 
     def test_remaining_path_time_structure_and_order_guards(self) -> None:
-        for raw_path in ("bad\\path", "/absolute", "."):
+        for raw_path in (
+            "bad\\path",
+            "/absolute",
+            ".",
+            ".reports/module",
+            "reports/.module",
+            "reports//module",
+        ):
             with self.subTest(value=raw_path), self.assertRaises(test_reports.TestReportError):
                 test_reports._relative(raw_path)
         with self.assertRaisesRegex(test_reports.TestReportError, "time"):
@@ -361,6 +408,37 @@ class TestReportEvidenceTests(unittest.TestCase):
         report_link = self.repository.root / "reports/module/link.xml"
         report_link.symlink_to(path)
         with self.assertRaisesRegex(test_reports.TestReportError, "non-regular"):
+            test_reports.evaluate(self.repository.root, value, "2026-09-10T20:30:00Z")
+
+    def test_report_root_schema_runtime_parity_and_early_discovery_bound(self) -> None:
+        value = self.contract([("module", "runner", ("",))])
+        for root in (".reports/module", "reports/.module", "reports//module"):
+            mutation = copy.deepcopy(value)
+            mutation["report_roots"] = [root]
+            with self.subTest(root=root):
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(mutation, "test-report-evidence.schema.json")
+                with self.assertRaisesRegex(test_reports.TestReportError, "report path"):
+                    test_reports.evaluate(
+                        self.repository.root,
+                        mutation,
+                        "2026-09-10T20:30:00Z",
+                    )
+
+        declared = self.repository.root / "reports/module/runner.xml"
+        unexpected = self.repository.root / "reports/module/unexpected.xml"
+        unexpected.write_text(report("unexpected", ("",)))
+
+        def discovered_paths() -> Iterator[Path]:
+            yield declared
+            yield unexpected
+            raise AssertionError("discovery traversed beyond its bound")
+
+        with (
+            mock.patch.object(Path, "rglob", return_value=discovered_paths()),
+            mock.patch.object(test_reports, "MAX_REPORTS", 1),
+            self.assertRaisesRegex(test_reports.TestReportError, "discovery exceeds"),
+        ):
             test_reports.evaluate(self.repository.root, value, "2026-09-10T20:30:00Z")
 
 
