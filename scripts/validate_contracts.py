@@ -184,6 +184,14 @@ def main() -> int:
         )
         validate(value, "lifecycle-model.schema.json")
         validate(value, "assurance-contract.schema.json")
+    for name in (
+        "fixtures/conforming/refinement/map.json",
+        "templates/refinement-map.json",
+        "fixtures/nonconforming/refinement/contradictory-trace.json",
+    ):
+        value = json.loads((ROOT / name).read_bytes())
+        validate(value, "refinement-map.schema.json")
+        validate(value, "assurance-contract.schema.json")
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")

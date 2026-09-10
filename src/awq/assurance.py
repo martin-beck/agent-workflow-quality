@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from typing import Any, Never
 
-from awq import __version__, formal_model, lifecycle_model
+from awq import __version__, formal_model, lifecycle_model, refinement
 from awq.project import ProjectError
 from awq.registry import canonical_bytes
 from awq.release import ReleaseError
@@ -182,16 +182,18 @@ def evaluate(value: Any) -> dict[str, Any]:
         _fail("document")
     _integer(value.get("schema_version"), 1, 1)
     kind = value.get("kind")
-    if kind not in ("model", "refactor"):
+    if kind not in ("model", "refactor", "refinement"):
         _fail("kind")
-    result = _model(value) if kind == "model" else _refactor(value)
+    result = {"model": _model, "refactor": _refactor, "refinement": refinement.evaluate}[kind](
+        value
+    )
     return {
         **result,
         "schema_version": 1,
         "awq_version": __version__,
         "kind": kind,
         "contract_sha256": hashlib.sha256(canonical_bytes(value)).hexdigest(),
-        "limitation": LIMITATION,
+        "limitation": result.get("limitation", LIMITATION),
     }
 
 

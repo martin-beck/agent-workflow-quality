@@ -115,3 +115,9 @@ AWQ 0.18 adds [bounded lifecycle components](docs/LIFECYCLE_MODELS.md) for excep
 two-reviewer tier and freshness decisions, rollback deadlines, and staged crash/restart publication.
 Each component has an exhaustive bounded baseline and reviewed counterexamples. Their success is
 not a composition or implementation-refinement proof and never removes a native gate.
+
+## Reviewed implementation trace correspondence
+
+AWQ 0.19 adds [strict paired trace maps](docs/REFINEMENT.md) for the review/promotion model.
+Complete state/action maps and reviewed obligations bind bounded caller-declared observations.
+A passing correspondence check is not an implementation-refinement theorem and retains native gates.
