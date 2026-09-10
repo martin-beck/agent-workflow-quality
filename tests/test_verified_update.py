@@ -456,7 +456,7 @@ class TrustBoundaryTests(unittest.TestCase):
             trust.run(["/usr/bin/true"])
         with mock.patch("awq.verified_update.os.name", "nt"), self.assertRaises(ReleaseError):
             verified_update.update(fixture.consumer, fixture.version, True, *fixture.arguments())
-        for value in ["main", "v0.23.0", "01.1.0", "1.2", True, "1.2.3.4"]:
+        for value in ["main", "v0.24.0", "01.1.0", "1.2", True, "1.2.3.4"]:
             with self.subTest(value=value), self.assertRaises(ReleaseError):
                 verified_update.version_tuple(value)
 
