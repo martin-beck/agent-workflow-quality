@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 from pathlib import Path
@@ -304,6 +305,7 @@ def build_catalog() -> dict[str, Any]:
 
 def _semantic(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_bytes())
+    document_sha256 = hashlib.sha256(canonical_bytes(value)).hexdigest()
     if path.name.endswith(".schema.json"):
         properties = value.get("properties", {})
         return {
@@ -315,11 +317,13 @@ def _semantic(path: Path) -> dict[str, Any]:
             "additional_properties": value.get("additionalProperties"),
             "one_of": len(value.get("oneOf", [])),
             "all_of": len(value.get("allOf", [])),
+            "canonical_document_sha256": document_sha256,
         }
     return {
         "kind": "structured-registry",
         "schema_version": value.get("schema_version"),
         "keys": sorted(value),
+        "canonical_document_sha256": document_sha256,
     }
 
 
@@ -401,21 +405,53 @@ def verify_baseline(catalog: dict[str, Any], baseline: object) -> None:  # noqa:
                 raise ValueError(f"{identifier} contract bytes or semantics changed in place")
 
 
+def _resolve_test_handler(item: dict[str, Any]) -> tuple[Path, set[str]]:
+    contract_id = item["id"]
+    conformance = item["implementation_conformance"]
+    target = item["test_argv"][3]
+    try:
+        conformance_module, conformance_class = conformance.removeprefix("awq.tests.").rsplit(
+            ".", 1
+        )
+        test_module, test_class = target.removeprefix("tests.test_").rsplit(".", 1)
+    except ValueError as error:
+        raise SystemExit(f"{contract_id} has an invalid test handler") from error
+    if (
+        not conformance.startswith("awq.tests.")
+        or not target.startswith("tests.test_")
+        or conformance_module != test_module
+        or conformance_class != test_class
+    ):
+        raise SystemExit(f"{contract_id} test handler identities disagree")
+    module = ROOT / "tests" / f"test_{test_module}.py"
+    if not module.is_file():
+        raise SystemExit(f"{contract_id} test argv does not name a real module")
+    try:
+        tree = ast.parse(module.read_text(encoding="utf-8"), filename=str(module))
+    except (OSError, UnicodeError, SyntaxError) as error:
+        raise SystemExit(f"{contract_id} test module is unavailable") from error
+    classes = {node.name: node for node in tree.body if isinstance(node, ast.ClassDef)}
+    handler = classes.get(test_class)
+    if handler is None or not any(
+        (isinstance(base, ast.Name) and base.id == "TestCase")
+        or (isinstance(base, ast.Attribute) and base.attr == "TestCase")
+        for base in handler.bases
+    ):
+        raise SystemExit(f"{contract_id} test argv does not name a unittest class")
+    methods = {node.name for node in handler.body if isinstance(node, ast.FunctionDef)}
+    return module, methods
+
+
 def _verify_evidence(catalog: dict[str, Any]) -> None:
     for item in catalog["contracts"]:
         contract_id = item["id"]
+        module, methods = _resolve_test_handler(item)
         for field in ("positive_fixtures", "hostile_fixtures"):
             for fixture in item[field]:
                 path = ROOT / fixture["path"]
                 case_name = fixture["case"]
-                if not path.is_file() or f"def {case_name}(" not in path.read_text(
-                    encoding="utf-8"
-                ):
+                if path != module or case_name not in methods:
                     raise SystemExit(f"{contract_id} has missing {field} evidence")
-        target = item["test_argv"][3].replace(".", "/")
-        module = "/".join(target.split("/")[:2]) + ".py"
-        if not (ROOT / module).is_file():
-            raise SystemExit(f"{contract_id} test argv does not name a real module")
         if not (ROOT / item["documentation"]).is_file():
             raise SystemExit(f"{contract_id} documentation target is missing")
 

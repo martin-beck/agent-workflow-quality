@@ -35,6 +35,8 @@ STATUSES = {"active", "historical", "deprecated"}
 ASSURANCE = {"shape", "implementation-conformance"}
 IDENTIFIER = re.compile(r"^AWQ-CONTRACT-[A-Z0-9][A-Z0-9-]{2,79}-V([1-9][0-9]*)$")
 CASE = re.compile(r"^[a-z][a-z0-9_]{2,99}$")
+SAFE_PATH = re.compile(r"^(?!/)(?!.*(?:^|/)\.\.?(?:/|$))[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$")
+CONFORMANCE = re.compile(r"^awq\.[A-Za-z0-9_.-]{3,120}$")
 MAX_CONTRACTS = 256
 
 
@@ -46,7 +48,11 @@ def _safe_path(value: object) -> bool:
     if not isinstance(value, str) or not value or len(value) > 240 or "\\" in value:
         return False
     path = PurePosixPath(value)
-    return not path.is_absolute() and all(part not in {"", ".", ".."} for part in path.parts)
+    return (
+        SAFE_PATH.fullmatch(value) is not None
+        and not path.is_absolute()
+        and all(part not in {"", ".", ".."} for part in path.parts)
+    )
 
 
 def _fixtures(identifier: str, value: object, label: str) -> None:
@@ -105,9 +111,12 @@ def validate_catalog(value: object) -> dict[str, dict[str, Any]]:  # noqa: C901
             raise ContractCatalogError(f"{identifier} test argv is not fixed and bounded")
         if not _safe_path(item["documentation"]):
             raise ContractCatalogError(f"{identifier} documentation path is unsafe")
-        for field in ("implementation_conformance", "limitation"):
-            if not isinstance(item[field], str) or not item[field].strip():
-                raise ContractCatalogError(f"{identifier} {field} must be non-empty")
+        conformance = item["implementation_conformance"]
+        if not isinstance(conformance, str) or CONFORMANCE.fullmatch(conformance) is None:
+            raise ContractCatalogError(f"{identifier} implementation_conformance is invalid")
+        limitation = item["limitation"]
+        if not isinstance(limitation, str) or not 20 <= len(limitation) <= 500:
+            raise ContractCatalogError(f"{identifier} limitation length is invalid")
         if item["assurance"] == "shape" and "semantic" not in item["limitation"].casefold():
             raise ContractCatalogError(
                 f"{identifier} shape-only entry must disclaim semantic execution"

@@ -9,8 +9,12 @@ import contextlib
 import copy
 import io
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Any, cast
+
+import jsonschema
 
 from awq import contracts
 from awq.cli import main
@@ -85,6 +89,12 @@ class ContractCatalogTests(unittest.TestCase):
         documentation = copy.deepcopy(good)
         documentation["contracts"][0]["documentation"] = "../README.md"
         mutations.append(documentation)
+        non_ascii_documentation = copy.deepcopy(good)
+        non_ascii_documentation["contracts"][0]["documentation"] = "docs/boom-💥.md"
+        mutations.append(non_ascii_documentation)
+        short_limitation = copy.deepcopy(good)
+        short_limitation["contracts"][0]["limitation"] = "too short"
+        mutations.append(short_limitation)
         conformance = copy.deepcopy(good)
         conformance["contracts"][0]["implementation_conformance"] = ""
         mutations.append(conformance)
@@ -102,6 +112,40 @@ class ContractCatalogTests(unittest.TestCase):
         absent["contracts"][0]["positive_fixtures"][0]["case"] = "test_missing_case"
         with self.assertRaisesRegex(SystemExit, "missing positive_fixtures evidence"):
             generator._verify_evidence(absent)
+
+    def test_runtime_and_schema_reject_the_same_path_and_limitation_shapes(self) -> None:
+        good = self.document()
+        candidates = []
+        for field, replacement in (
+            ("documentation", "docs/boom-💥.md"),
+            ("limitation", "too short"),
+        ):
+            candidate = copy.deepcopy(good)
+            candidate["contracts"][0][field] = replacement
+            candidates.append(candidate)
+        for candidate in candidates:
+            with self.subTest(candidate=candidate):
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(candidate, "contract-catalog.schema.json")
+                with self.assertRaises(contracts.ContractCatalogError):
+                    contracts.validate_catalog(candidate)
+
+    def test_evidence_resolves_exact_conformance_and_unittest_classes(self) -> None:
+        good = self.document()
+        missing_conformance = copy.deepcopy(good)
+        missing_conformance["contracts"][0]["implementation_conformance"] = (
+            "awq.tests.missing.NoSuchHandler"
+        )
+        missing_class = copy.deepcopy(good)
+        missing_class["contracts"][0]["test_argv"][3] = "tests.test_adapters.NoSuchClass"
+        matching_missing_class = copy.deepcopy(good)
+        matching_missing_class["contracts"][0]["implementation_conformance"] = (
+            "awq.tests.adapters.NoSuchClass"
+        )
+        matching_missing_class["contracts"][0]["test_argv"][3] = "tests.test_adapters.NoSuchClass"
+        for candidate in (missing_conformance, missing_class, matching_missing_class):
+            with self.subTest(candidate=candidate), self.assertRaises(SystemExit):
+                generator._verify_evidence(candidate)
 
     def test_baseline_rejects_drift_duplicates_unknowns_and_incompatible_change(self) -> None:
         catalog = self.document()
@@ -136,6 +180,23 @@ class ContractCatalogTests(unittest.TestCase):
         for value in cases:
             with self.subTest(value=value), self.assertRaises(ValueError):
                 generator.verify_baseline(catalog, value)
+
+    def test_semantic_fingerprint_covers_nested_schema_constraints(self) -> None:
+        first: dict[str, Any] = {
+            "$id": "https://example.invalid/schema.json",
+            "type": "object",
+            "properties": {"schema_version": {"const": 1}},
+        }
+        changed = copy.deepcopy(first)
+        changed["properties"]["schema_version"]["const"] = 2
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "nested.schema.json"
+            path.write_text(json.dumps(first), encoding="utf-8")
+            initial = generator._semantic(path)
+            path.write_text(json.dumps(changed), encoding="utf-8")
+            self.assertNotEqual(initial, generator._semantic(path))
+            path.write_text(json.dumps(first, indent=2), encoding="utf-8")
+            self.assertEqual(initial, generator._semantic(path))
 
     def test_packaged_catalog_cli_is_content_minimized_and_non_claiming(self) -> None:
         entries, digest = contracts.load_contract_catalog()
