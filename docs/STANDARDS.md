@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `4f44c86a008bbde79f1086d3032874da1062c211aac7bbb1459d347d7d1a7462`
+Standards registry SHA-256: `f65308d0dbafca45ba683c3bec5c4ea606b3017e830ca2c240bf35b9ebd15362`
 
 ## Pinned sources
 
@@ -98,6 +98,12 @@ Standards registry SHA-256: `4f44c86a008bbde79f1086d3032874da1062c211aac7bbb1459
 | --- | --- | --- | --- | --- |
 | [AWQ-SUPPLY-001](REQUIREMENTS.md) | [SLSA build.provenance.exists](https://slsa.dev/spec/v1.2/build-requirements#provenance-generation) | `related` | `mechanical` | The lock is not build provenance and does not establish any SLSA level. |
 | [AWQ-SUPPLY-001](REQUIREMENTS.md) | [SPDX Core.CreationInfo.specVersion](https://spdx.github.io/spdx-spec/v3.0.1/model/Core/Properties/specVersion/) | `related` | `mechanical` | An AWQ lock is not an SPDX document or software bill of materials. |
+
+### `terminology`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-TERM-001](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `related` | `mechanical` | Lexical matching cannot establish semantic correctness or terminology completeness. |
 
 ## Coverage gaps
 

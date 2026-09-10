@@ -9,6 +9,10 @@ The separately classified `hosting-observe` command is explicitly online. A cons
 profiles, expanded requirements, and the registry digest in `quality/awq.lock.json`; updates are
 explicit and reviewable.
 
+The opt-in [terminology profile](docs/TERMINOLOGY.md) checks consumer-owned canonical vocabulary
+across separately declared normative, example, quotation, and generated lexical scopes. AWQ does
+not hard-code coordinator or domain terminology, and the gate makes no semantic-language claim.
+
 ## Standards traceability
 
 AWQ ships a version-pinned [control catalogue](docs/STANDARDS.md), strict JSON schemas, and reviewed

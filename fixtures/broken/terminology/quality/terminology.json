@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "default_scope": "normative",
+  "formats": [".md"],
+  "scope_rules": [],
+  "terms": [
+    {
+      "id": "TERM-PRIMARY",
+      "canonical": "primary",
+      "aliases": ["master"],
+      "scopes": ["normative"],
+      "severity": "error",
+      "case_policy": "casefold"
+    }
+  ],
+  "exceptions": []
+}

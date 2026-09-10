@@ -60,6 +60,30 @@ class CommandTests(unittest.TestCase):
         with self.assertRaises(ProjectError):
             commands.explain("AWQ-NOPE-999")
 
+    def test_inspect_recommends_opt_in_terminology_contract(self) -> None:
+        self.repo.json(
+            "quality/terminology.json",
+            {
+                "schema_version": 1,
+                "default_scope": "normative",
+                "formats": [".md"],
+                "scope_rules": [],
+                "terms": [
+                    {
+                        "id": "TERM-PRIMARY",
+                        "canonical": "primary",
+                        "aliases": ["legacy"],
+                        "scopes": ["normative"],
+                        "severity": "error",
+                        "case_policy": "casefold",
+                    }
+                ],
+                "exceptions": [],
+            },
+        )
+        self.repo.commit("terminology contract")
+        self.assertIn("terminology", commands.inspect(self.repo.root)["recommended_profiles"])
+
     def test_doctor_update_and_expired_exception(self) -> None:
         self.initialize()
         self.assertEqual("pass", commands.doctor(self.repo.root)["status"])

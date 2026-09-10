@@ -1,0 +1,77 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/terminology-registry.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "scope": {"enum": ["normative", "example", "quotation", "generated"]},
+    "path": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\\\]+$"},
+    "token": {"type": "string", "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+$"},
+    "scopes": {"type": "array", "items": {"$ref": "#/$defs/scope"}, "minItems": 1, "maxItems": 4, "uniqueItems": true}
+  },
+  "title": "AWQ consumer terminology registry",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "default_scope": {"$ref": "#/$defs/scope"},
+    "formats": {
+      "type": "array",
+      "items": {"enum": [".json", ".md", ".txt", ".yaml", ".yml"]},
+      "minItems": 1,
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "scope_rules": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "scope": {"$ref": "#/$defs/scope"},
+          "paths": {"type": "array", "items": {"$ref": "#/$defs/path"}, "minItems": 1, "maxItems": 64, "uniqueItems": true}
+        },
+        "required": ["scope", "paths"]
+      }
+    },
+    "terms": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "#/$defs/token"},
+          "canonical": {"type": "string", "minLength": 1, "maxLength": 100},
+          "aliases": {"type": "array", "items": {"type": "string", "minLength": 1, "maxLength": 100}, "minItems": 1, "maxItems": 16, "uniqueItems": true},
+          "scopes": {"$ref": "#/$defs/scopes"},
+          "severity": {"enum": ["error", "advisory"]},
+          "case_policy": {"enum": ["exact", "casefold"]}
+        },
+        "required": ["id", "canonical", "aliases", "scopes", "severity", "case_policy"]
+      }
+    },
+    "exceptions": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {"$ref": "#/$defs/token"},
+          "term": {"$ref": "#/$defs/token"},
+          "owner": {"type": "string", "pattern": "^@[A-Za-z0-9][A-Za-z0-9-]{0,38}(?:/[A-Za-z0-9_.-]+)?$"},
+          "reason": {"type": "string", "minLength": 1, "maxLength": 500},
+          "paths": {"type": "array", "items": {"$ref": "#/$defs/path"}, "minItems": 1, "maxItems": 32, "uniqueItems": true},
+          "scopes": {"$ref": "#/$defs/scopes"},
+          "created_at": {"type": "string", "format": "date-time", "maxLength": 40},
+          "expires_at": {"type": "string", "format": "date-time", "maxLength": 40},
+          "compensating_evidence": {"type": "string", "minLength": 1, "maxLength": 500},
+          "review_reference": {"type": "string", "minLength": 1, "maxLength": 300, "format": "uri"}
+        },
+        "required": ["id", "term", "owner", "reason", "paths", "scopes", "created_at", "expires_at", "compensating_evidence", "review_reference"]
+      }
+    }
+  },
+  "required": ["schema_version", "default_scope", "formats", "scope_rules", "terms", "exceptions"]
+}
