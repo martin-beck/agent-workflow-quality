@@ -33,6 +33,9 @@ commit, initialize a consumer or remove native CI. Review it before copying it.
 
 ## Fresh Linux, macOS and Windows checkouts
 
+The repository attributes keep text as LF even when Git enables automatic CRLF conversion.
+Canonical JSON verification remains byte-exact; binary schema archives are never normalized.
+
 The portable entry point is `python -m awq` under the selected environment. The
 same argv works on all three operating systems; shell quoting is not shared.
 Use the selected virtual environment interpreter, or `uv run --frozen python`

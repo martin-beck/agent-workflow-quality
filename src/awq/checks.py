@@ -41,6 +41,7 @@ TEXT_SUFFIXES = {
     ".lock",
 }
 KNOWN_NAMES = {
+    ".gitattributes",
     ".gitignore",
     "AGENTS.md",
     "CHANGELOG.md",

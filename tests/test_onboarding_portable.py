@@ -29,15 +29,7 @@ class PortableOnboardingTests(unittest.TestCase):
                 "Public onboarding fixture.\n", encoding="utf-8", newline="\n"
             )
             diagnosis = onboarding.diagnose()
-            detail = {
-                "findings": diagnosis["findings"],
-                "package": diagnosis["package"],
-                "metadata_crlf": {
-                    name: b"\r\n" in onboarding._data(name)
-                    for name in ("compatibility.json", "agent_recipes.json")
-                },
-            }
-            self.assertEqual("pass", diagnosis["status"], detail)
+            self.assertEqual("pass", diagnosis["status"], diagnosis["findings"])
             before = sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
             preview = commands.initialize(root, ["core"], True)
             self.assertTrue(preview["dry_run"])
@@ -53,6 +45,36 @@ class PortableOnboardingTests(unittest.TestCase):
                 self.assertEqual(0, status)
                 self.assertIsInstance(json.loads(output.getvalue()), dict)
             self.assertEqual([], list(root.glob("**/*.pyc")))
+
+    def test_checkout_attributes_preserve_canonical_and_binary_bytes(self) -> None:
+        attributes = (Path(__file__).resolve().parents[1] / ".gitattributes").read_bytes()
+        canonical = onboarding._data("compatibility.json")
+        binary = b"PK\x00\r\nopaque\xff\r\n"
+        for use_attributes in (False, True):
+            with (
+                self.subTest(attributes=use_attributes),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory).resolve()
+                subprocess.run(["git", "init", "-q", str(root)], check=True)
+                subprocess.run(
+                    ["git", "-C", str(root), "config", "core.autocrlf", "true"], check=True
+                )
+                if use_attributes:
+                    (root / ".gitattributes").write_bytes(attributes)
+                (root / "metadata.json").write_bytes(canonical)
+                (root / "schema.zip").write_bytes(binary)
+                subprocess.run(
+                    ["git", "-C", str(root), "add", "."], check=True, capture_output=True
+                )
+                (root / "metadata.json").unlink()
+                (root / "schema.zip").unlink()
+                subprocess.run(
+                    ["git", "-C", str(root), "checkout-index", "--all", "--force"], check=True
+                )
+                expected = canonical if use_attributes else canonical.replace(b"\n", b"\r\n")
+                self.assertEqual(expected, (root / "metadata.json").read_bytes())
+                self.assertEqual(binary, (root / "schema.zip").read_bytes())
 
     def test_all_agent_argv_recipes_match_the_actual_parser(self) -> None:
         for recipe in onboarding.recipes()["recipes"]:
