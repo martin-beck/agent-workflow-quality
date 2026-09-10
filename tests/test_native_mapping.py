@@ -27,7 +27,130 @@ def document() -> dict[str, Any]:
     return dict(json.loads((ROOT / "fixtures/conforming/native-gate-mapping.json").read_bytes()))
 
 
+def document_v2() -> dict[str, Any]:
+    return dict(json.loads((ROOT / "fixtures/conforming/native-gate-mapping-v2.json").read_bytes()))
+
+
 class NativeMappingTests(unittest.TestCase):
+    def test_v2_correlates_sequential_observations_without_equating_producers(self) -> None:
+        value = document_v2()
+        validate(value, "native-gate-mapping.schema.json")
+        for observation in value["observations"]:
+            validate(observation["identity"], "evidence-identity.schema.json")
+        result = native_mapping.evaluate(value)
+        self.assertEqual("pass", result["status"])
+        self.assertEqual(2, result["schema_version"])
+        self.assertEqual([], result["mappings"][0]["correlation_mismatches"])
+        self.assertEqual("native", result["mappings"][0]["platform_class"])
+        self.assertEqual("SET-PYTHON-20260910", result["mappings"][0]["observation_set_id"])
+        rendered = json.dumps(result, sort_keys=True)
+        for excluded in ("correlation_sha256", "producer_sha256", "tool_sha256", "run_id"):
+            self.assertNotIn(excluded, rendered)
+
+    def test_v2_wrong_set_scope_source_and_tree_fail_closed(self) -> None:
+        cases: list[tuple[list[str | int], Any, str]] = [
+            (
+                ["observations", 0, "identity", "correlation_sha256"],
+                "0" * 64,
+                "awq-correlation",
+            ),
+            (
+                ["mappings", 0, "correlation", "input_sha256"],
+                "0" * 64,
+                "awq-correlation",
+            ),
+            (
+                ["mappings", 0, "correlation", "source_tree"],
+                "0" * 40,
+                "awq-correlation",
+            ),
+            (
+                ["observations", 0, "source"],
+                "awq-requirement",
+                "missing-or-wrong-evidence",
+            ),
+        ]
+        for path, replacement, expected in cases:
+            with self.subTest(path=path):
+                value = document_v2()
+                target: Any = value
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = replacement
+                if expected == "missing-or-wrong-evidence":
+                    with self.assertRaisesRegex(ProjectError, expected):
+                        native_mapping.evaluate(value)
+                else:
+                    result = native_mapping.evaluate(value)
+                    self.assertEqual("fail", result["status"])
+                    self.assertIn(expected, result["mappings"][0]["correlation_mismatches"])
+
+    def test_v2_freshness_future_and_platform_promotion_are_explicit(self) -> None:
+        cases: list[tuple[list[str | int], Any, str]] = [
+            (["observations", 0, "identity", "collected_at"], "2026-09-10T20:00:00Z", "awq-stale"),
+            (
+                ["observations", 1, "identity", "collected_at"],
+                "2026-09-10T20:21:00Z",
+                "native-collected-in-future",
+            ),
+            (
+                ["observations", 1, "identity", "platform_class"],
+                "hosted-portability",
+                "native-platform-class-promotion",
+            ),
+            (
+                ["observations", 1, "identity", "tool_sha256"],
+                "0" * 64,
+                "native-tool-pin",
+            ),
+        ]
+        for path, replacement, expected in cases:
+            with self.subTest(expected=expected):
+                value = document_v2()
+                target: Any = value
+                for key in path[:-1]:
+                    target = target[key]
+                target[path[-1]] = replacement
+                result = native_mapping.evaluate(value)
+                self.assertEqual("fail", result["status"])
+                self.assertIn(expected, result["mappings"][0]["correlation_mismatches"])
+
+    def test_v2_dirty_tree_unknown_fields_and_malformed_identity_are_rejected(self) -> None:
+        candidates = []
+        value = document_v2()
+        value["mappings"][0]["correlation"]["tree_state"] = "dirty"
+        candidates.append(value)
+        value = document_v2()
+        value["observations"][0]["identity"]["host"] = "PRIVATE-MACHINE"
+        candidates.append(value)
+        value = document_v2()
+        value["observations"][0]["identity"]["attempt"] = True
+        candidates.append(value)
+        value = document_v2()
+        value["evaluated_at"] = "2026-09-10T22:20:00+02:00"
+        candidates.append(value)
+        for candidate in candidates:
+            with self.assertRaises(ProjectError) as caught:
+                native_mapping.evaluate(candidate)
+            self.assertNotIn("PRIVATE-MACHINE", str(caught.exception))
+
+    def test_v2_observation_set_identifiers_are_unique(self) -> None:
+        value = document_v2()
+        second = copy.deepcopy(value["mappings"][0])
+        second["id"] = "NATIVE-PYTHON-SECOND"
+        value["mappings"].append(second)
+        with self.assertRaisesRegex(ProjectError, "observation-set-duplicate"):
+            native_mapping.evaluate(value)
+
+    def test_v1_remains_legacy_digest_only_evidence(self) -> None:
+        result = native_mapping.evaluate(document())
+        self.assertEqual(1, result["schema_version"])
+        self.assertNotIn("correlation_mismatches", result["mappings"][0])
+        value = document()
+        value["evaluated_at"] = "2026-09-10T20:20:00Z"
+        with self.assertRaises(ProjectError):
+            native_mapping.evaluate(value)
+
     def test_schema_examples_coverage_and_determinism(self) -> None:
         value = document()
         validate(value, "native-gate-mapping.schema.json")
@@ -162,6 +285,22 @@ class NativeMappingTests(unittest.TestCase):
             )
         self.assertEqual(0, code)
         self.assertEqual("pass", json.loads(stream.getvalue())["status"])
+        stream = io.StringIO()
+        with contextlib.redirect_stdout(stream):
+            code = main(
+                [
+                    "--root",
+                    str(ROOT),
+                    "native-map-evaluate",
+                    "fixtures/conforming/native-gate-mapping-v2.json",
+                    "--format",
+                    "json",
+                ]
+            )
+        v2_result = json.loads(stream.getvalue())
+        self.assertEqual(0, code)
+        self.assertEqual(2, v2_result["schema_version"])
+        self.assertEqual([], v2_result["mappings"][0]["correlation_mismatches"])
         with tempfile.TemporaryDirectory(dir=ROOT) as temporary:
             path = Path(temporary) / "duplicate.json"
             path.write_text('{"schema_version":1,"schema_version":1}\n', encoding="utf-8")

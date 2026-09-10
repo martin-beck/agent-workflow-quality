@@ -53,7 +53,8 @@ workflow is an ordered dependency graph, not an executor or authority grant:
 Every referenced recipe declares an `operation`, an observable `effect`, an approval class and a
 fixed argument array. Diagnostics and previews are read-only. Initialization is the only
 project-file mutation, and authenticated update is the only lock-file mutation. Native mapping
-reads recorded digest-only results; it does not execute the declared native commands. Release
+reads recorded digest-only v1 results or identity-bound v2 results; it does not execute the declared
+native commands. Release
 verification and authentication are read-only and do not publish a release.
 
 Composition is exact: verify that the recipe starts with the declared three-element

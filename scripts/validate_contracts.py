@@ -85,10 +85,14 @@ def _validate_terminology_fixtures() -> None:
 def _validate_native_mapping_fixtures() -> None:
     for name in (
         "fixtures/conforming/native-gate-mapping.json",
+        "fixtures/conforming/native-gate-mapping-v2.json",
         "fixtures/nonconforming/native-gate-mapping/missing-evidence.json",
         "fixtures/nonconforming/native-gate-mapping/contradictory-evidence.json",
     ):
         validate(json.loads((ROOT / name).read_bytes()), "native-gate-mapping.schema.json")
+    v2 = json.loads((ROOT / "fixtures/conforming/native-gate-mapping-v2.json").read_bytes())
+    for observation in v2["observations"]:
+        validate(observation["identity"], "evidence-identity.schema.json")
 
 
 def main() -> int:
