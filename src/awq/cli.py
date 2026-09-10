@@ -17,6 +17,7 @@ from awq import (
     adversarial,
     assurance,
     commands,
+    native_mapping,
     onboarding,
     promotion,
     refactor,
@@ -107,6 +108,9 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("evidence")
     item.add_argument("--as-of", required=True)
     _format_argument(item)
+    item = sub.add_parser("native-map-evaluate")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -137,6 +141,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "plan": lambda: commands.plan(root, args.changed, args.base),
         "check": lambda: commands.check(root, args.tier, args.requirement),
         "promotion-evaluate": lambda: promotion.evaluate_file(root, args.evidence, args.as_of),
+        "native-map-evaluate": lambda: native_mapping.evaluate_file(root, args.contract),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,

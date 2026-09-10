@@ -1,0 +1,72 @@
+{
+  "$comment": "Canonical UTF-8 JSON with final LF; max 256000 bytes. Runtime additionally validates registry and adapter references, semantic tier agreement, ordering, uniqueness, safe argv, and exactly one native plus one typed AWQ observation per mapping.",
+  "$id": "https://martin-beck.github.io/agent-workflow-quality/schemas/native-gate-mapping.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "mappings": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "awq_result": {
+            "additionalProperties": false,
+            "properties": {
+              "identifier": {"pattern": "^(AWQ-[A-Z]+-[0-9]{3}|ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*)$", "type": "string"},
+              "kind": {"enum": ["requirement", "adapter"]}
+            },
+            "required": ["identifier", "kind"],
+            "type": "object"
+          },
+          "claim": {"const": "bounded-equivalence-not-certification"},
+          "deadline_seconds": {"maximum": 900, "minimum": 1, "type": "integer"},
+          "evidence_class": {"enum": ["mechanical", "contract-test", "property-or-fuzz", "bounded-model", "environmental"]},
+          "id": {"pattern": "^NATIVE-[A-Z0-9]+(?:-[A-Z0-9]+)*$", "type": "string"},
+          "input_scope": {"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string"},
+          "limitation": {"maxLength": 500, "minLength": 1, "type": "string"},
+          "native_command": {
+            "items": {"maxLength": 200, "minLength": 1, "type": "string"},
+            "maxItems": 32,
+            "minItems": 1,
+            "type": "array"
+          },
+          "requirement": {"pattern": "^AWQ-[A-Z]+-[0-9]{3}$", "type": "string"},
+          "tier": {"enum": ["local", "pr", "scheduled", "trusted-host", "release"]},
+          "tool_pin": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {"pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$", "type": "string"},
+              "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+              "version": {"pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$", "type": "string"}
+            },
+            "required": ["name", "sha256", "version"],
+            "type": "object"
+          }
+        },
+        "required": ["awq_result", "claim", "deadline_seconds", "evidence_class", "id", "input_scope", "limitation", "native_command", "requirement", "tier", "tool_pin"],
+        "type": "object"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "type": "array"
+    },
+    "observations": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+          "mapping": {"pattern": "^NATIVE-[A-Z0-9]+(?:-[A-Z0-9]+)*$", "type": "string"},
+          "source": {"enum": ["native-gate", "awq-requirement", "awq-adapter"]},
+          "status": {"enum": ["pass", "fail", "error", "skip"]}
+        },
+        "required": ["evidence_sha256", "mapping", "source", "status"],
+        "type": "object"
+      },
+      "maxItems": 512,
+      "minItems": 2,
+      "type": "array"
+    },
+    "schema_version": {"const": 1}
+  },
+  "required": ["mappings", "observations", "schema_version"],
+  "type": "object"
+}
