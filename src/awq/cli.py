@@ -13,7 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from awq import assurance, commands, promotion, refactor, verified_update
+from awq import adversarial, assurance, commands, promotion, refactor, verified_update
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
 from awq.release import ReleaseError
@@ -73,6 +73,11 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("contract")
     item.add_argument("--tools", type=Path, required=True)
     _format_argument(item)
+    for name in ("adversarial-check", "adversarial-replay"):
+        item = sub.add_parser(name)
+        item.add_argument("contract")
+        item.add_argument("--scratch", type=Path, required=True)
+        _format_argument(item)
     item = sub.add_parser("assurance-check")
     item.add_argument("contract")
     _format_argument(item)
@@ -97,6 +102,8 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
     table: dict[str, Callable[[], dict[str, Any]]] = {
         "inspect": lambda: commands.inspect(root),
         "refactor-collect": lambda: refactor.collect(root, args.contract, args.tools),
+        "adversarial-check": lambda: adversarial.run_file(root, args.contract, args.scratch),
+        "adversarial-replay": lambda: adversarial.replay_file(root, args.contract, args.scratch),
         "assurance-check": lambda: assurance.evaluate_file(root, args.contract),
         "init": lambda: commands.initialize(root, args.profiles, args.dry_run),
         "plan": lambda: commands.plan(root, args.changed, args.base),

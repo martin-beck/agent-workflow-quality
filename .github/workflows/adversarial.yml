@@ -1,0 +1,29 @@
+name: Scheduled adversarial assurance
+
+"on":
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  campaign:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
+        with:
+          version: "0.12.8"
+          enable-cache: false
+      - name: Install locked runtime environment
+        run: uv sync --locked --python 3.12.14
+      - name: Run bounded scheduled campaign
+        run: |
+          uv run --frozen python scripts/adversarial_campaign.py \
+            --contract templates/adversarial-scheduled.json \
+            --scratch "${RUNNER_TEMP}"

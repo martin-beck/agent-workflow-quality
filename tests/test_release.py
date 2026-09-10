@@ -21,6 +21,7 @@ from unittest import mock
 
 from awq.cli import main
 from awq.release import (
+    ADVERSARIAL_SCHEMA_ASSETS,
     BUILD_CONSTRAINTS_PATH,
     BUILD_CONSTRAINTS_SHA256,
     FORMAL_SCHEMA_ASSETS,
@@ -461,7 +462,8 @@ class ReleaseVerificationTests(unittest.TestCase):
             - FORMAL_SCHEMA_ASSETS
             - LIFECYCLE_SCHEMA_ASSETS
             - REFINEMENT_SCHEMA_ASSETS
-            - PYTHON_REFACTOR_SCHEMA_ASSETS,
+            - PYTHON_REFACTOR_SCHEMA_ASSETS
+            - ADVERSARIAL_SCHEMA_ASSETS,
         ):
             value = self.manifest_value()
         path = self.write_manifest(value)
@@ -472,13 +474,14 @@ class ReleaseVerificationTests(unittest.TestCase):
         assert isinstance(artifacts, list)
         for artifact in artifacts:
             findings = inspect_archive(self.root / artifact["name"])
-            self.assertEqual(7, len(findings))
+            self.assertEqual(8, len(findings))
             for name in (
                 SBOM_SCHEMA_ASSETS
                 | PROMOTION_SCHEMA_ASSETS
                 | FORMAL_SCHEMA_ASSETS
                 | LIFECYCLE_SCHEMA_ASSETS
                 | REFINEMENT_SCHEMA_ASSETS
+                | ADVERSARIAL_SCHEMA_ASSETS
                 | PYTHON_REFACTOR_SCHEMA_ASSETS
             ):
                 self.assertTrue(any(name in finding for finding in findings))
