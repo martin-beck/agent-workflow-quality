@@ -26,6 +26,7 @@ from awq.release import (
     BUILD_CONSTRAINTS_SHA256,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
+    ONBOARDING_SCHEMA_ASSETS,
     PROMOTION_SCHEMA_ASSETS,
     PYTHON_REFACTOR_SCHEMA_ASSETS,
     REFINEMENT_SCHEMA_ASSETS,
@@ -86,6 +87,8 @@ class ReleaseVerificationTests(unittest.TestCase):
             for schema in sorted(REQUIRED_SCHEMAS):
                 write(archive, f"awq/schemas/{schema}", packaged_schema_bytes(schema))
             write(archive, "awq/data/adapter_catalog.json", b"{}\n")
+            write(archive, "awq/data/compatibility.json", b"{}\n")
+            write(archive, "awq/data/agent_recipes.json", b"{}\n")
             if private:
                 write(archive, "awq/private.txt", b"/home/" + b"alice/project")
         return path
@@ -105,6 +108,8 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f'[project]\nname = "agent-workflow-quality"\nversion = "{observed}"\n'
             ).encode(),
             f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
+            f"{prefix}/src/awq/data/compatibility.json": b"{}\n",
+            f"{prefix}/src/awq/data/agent_recipes.json": b"{}\n",
             **{
                 f"{prefix}/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS
             },
@@ -465,7 +470,8 @@ class ReleaseVerificationTests(unittest.TestCase):
             - REFINEMENT_SCHEMA_ASSETS
             - PYTHON_REFACTOR_SCHEMA_ASSETS
             - ADVERSARIAL_SCHEMA_ASSETS
-            - RELIABILITY_SCHEMA_ASSETS,
+            - RELIABILITY_SCHEMA_ASSETS
+            - ONBOARDING_SCHEMA_ASSETS,
         ):
             value = self.manifest_value()
         path = self.write_manifest(value)
@@ -476,13 +482,14 @@ class ReleaseVerificationTests(unittest.TestCase):
         assert isinstance(artifacts, list)
         for artifact in artifacts:
             findings = inspect_archive(self.root / artifact["name"])
-            self.assertEqual(9, len(findings))
+            self.assertEqual(10, len(findings))
             for name in (
                 SBOM_SCHEMA_ASSETS
                 | PROMOTION_SCHEMA_ASSETS
                 | FORMAL_SCHEMA_ASSETS
                 | LIFECYCLE_SCHEMA_ASSETS
                 | REFINEMENT_SCHEMA_ASSETS
+                | ONBOARDING_SCHEMA_ASSETS
                 | RELIABILITY_SCHEMA_ASSETS
                 | ADVERSARIAL_SCHEMA_ASSETS
                 | PYTHON_REFACTOR_SCHEMA_ASSETS

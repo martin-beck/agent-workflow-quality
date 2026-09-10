@@ -54,6 +54,21 @@ def _validate_reliability_fixtures() -> None:
         validate(json.loads((ROOT / name).read_bytes()), "reliability-budget.schema.json")
 
 
+def _validate_onboarding_fixtures() -> None:
+    for name in (
+        "src/awq/data/compatibility.json",
+        "src/awq/data/agent_recipes.json",
+        "templates/migration-preview.json",
+        "fixtures/conforming/onboarding/upgrade.json",
+        "fixtures/conforming/onboarding/same.json",
+        "fixtures/nonconforming/onboarding/downgrade.json",
+        "fixtures/nonconforming/onboarding/legacy-policy.json",
+        "fixtures/nonconforming/onboarding/policy-change.json",
+        "fixtures/nonconforming/onboarding/future.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "onboarding.schema.json")
+
+
 def main() -> int:
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
@@ -225,6 +240,7 @@ def main() -> int:
         "fixtures/conforming/adversarial/workflow-redaction.json",
     ):
         validate(json.loads((ROOT / name).read_bytes()), "adversarial-campaign.schema.json")
+    _validate_onboarding_fixtures()
     _validate_reliability_fixtures()
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")

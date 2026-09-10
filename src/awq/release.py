@@ -41,6 +41,8 @@ REFINEMENT_SCHEMA_ASSETS = {"refinement-map.schema.json"}
 PYTHON_REFACTOR_SCHEMA_ASSETS = {"python-refactor.schema.json"}
 ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 RELIABILITY_SCHEMA_ASSETS = {"reliability-budget.schema.json"}
+ONBOARDING_SCHEMA_ASSETS = {"onboarding.schema.json"}
+ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
@@ -50,6 +52,7 @@ REQUIRED_SCHEMAS |= (
     | PYTHON_REFACTOR_SCHEMA_ASSETS
     | ADVERSARIAL_SCHEMA_ASSETS
     | RELIABILITY_SCHEMA_ASSETS
+    | ONBOARDING_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -235,6 +238,7 @@ def _required_schemas(
     require_python_refactor_assets: bool,
     require_adversarial_assets: bool,
     require_reliability_assets: bool,
+    require_onboarding_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
@@ -255,6 +259,8 @@ def _required_schemas(
         required_schemas = required_schemas - ADVERSARIAL_SCHEMA_ASSETS
     if not require_reliability_assets:
         required_schemas = required_schemas - RELIABILITY_SCHEMA_ASSETS
+    if not require_onboarding_assets:
+        required_schemas = required_schemas - ONBOARDING_SCHEMA_ASSETS
     return required_schemas
 
 
@@ -271,6 +277,7 @@ def inspect_archive(
     require_python_refactor_assets: bool = True,
     require_adversarial_assets: bool = True,
     require_reliability_assets: bool = True,
+    require_onboarding_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -283,6 +290,10 @@ def inspect_archive(
         require_python_refactor_assets,
         require_adversarial_assets,
         require_reliability_assets,
+        require_onboarding_assets,
+    )
+    required_data = (
+        REQUIRED_DATA | ONBOARDING_DATA_ASSETS if require_onboarding_assets else REQUIRED_DATA
     )
     try:
         if path.name.endswith(".tar.gz"):
@@ -325,7 +336,7 @@ def inspect_archive(
         )
         issues.extend(
             f"{path.name}: required packaged data is missing: {item}"
-            for item in sorted(REQUIRED_DATA - present_data)
+            for item in sorted(required_data - present_data)
         )
         return issues
     except (OSError, tarfile.TarError, zipfile.BadZipFile) as error:
@@ -764,6 +775,8 @@ def _verify_artifact(
                 >= (0, 21, 0),
                 require_reliability_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 22, 0),
+                require_onboarding_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 23, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

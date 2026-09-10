@@ -140,3 +140,9 @@ remain required; these campaigns do not establish universal correctness.
 See [bounded reliability observations](docs/RELIABILITY.md) for representative synthetic
 repositories, integer timing ceilings, repeat determinism, declared extension
 observations and metadata-only retention guidance. Native gates remain required.
+
+## Agent onboarding and compatibility
+
+See [the onboarding guide](docs/ONBOARDING.md) for bounded package diagnostics, explicit
+agent argv recipes, reviewed distribution choices, portable core smoke paths and
+read-only migration previews. Native gate and trust boundaries remain explicit.

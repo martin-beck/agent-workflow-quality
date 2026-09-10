@@ -21,6 +21,7 @@ from awq.release import (
     ADVERSARIAL_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
+    ONBOARDING_SCHEMA_ASSETS,
     PROMOTION_SCHEMA_ASSETS,
     PROVENANCE_SCHEMA_ASSETS,
     PYTHON_REFACTOR_SCHEMA_ASSETS,
@@ -106,6 +107,9 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
+                ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/data/compatibility.json", b"{}\n"),
+                ("awq/data/agent_recipes.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -132,6 +136,9 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
+                ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/data/compatibility.json", b"{}\n"),
+                ("awq/data/agent_recipes.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -169,6 +176,9 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
+                ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/data/compatibility.json", b"{}\n"),
+                ("awq/data/agent_recipes.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -199,6 +209,9 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
+                ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/data/compatibility.json", b"{}\n"),
+                ("awq/data/agent_recipes.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -237,6 +250,9 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
+                ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/data/compatibility.json", b"{}\n"),
+                ("awq/data/agent_recipes.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -263,6 +279,9 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
+                ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/data/compatibility.json", b"{}\n"),
+                ("awq/data/agent_recipes.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -288,6 +307,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | FORMAL_SCHEMA_ASSETS
             | LIFECYCLE_SCHEMA_ASSETS
             | REFINEMENT_SCHEMA_ASSETS
+            | ONBOARDING_SCHEMA_ASSETS
             | RELIABILITY_SCHEMA_ASSETS
             | ADVERSARIAL_SCHEMA_ASSETS
             | PYTHON_REFACTOR_SCHEMA_ASSETS
@@ -297,7 +317,10 @@ class DistributionVerificationTests(unittest.TestCase):
                 for name in sorted(REQUIRED_SCHEMAS)
                 if name != omitted
             ]
-            members.append(("awq/data/adapter_catalog.json", b"{}\n"))
+            members.extend(
+                (f"awq/data/{name}", b"{}\n")
+                for name in ("adapter_catalog.json", "compatibility.json", "agent_recipes.json")
+            )
             for archive in (
                 self.wheel("missing-sbom-asset.whl", members),
                 self.tarball("missing-sbom-asset.tar.gz", members),
@@ -308,6 +331,39 @@ class DistributionVerificationTests(unittest.TestCase):
                         [f"{archive.name}: required packaged schema is missing: {omitted}"],
                         findings,
                     )
+
+    def test_onboarding_data_is_required_and_historical_contract_is_preserved(self) -> None:
+        schemas = [
+            (f"awq/schemas/{name}", packaged_schema_bytes(name))
+            for name in sorted(REQUIRED_SCHEMAS)
+        ]
+        data = [
+            (f"awq/data/{name}", b"{}\n")
+            for name in ("adapter_catalog.json", "compatibility.json", "agent_recipes.json")
+        ]
+        for omitted in ("compatibility.json", "agent_recipes.json"):
+            members = schemas + [item for item in data if not item[0].endswith("/" + omitted)]
+            for archive in (
+                self.wheel("onboarding.whl", members),
+                self.tarball("onboarding.tar.gz", members),
+            ):
+                self.assertEqual(
+                    [f"{archive.name}: required packaged data is missing: {omitted}"],
+                    inspect_archive(archive),
+                )
+        historical = [
+            item
+            for item in schemas + data
+            if not item[0].endswith(
+                ("onboarding.schema.json", "compatibility.json", "agent_recipes.json")
+            )
+        ]
+        for archive in (
+            self.wheel("historical.whl", historical),
+            self.tarball("historical.tar.gz", historical),
+        ):
+            self.assertEqual([], inspect_archive(archive, require_onboarding_assets=False))
+            self.assertEqual(3, len(inspect_archive(archive)))
 
 
 if __name__ == "__main__":

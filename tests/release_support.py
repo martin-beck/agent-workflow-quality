@@ -64,6 +64,7 @@ class SignedRelease:
             set(provenance.MATERIAL_PATHS)
             | set(sbom.INPUT_PATHS)
             | {"schemas/" + name for name in REQUIRED_SCHEMAS}
+            | {"src/awq/data/compatibility.json", "src/awq/data/agent_recipes.json"}
         )
         for name in names:
             target = self.source / name
@@ -82,7 +83,7 @@ class SignedRelease:
         self.manifest_path = self.bundle / "unset"
         self.manifest: dict[str, Any] = {}
         self.tag_object = ""
-        self.build("0.22.1", self.policy, 0)
+        self.build("0.23.1", self.policy, 0)
 
     def close(self) -> None:
         self.temporary.cleanup()
@@ -133,7 +134,7 @@ class SignedRelease:
             path = self.source / name
             path.write_text(
                 path.read_text().replace(
-                    'version = "' + (self.version or "0.22.0") + '"',
+                    'version = "' + (self.version or "0.23.0") + '"',
                     'version = "' + version + '"',
                     1,
                 )
@@ -162,6 +163,10 @@ class SignedRelease:
         entries["awq/data/adapter_catalog.json"] = (
             self.source / "src/awq/data/adapter_catalog.json"
         ).read_bytes()
+        for data_name in ("compatibility.json", "agent_recipes.json"):
+            entries["awq/data/" + data_name] = (
+                self.source / "src/awq/data" / data_name
+            ).read_bytes()
         entries[f"agent_workflow_quality-{self.version}.dist-info/METADATA"] = (
             f"Name: agent-workflow-quality\nVersion: {self.version}\n"
         ).encode()
