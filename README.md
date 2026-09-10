@@ -9,6 +9,10 @@ The separately classified `hosting-observe` command is explicitly online. A cons
 profiles, expanded requirements, and the registry digest in `quality/awq.lock.json`; updates are
 explicit and reviewable.
 
+The opt-in [structured test-report evaluator](docs/TEST_REPORTS.md) turns exact, fresh JUnit report
+sets into content-minimized execution evidence across Python, JVM and mixed-module repositories.
+It never treats report or artifact presence alone as proof that tests ran.
+
 The opt-in [terminology profile](docs/TERMINOLOGY.md) checks consumer-owned canonical vocabulary
 across separately declared normative, example, quotation, and generated lexical scopes. AWQ does
 not hard-code coordinator or domain terminology, and the gate makes no semantic-language claim.

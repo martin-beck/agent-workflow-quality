@@ -46,6 +46,7 @@ PYTHON_REFACTOR_SCHEMA_ASSETS = {"python-refactor.schema.json"}
 ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 RELIABILITY_SCHEMA_ASSETS = {"reliability-budget.schema.json"}
 ONBOARDING_SCHEMA_ASSETS = {"onboarding.schema.json"}
+TEST_REPORT_SCHEMA_ASSETS = {"test-report-evidence.schema.json"}
 ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
 CONTRACT_CATALOG_DATA_ASSETS = {"contract_catalog.json"}
@@ -61,6 +62,7 @@ REQUIRED_SCHEMAS |= (
     | RELIABILITY_SCHEMA_ASSETS
     | ONBOARDING_SCHEMA_ASSETS
     | CONTRACT_CATALOG_SCHEMA_ASSETS
+    | TEST_REPORT_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {

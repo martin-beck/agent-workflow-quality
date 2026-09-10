@@ -40,6 +40,10 @@ reviewer. Schema and runtime tests reject unknown fields, floating or stale edit
 controls, uncovered requirements, and stronger claims. Source text is linked, not copied into AWQ;
 normal validation remains offline and deterministic.
 
+Generic test-report tests cover Python, JVM and mixed modules plus exact-set, digest, revision,
+freshness, module, skip, empty-suite, inconsistent-count, failure/error, symlink, DTD/entity and
+structural-bound rejection. Returned evidence is checked for content minimization.
+
 Adapter tests cover accepted and rejected contracts, absent and skewed tools, missing and unsafe
 configuration, deadlines, output bounds, minimal environments, normalized failures, schema
 agreement, semantic weakening, and native-command equivalence on controlled fixtures. Family ARs

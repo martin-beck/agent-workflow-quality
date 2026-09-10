@@ -220,15 +220,18 @@ def _extract_zip(archive_path: Path, destination: Path, top: str) -> None:
 
 
 def _install_wrapper(staging: Path) -> None:
-    source = Path(__file__).resolve().parents[1] / "src/awq/android_jvm_helper.py"
-    content = source.read_bytes()
-    if len(content) > helper.MAX_CONFIG_BYTES:
+    source_root = Path(__file__).resolve().parents[1] / "src/awq"
+    helper_content = (source_root / "android_jvm_helper.py").read_bytes()
+    report_content = (source_root / "test_reports.py").read_bytes()
+    if max(len(helper_content), len(report_content)) > helper.MAX_CONFIG_BYTES:
         raise AndroidJvmInstallError("Android/JVM helper exceeds its size bound")
     library = staging / "lib/awq_android_jvm_helper.py"
+    report_library = staging / "lib/awq_test_reports.py"
     wrapper = staging / "bin/awq-android-jvm-check"
     library.parent.mkdir(parents=True)
     wrapper.parent.mkdir(parents=True)
-    library.write_bytes(content)
+    library.write_bytes(helper_content)
+    report_library.write_bytes(report_content)
     wrapper.write_bytes(WRAPPER)
     wrapper.chmod(0o755)
 
@@ -242,6 +245,7 @@ def _write_manifest(staging: Path) -> None:
         "java_archive_sha256": helper.JAVA_ARCHIVE_SHA256,
         "java_version": helper.JAVA_VERSION,
         "schema_version": 1,
+        "test_reports_sha256": _sha256(staging / "lib/awq_test_reports.py"),
     }
     (staging / "manifest.json").write_text(
         json.dumps(document, sort_keys=True, separators=(",", ":")) + "\n",

@@ -51,7 +51,9 @@ evidence only when canonical observation data matches the configured API, ABI, f
 and image digest; names the current Git revision; is no older than max_age_hours; asserts successful
 UI and accessibility checks; and binds the complete sorted JUnit report set by SHA-256. Reports must
 be bounded UTF-8 XML without DTDs or entities, cover all required modules, meet test/executed floors,
-and contain no failures or errors.
+contain testcase-level counts consistent with suite totals, and contain no failures or errors. The
+generic structured test-report primitive performs the shared parsing and aggregation while this
+adapter retains device-specific fields and its legacy report-set observation digest.
 
 This prevents stale reports, a different commit, or a boolean-only declaration from satisfying the
 device contract. It does not prove behavior outside the selected device, test set, variant, locale,

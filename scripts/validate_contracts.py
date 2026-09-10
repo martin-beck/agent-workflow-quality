@@ -96,8 +96,33 @@ def _validate_native_mapping_fixtures() -> None:
         validate(observation["identity"], "evidence-identity.schema.json")
 
 
+def _validate_test_report_contract() -> None:
+    validate(
+        {
+            "collected_at": "2026-09-10T20:00:00Z",
+            "kind": "junit-report-contract",
+            "max_age_seconds": 3600,
+            "minimum_discovered": 1,
+            "minimum_executed": 1,
+            "producer": {
+                "configuration_sha256": "1" * 64,
+                "id": "pytest",
+                "version": "9.0.2",
+            },
+            "report_roots": ["reports"],
+            "reports": [{"module": "python", "path": "reports/junit.xml", "sha256": "2" * 64}],
+            "required_modules": ["python"],
+            "schema_version": 1,
+            "skip_policy": "allow",
+            "source_revision": "3" * 40,
+        },
+        "test-report-evidence.schema.json",
+    )
+
+
 def main() -> int:
     contract_catalog, _ = load_contract_catalog()
+    _validate_test_report_contract()
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
     adapter_catalog = json.loads(files("awq.data").joinpath("adapter_catalog.json").read_text())

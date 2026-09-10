@@ -151,8 +151,39 @@ class AndroidJvmInstallerTests(unittest.TestCase):
             (Path(installer.__file__).parents[1] / "src/awq/android_jvm_helper.py").read_bytes(),
             (prefix / "lib/awq_android_jvm_helper.py").read_bytes(),
         )
+        self.assertEqual(
+            (Path(installer.__file__).parents[1] / "src/awq/test_reports.py").read_bytes(),
+            (prefix / "lib/awq_test_reports.py").read_bytes(),
+        )
         manifest = json.loads((prefix / "manifest.json").read_text())
         self.assertEqual(helper_metadata.JAVA_ARCHIVE_SHA256, manifest["java_archive_sha256"])
+        self.assertEqual(
+            hashlib.sha256((prefix / "lib/awq_test_reports.py").read_bytes()).hexdigest(),
+            manifest["test_reports_sha256"],
+        )
+        completed = subprocess.run(
+            [str(prefix / "bin/awq-android-jvm-check"), "--version"],
+            env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"},
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(1, completed.returncode)
+        self.assertEqual("awq-android-jvm-check: validation failed\n", completed.stderr)
+        (prefix / "lib/awq_test_reports.py").unlink()
+        missing = subprocess.run(
+            [str(prefix / "bin/awq-android-jvm-check"), "--version"],
+            env={"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"},
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertNotEqual(0, missing.returncode)
+        self.assertIn("awq_test_reports", missing.stderr)
         success = mock.Mock(
             returncode=0,
             stdout=helper_metadata.VERSION_OUTPUT + "\n",
