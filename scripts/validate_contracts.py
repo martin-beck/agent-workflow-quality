@@ -82,6 +82,15 @@ def _validate_terminology_fixtures() -> None:
         validate(json.loads((ROOT / name).read_bytes()), "terminology-registry.schema.json")
 
 
+def _validate_native_mapping_fixtures() -> None:
+    for name in (
+        "fixtures/conforming/native-gate-mapping.json",
+        "fixtures/nonconforming/native-gate-mapping/missing-evidence.json",
+        "fixtures/nonconforming/native-gate-mapping/contradictory-evidence.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "native-gate-mapping.schema.json")
+
+
 def main() -> int:
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
@@ -204,6 +213,7 @@ def main() -> int:
         "templates/consumer-equivalence.json",
     ):
         validate(json.loads((ROOT / name).read_bytes()), "consumer-equivalence.schema.json")
+    _validate_native_mapping_fixtures()
     for name in (
         "fixtures/conforming/assurance/model.json",
         "fixtures/conforming/assurance/refactor.json",

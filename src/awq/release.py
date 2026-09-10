@@ -35,6 +35,7 @@ REQUIRED_SCHEMAS = frozenset(
 )
 PROVENANCE_SCHEMA_ASSETS = {"release-provenance.schema.json", "release-trust-policy.schema.json"}
 PROMOTION_SCHEMA_ASSETS = {"consumer-equivalence.schema.json"}
+NATIVE_MAPPING_SCHEMA_ASSETS = {"native-gate-mapping.schema.json"}
 FORMAL_SCHEMA_ASSETS = {"assurance-contract.schema.json"}
 LIFECYCLE_SCHEMA_ASSETS = {"lifecycle-model.schema.json"}
 REFINEMENT_SCHEMA_ASSETS = {"refinement-map.schema.json"}
@@ -46,6 +47,7 @@ ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
+    | NATIVE_MAPPING_SCHEMA_ASSETS
     | FORMAL_SCHEMA_ASSETS
     | LIFECYCLE_SCHEMA_ASSETS
     | REFINEMENT_SCHEMA_ASSETS
