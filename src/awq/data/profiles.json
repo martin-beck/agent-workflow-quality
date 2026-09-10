@@ -10,6 +10,7 @@
     {"name":"privacy","description":"Content-minimized public repository baseline.","requirements":["AWQ-PRIV-001"]},
     {"name":"supply-chain","description":"Pinned AWQ policy supply chain.","requirements":["AWQ-SUPPLY-001"]},
     {"name":"formal-evidence","description":"Truthful bounded formal-evidence claims.","requirements":["AWQ-FORMAL-001"]},
+    {"name":"formal-model","description":"Bounded external formal-model execution contracts.","requirements":["AWQ-FORMAL-001"]},
     {"name":"rust","description":"Rust dependency-integrity baseline.","requirements":["AWQ-RUST-001"]},
     {"name":"android-jvm","description":"Gradle and Android dependency-integrity baseline.","requirements":["AWQ-JVM-001"]}
   ]

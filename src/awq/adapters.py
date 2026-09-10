@@ -75,6 +75,8 @@ FAMILY_KEYS = {"id", "title", "description", "assumptions", "contracts"}
 MAX_PROBE_BYTES = 4096
 MAX_ARGUMENTS = 100
 MAX_ARGUMENT_LENGTH = 1000
+TLC_SUCCESS_LINE = b"Model checking completed. No error has been found."
+TLC_FAILURE_LINE = re.compile(rb"Error: Invariant [^\r\n]{1,200} is violated\.")
 
 
 class AdapterError(ValueError):
@@ -180,6 +182,35 @@ def validate_adapter(value: dict[str, Any]) -> None:
     _validate_argv(value)
     _validate_classification(value)
     _validate_paths(value)
+    if value["id"] == "ADAPTER-FORMAL-MODEL-TLC":
+        _validate_tlc_contract(value)
+
+
+def _validate_tlc_contract(value: dict[str, Any]) -> None:
+    """Reject ambiguous or dynamically constructed TLC invocations."""
+    argv = value["argv"]
+    paths = value["config_paths"]
+    if (
+        value["tool"] != "tlc"
+        or value.get("input_mode", "explicit") != "explicit"
+        or value["evidence"] != "bounded-model"
+        or value["formats"] != [".cfg", ".tla"]
+        or len(paths) != 2
+        or not paths[0].endswith(".cfg")
+        or not paths[1].endswith(".tla")
+        or len(argv) != 8
+        or argv[1] != "-workers"
+        or not argv[2].isascii()
+        or not argv[2].isdigit()
+        or not 1 <= int(argv[2]) <= 16
+        or argv[3] != "-depth"
+        or not argv[4].isascii()
+        or not argv[4].isdigit()
+        or not 1 <= int(argv[4]) <= 1_000_000
+        or argv[5] != "-config"
+        or argv[6:] != paths
+    ):
+        raise AdapterError("formal adapter model or bounded TLC invocation is unsupported")
 
 
 def _family_text(family: dict[str, Any], field: str, maximum: int) -> None:
@@ -630,6 +661,8 @@ def _execution_result(
     inputs: list[str],
     started: float,
 ) -> dict[str, Any]:
+    if contract["id"] == "ADAPTER-FORMAL-MODEL-TLC":
+        return _tlc_execution_result(root, executable, contract, environment, started)
     if contract.get("result_protocol") == "awq-bindings-v1":
         failure, bindings = _execution_with_bindings(
             root, executable, contract, environment, inputs
@@ -642,6 +675,52 @@ def _execution_result(
             bindings if failure is None else None,
         )
     failure = _execution_failure(root, executable, contract, environment, inputs)
+    return _result(contract, started, "fail" if failure else "pass", failure or [])
+
+
+def _tlc_execution_result(
+    root: Path,
+    executable: str,
+    contract: dict[str, Any],
+    environment: dict[str, str],
+    started: float,
+) -> dict[str, Any]:
+    """Normalize bounded TLC completion without exposing model-checker output."""
+    argv = [executable, *contract["argv"][1:]]
+    failure: list[dict[str, str]] | None
+    try:
+        returncode, output, timed_out, overflow = _bounded_execution(
+            argv, root, environment, contract["timeout_seconds"]
+        )
+    except OSError:
+        failure = _finding(
+            "adapter-tool-unavailable", "", "pinned adapter tool could not be completed"
+        )
+        return _result(contract, started, "fail", failure)
+    except AdapterError:
+        failure = _finding(
+            "adapter-result-invalid", "", "model checker output failed its safety protocol"
+        )
+        return _result(contract, started, "fail", failure)
+    lines = output.splitlines()
+    success = TLC_SUCCESS_LINE in lines
+    model_failed = any(TLC_FAILURE_LINE.fullmatch(line) for line in lines)
+    if timed_out:
+        failure = _finding("adapter-timeout", "", "adapter exceeded its deadline")
+    elif overflow:
+        failure = _finding(
+            "adapter-result-output-limit", "", "adapter result exceeded its safety bound"
+        )
+    elif success and not model_failed and returncode == 0:
+        failure = None
+    elif model_failed and not success:
+        failure = _finding(
+            "adapter-model-failed", "", "bounded model checking found an invariant violation"
+        )
+    else:
+        failure = _finding(
+            "adapter-result-invalid", "", "model checker output did not match a terminal result"
+        )
     return _result(contract, started, "fail" if failure else "pass", failure or [])
 
 

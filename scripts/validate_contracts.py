@@ -251,6 +251,10 @@ def main() -> int:
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")
+    formal_adapter = next(
+        family for family in adapter_catalog["families"] if family["id"] == "formal-model"
+    )
+    validate(formal_adapter["contracts"][0], "formal-adapter-contract.schema.json")
     validate(android_jvm, "android-jvm-policy.schema.json")
     validate(sources, "control-source-registry.schema.json")
     validate(mappings, "standards-mapping-registry.schema.json")

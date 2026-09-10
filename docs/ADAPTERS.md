@@ -11,6 +11,7 @@ families:
 - AR-0020: pinned Rust stable formatting, Clippy, tests, documentation, and builds.
 - AR-0021: pinned Rust dependency policy, advisory, and public API compatibility.
 - AR-0019: pinned Android/JVM integrity, Gradle gates, and device-evidence boundaries.
+- AR-0031: bounded TLA+/TLC-style model execution with truthful normalized evidence.
 
 No family adapter is enabled merely by upgrading AWQ. A project explicitly checks its contract into
 the `adapters` array in `quality/awq.json`.
@@ -29,8 +30,9 @@ Unknown families fail closed. Catalog entries are templates for explicit review 
 repository policy; they are never enabled automatically. See the
 [Python adapter family](PYTHON_ADAPTERS.md), [shell adapter family](SHELL_ADAPTERS.md),
 [documentation adapter family](DOCUMENTATION_ADAPTERS.md),
-[schema adapter family](SCHEMA_ADAPTERS.md), and
-[Rust adapter family](RUST_ADAPTERS.md), and [Android/JVM adapter family](ANDROID_JVM_ADAPTERS.md) for exact pins and configuration contracts.
+[schema adapter family](SCHEMA_ADAPTERS.md), [Rust adapter family](RUST_ADAPTERS.md),
+[Android/JVM adapter family](ANDROID_JVM_ADAPTERS.md), and
+[formal-model adapter family](FORMAL_ADAPTERS.md) for exact pins and configuration contracts.
 
 ## Contract
 
@@ -117,6 +119,12 @@ A passing result contains no findings. Failures use stable codes:
 | `adapter-failed` | The check returned a nonzero status. |
 | `adapter-result-output-limit` | Declared protocol output exceeded 4096 bytes. |
 | `adapter-result-invalid` | Declared protocol output was malformed, noncanonical, or inconsistent. |
+
+The stable `ADAPTER-FORMAL-MODEL-TLC` identifier activates the stricter
+`formal-adapter-contract.schema.json` runtime contract. It captures at most 4096 bytes of TLC
+output only long enough to classify a terminal success or invariant violation, then discards it.
+Any other terminal text is malformed evidence and fails closed; it is never copied into findings.
+A recognized invariant violation uses the stable `adapter-model-failed` code.
 
 Findings deliberately omit command output and source excerpts. The `duration_ms` measurement varies;
 the status, classifications, and messages are stable for an otherwise fixed execution context.

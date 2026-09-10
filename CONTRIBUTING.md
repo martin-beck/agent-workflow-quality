@@ -15,6 +15,7 @@ generation is a separate setup operation and must never be moved into an adapter
 uv run python scripts/install_shell_tools.py --prefix /new/external/shell-tools
 uv run python scripts/install_documentation_tools.py --prefix /new/external/doc-tools
 uv run python scripts/install_schema_tools.py --prefix /new/external/schema-tools
+uv run python scripts/install_formal_tools.py --prefix /new/external/formal-tools
 uv run python scripts/install_rust_tools.py --prefix /new/external/rust-tools
 uv run python scripts/install_rust_supply_tools.py \
   --prefix /new/external/rust-supply-tools \
