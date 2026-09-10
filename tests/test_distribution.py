@@ -94,6 +94,7 @@ class DistributionVerificationTests(unittest.TestCase):
             [
                 ("awq/__init__.py", b""),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -117,6 +118,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/contract_catalog.json", b"{}\n"),
             ],
         )
         source = self.tarball(
@@ -124,7 +126,9 @@ class DistributionVerificationTests(unittest.TestCase):
             [
                 ("awq/src/awq/__init__.py", b""),
                 ("awq/src/awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/src/awq/data/contract_catalog.json", b"{}\n"),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -167,6 +171,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/duplicate", b"first"),
                 ("awq/duplicate", b"second"),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -190,6 +195,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/contract_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
         )
@@ -202,6 +208,7 @@ class DistributionVerificationTests(unittest.TestCase):
             "symlink.whl",
             [
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -225,6 +232,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/contract_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
         )
@@ -245,6 +253,7 @@ class DistributionVerificationTests(unittest.TestCase):
             "missing-data.whl",
             [
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -276,6 +285,7 @@ class DistributionVerificationTests(unittest.TestCase):
             "misplaced-data.whl",
             [
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -331,7 +341,12 @@ class DistributionVerificationTests(unittest.TestCase):
             ]
             members.extend(
                 (f"awq/data/{name}", b"{}\n")
-                for name in ("adapter_catalog.json", "compatibility.json", "agent_recipes.json")
+                for name in (
+                    "adapter_catalog.json",
+                    "contract_catalog.json",
+                    "compatibility.json",
+                    "agent_recipes.json",
+                )
             )
             for archive in (
                 self.wheel("missing-sbom-asset.whl", members),
@@ -351,7 +366,12 @@ class DistributionVerificationTests(unittest.TestCase):
         ]
         data = [
             (f"awq/data/{name}", b"{}\n")
-            for name in ("adapter_catalog.json", "compatibility.json", "agent_recipes.json")
+            for name in (
+                "adapter_catalog.json",
+                "contract_catalog.json",
+                "compatibility.json",
+                "agent_recipes.json",
+            )
         ]
         for omitted in ("compatibility.json", "agent_recipes.json"):
             members = schemas + [item for item in data if not item[0].endswith("/" + omitted)]

@@ -4,6 +4,12 @@ Every pull request must pass deterministic formatting, strict lint and typing, b
 schema tests, generated-catalog drift, self-hosted AWQ checks, negative fixtures, DCO validation,
 immutable GitHub Action references and a clean-tree assertion.
 
+The public-contract gate discovers all shipped JSON schemas and structured registries. It rejects
+unregistered contracts, duplicate identifiers or paths, missing positive or hostile fixture cases,
+missing implementation handlers, command drift, stale documentation and byte or conservative
+semantic-summary drift against the reviewed baseline. Compatible byte-only edits require an explicit
+classification and reason; semantic changes require a new versioned identifier and contract path.
+
 Coverage is a regression constraint, not correctness proof. The initial production-code line and
 branch floor is 95 percent. Exclusions cover only the console guard. Every shared gate family has an
 intentionally broken fixture which the production checker must reject.

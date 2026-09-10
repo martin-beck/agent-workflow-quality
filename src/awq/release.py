@@ -47,6 +47,7 @@ ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 RELIABILITY_SCHEMA_ASSETS = {"reliability-budget.schema.json"}
 ONBOARDING_SCHEMA_ASSETS = {"onboarding.schema.json"}
 ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
+CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
@@ -58,6 +59,7 @@ REQUIRED_SCHEMAS |= (
     | ADVERSARIAL_SCHEMA_ASSETS
     | RELIABILITY_SCHEMA_ASSETS
     | ONBOARDING_SCHEMA_ASSETS
+    | CONTRACT_CATALOG_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -65,7 +67,7 @@ SBOM_SCHEMA_ASSETS = frozenset(
         "spdx-3.0.1.schema.zip",
     }
 )
-REQUIRED_DATA = frozenset({"adapter_catalog.json"})
+REQUIRED_DATA = frozenset({"adapter_catalog.json", "contract_catalog.json"})
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 GIT_ID = re.compile(r"^[0-9a-f]{40}$")
 VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")

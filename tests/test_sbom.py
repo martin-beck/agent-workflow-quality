@@ -286,7 +286,7 @@ class SbomTests(unittest.TestCase):
             manifest = deepcopy(self.manifest)
             epoch = manifest["source"]["source_date_epoch"]
             files = {**self.inputs, **provenance.source_materials(ROOT)}
-            for data_name in ("compatibility.json", "agent_recipes.json"):
+            for data_name in ("contract_catalog.json", "compatibility.json", "agent_recipes.json"):
                 files["src/awq/data/" + data_name] = (
                     ROOT / "src/awq/data" / data_name
                 ).read_bytes()
@@ -364,6 +364,7 @@ class SbomTests(unittest.TestCase):
         )
         entries = {f"awq/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS}
         entries["awq/data/adapter_catalog.json"] = b"{}\n"
+        entries["awq/data/contract_catalog.json"] = b"{}\n"
         entries["awq/data/compatibility.json"] = b"{}\n"
         entries["awq/data/agent_recipes.json"] = b"{}\n"
         entries["agent_workflow_quality-0.29.0.dist-info/METADATA"] = (

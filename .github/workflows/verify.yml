@@ -109,6 +109,7 @@ jobs:
       - name: Contracts generation and self-check
         run: |
           uv run python scripts/generate_catalog.py --check
+          uv run python scripts/generate_contract_catalog.py --check
           uv run python scripts/generate_onboarding.py --check
           uv run python scripts/generate_sbom_fixture.py --check
           uv run python scripts/generate_provenance_fixture.py --check
@@ -138,6 +139,7 @@ jobs:
             "${release_dir}/agent_workflow_quality-0.29.0-py3-none-any.whl"
           "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . inspect --format json
           "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . onboarding --format json
+          "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . contract-catalog --format json
       - name: DCO certification
         if: github.event_name == 'pull_request'
         env:

@@ -87,6 +87,7 @@ class ReleaseVerificationTests(unittest.TestCase):
             for schema in sorted(REQUIRED_SCHEMAS):
                 write(archive, f"awq/schemas/{schema}", packaged_schema_bytes(schema))
             write(archive, "awq/data/adapter_catalog.json", b"{}\n")
+            write(archive, "awq/data/contract_catalog.json", b"{}\n")
             write(archive, "awq/data/compatibility.json", b"{}\n")
             write(archive, "awq/data/agent_recipes.json", b"{}\n")
             if private:
@@ -108,6 +109,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f'[project]\nname = "agent-workflow-quality"\nversion = "{observed}"\n'
             ).encode(),
             f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
+            f"{prefix}/src/awq/data/contract_catalog.json": b"{}\n",
             f"{prefix}/src/awq/data/compatibility.json": b"{}\n",
             f"{prefix}/src/awq/data/agent_recipes.json": b"{}\n",
             **{
