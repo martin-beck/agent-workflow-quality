@@ -48,7 +48,7 @@ PYTHONPATH=src "$release_python" scripts/build_release.py \
   --uv-cache /new/external/uv-cache \
   --uv "$(command -v uv)"
 uv run awq --root . release-verify \
-  /new/external/awq-release/agent_workflow_quality-0.27.0.release.json \
+  /new/external/awq-release/agent_workflow_quality-0.28.0.release.json \
   --source --format json
 ```
 
