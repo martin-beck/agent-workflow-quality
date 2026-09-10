@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
+import json
 import platform
 import re
 import shutil
@@ -69,11 +70,8 @@ def compatibility() -> dict[str, Any]:
 
 def recipes() -> dict[str, Any]:
     prefix = ["python", "-m", "awq", "--root", "{consumer}"]
-    update = [
-        *prefix,
-        "update",
-        "--to",
-        "{target-version}",
+    candidate = ["python", "-m", "awq", "--root", "{candidate-source}"]
+    authenticate = [
         "--manifest",
         "{manifest}",
         "--trust-policy",
@@ -85,50 +83,265 @@ def recipes() -> dict[str, Any]:
         "--tag-object",
         "{tag-object}",
     ]
+    update = [
+        *prefix,
+        "update",
+        "--to",
+        "{target-version}",
+        *authenticate,
+    ]
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "kind": "awq-agent-recipes",
         "awq_version": __version__,
+        "contracts": _recipe_contracts(),
+        "composition": {
+            "rule": "command-prefix-plus-recipe-tail",
+            "canonical_prefix": ["python", "-m", "awq"],
+        },
+        "runtimes": [
+            {
+                "id": "offline-source",
+                "install_argv": [
+                    "uv",
+                    "sync",
+                    "--directory",
+                    "{awq-source}",
+                    "--locked",
+                    "--offline",
+                    "--python",
+                    "{python}",
+                ],
+                "command_prefix": [
+                    "uv",
+                    "run",
+                    "--directory",
+                    "{awq-source}",
+                    "--frozen",
+                    "--offline",
+                    "python",
+                    "-m",
+                    "awq",
+                ],
+                "network": "forbidden",
+            },
+            {
+                "id": "offline-wheel",
+                "install_argv": [
+                    "uv",
+                    "pip",
+                    "install",
+                    "--python",
+                    "{python}",
+                    "--offline",
+                    "--no-index",
+                    "--no-deps",
+                    "{verified-wheel}",
+                ],
+                "command_prefix": ["{python}", "-m", "awq"],
+                "network": "forbidden",
+            },
+        ],
         "recipes": [
             {
-                "id": "inspect",
+                "id": "diagnose-package",
+                "operation": "diagnostic",
+                "effect": "read-only",
                 "approval": "read-only",
                 "argv": [*prefix, "onboarding", "--format", "json"],
             },
             {
-                "id": "preview-init",
+                "id": "inspect-project",
+                "operation": "diagnostic",
+                "effect": "read-only",
                 "approval": "read-only",
-                "argv": [*prefix, "init", "--profiles", "core", "--dry-run", "--format", "json"],
+                "argv": [*prefix, "inspect", "--format", "json"],
             },
             {
-                "id": "initialize",
+                "id": "preview-initialize",
+                "operation": "profile-initialization",
+                "effect": "read-only",
+                "approval": "read-only",
+                "argv": [
+                    *prefix,
+                    "init",
+                    "--profiles",
+                    "core",
+                    "terminology",
+                    "--dry-run",
+                    "--format",
+                    "json",
+                ],
+            },
+            {
+                "id": "initialize-profiles",
+                "operation": "profile-initialization",
+                "effect": "project-files",
                 "approval": "explicit-project-change",
-                "argv": [*prefix, "init", "--profiles", "core", "--format", "json"],
+                "argv": [
+                    *prefix,
+                    "init",
+                    "--profiles",
+                    "core",
+                    "terminology",
+                    "--format",
+                    "json",
+                ],
             },
             {
-                "id": "check",
+                "id": "validate-terminology",
+                "operation": "terminology-check",
+                "effect": "executes-reviewed-gates",
+                "approval": "run-reviewed-gates",
+                "argv": [
+                    *prefix,
+                    "check",
+                    "--tier",
+                    "pr",
+                    "--requirement",
+                    "AWQ-TERM-001",
+                    "--format",
+                    "json",
+                ],
+            },
+            {
+                "id": "evaluate-native-mapping",
+                "operation": "native-gate-mapping",
+                "effect": "reads-recorded-results",
+                "approval": "run-reviewed-gates",
+                "argv": [
+                    *prefix,
+                    "native-map-evaluate",
+                    "{native-gate-mapping}",
+                    "--format",
+                    "json",
+                ],
+            },
+            {
+                "id": "check-pr",
+                "operation": "shared-gates",
+                "effect": "executes-reviewed-gates",
                 "approval": "run-reviewed-gates",
                 "argv": [*prefix, "check", "--tier", "pr", "--format", "json"],
             },
             {
-                "id": "explain",
-                "approval": "read-only",
-                "argv": [*prefix, "explain", "AWQ-CORE-001", "--format", "json"],
+                "id": "review-policy-diff",
+                "operation": "review",
+                "effect": "read-only",
+                "approval": "explicit-review",
+                "argv": [
+                    *prefix,
+                    "policy-diff",
+                    "{base-lock}",
+                    "{head-lock}",
+                    "--format",
+                    "json",
+                ],
             },
             {
                 "id": "preview-migration",
+                "operation": "review",
+                "effect": "read-only",
                 "approval": "read-only",
                 "argv": [*prefix, "migration-preview", "{migration-contract}", "--format", "json"],
             },
             {
+                "id": "verify-release-bundle",
+                "operation": "release-authentication",
+                "effect": "read-only",
+                "approval": "review-external-trust",
+                "argv": [
+                    *candidate,
+                    "release-verify",
+                    "{manifest}",
+                    "--source",
+                    "--format",
+                    "json",
+                ],
+            },
+            {
+                "id": "authenticate-release",
+                "operation": "release-authentication",
+                "effect": "read-only",
+                "approval": "review-external-trust",
+                "argv": [*candidate, "release-authenticate", *authenticate, "--format", "json"],
+            },
+            {
                 "id": "authenticated-dry-run",
+                "operation": "release-update",
+                "effect": "read-only",
                 "approval": "review-external-trust",
                 "argv": [*update, "--dry-run", "--format", "json"],
             },
             {
                 "id": "authenticated-update",
+                "operation": "release-update",
+                "effect": "lock-file-only",
                 "approval": "explicit-lock-only-change",
                 "argv": [*update, "--format", "json"],
+            },
+            {
+                "id": "fresh-clone-diagnostic",
+                "operation": "fresh-clone-check",
+                "effect": "read-only",
+                "approval": "run-reviewed-gates",
+                "argv": [*prefix, "onboarding", "--format", "json"],
+            },
+            {
+                "id": "fresh-clone-check",
+                "operation": "fresh-clone-check",
+                "effect": "executes-reviewed-gates",
+                "approval": "run-reviewed-gates",
+                "argv": [*prefix, "check", "--tier", "pr", "--format", "json"],
+            },
+        ],
+        "workflow": [
+            {
+                "id": "diagnostics",
+                "kind": "diagnostic",
+                "requires": [],
+                "recipes": ["diagnose-package", "inspect-project", "preview-initialize"],
+            },
+            {
+                "id": "adoption",
+                "kind": "explicit-mutation",
+                "requires": ["diagnostics"],
+                "recipes": ["initialize-profiles", "validate-terminology"],
+            },
+            {
+                "id": "native-gates",
+                "kind": "project-owned-native-gates",
+                "requires": ["adoption"],
+                "recipes": [],
+            },
+            {
+                "id": "shared-ci",
+                "kind": "portable-ci",
+                "requires": ["native-gates"],
+                "recipes": ["evaluate-native-mapping", "check-pr"],
+            },
+            {
+                "id": "review",
+                "kind": "explicit-review",
+                "requires": ["shared-ci"],
+                "recipes": ["review-policy-diff", "preview-migration"],
+            },
+            {
+                "id": "release",
+                "kind": "authenticated-release",
+                "requires": ["review"],
+                "recipes": [
+                    "verify-release-bundle",
+                    "authenticate-release",
+                    "authenticated-dry-run",
+                    "authenticated-update",
+                ],
+            },
+            {
+                "id": "fresh-clone",
+                "kind": "fresh-clone-verification",
+                "requires": ["release"],
+                "recipes": ["fresh-clone-diagnostic", "fresh-clone-check"],
             },
         ],
         "execution": "instructions-only",
@@ -176,6 +389,67 @@ def _schema_bytes(name: str) -> bytes:
     if source.parent.parent.name != "src" or not (source.parents[2] / "pyproject.toml").is_file():
         raise project.ProjectError("required installed schema is missing")
     return read_file(source.parents[2] / "schemas" / name, 1_000_000)
+
+
+def _recipe_contracts() -> dict[str, int | list[int]]:
+    def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, item in pairs:
+            if key in result:
+                raise project.ProjectError("agent recipe schema metadata is invalid")
+            result[key] = item
+        return result
+
+    def constant(value: str) -> None:
+        del value
+        raise project.ProjectError("agent recipe schema metadata is invalid")
+
+    try:
+        schemas = {
+            name: json.loads(
+                _schema_bytes(name).decode("utf-8"),
+                object_pairs_hook=unique,
+                parse_constant=constant,
+            )
+            for name in (
+                "project-policy.schema.json",
+                "terminology-registry.schema.json",
+                "native-gate-mapping.schema.json",
+                "release-manifest.schema.json",
+            )
+        }
+    except (UnicodeError, ValueError, RecursionError) as error:
+        raise project.ProjectError("agent recipe schema metadata is invalid") from error
+    try:
+        project_policy = schemas["project-policy.schema.json"]["properties"]["schema_version"][
+            "const"
+        ]
+        terminology = schemas["terminology-registry.schema.json"]["properties"]["schema_version"][
+            "const"
+        ]
+        native_mapping = schemas["native-gate-mapping.schema.json"]["properties"]["schema_version"][
+            "const"
+        ]
+        release_manifests = schemas["release-manifest.schema.json"]["properties"]["schema_version"][
+            "enum"
+        ]
+    except (KeyError, TypeError) as error:
+        raise project.ProjectError("agent recipe schema metadata is invalid") from error
+    if (
+        type(project_policy) is not int
+        or type(terminology) is not int
+        or type(native_mapping) is not int
+        or not isinstance(release_manifests, list)
+        or not release_manifests
+        or any(type(item) is not int for item in release_manifests)
+    ):
+        raise project.ProjectError("agent recipe schema metadata is invalid")
+    return {
+        "project_policy_schema": project_policy,
+        "terminology_registry_schema": terminology,
+        "native_gate_mapping_schema": native_mapping,
+        "release_manifest_schemas": list(release_manifests),
+    }
 
 
 def package_diagnostic() -> dict[str, Any]:

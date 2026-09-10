@@ -148,5 +148,6 @@ observations and metadata-only retention guidance. Native gates remain required.
 ## Agent onboarding and compatibility
 
 See [the onboarding guide](docs/ONBOARDING.md) for bounded package diagnostics, explicit
-agent argv recipes, reviewed distribution choices, portable core smoke paths and
-read-only migration previews. Native gate and trust boundaries remain explicit.
+agent argv recipes, reviewed distribution choices, portable offline source and wheel paths,
+native-before-shared CI ordering, authenticated release review and fresh-clone verification.
+Native gate and trust boundaries remain explicit.

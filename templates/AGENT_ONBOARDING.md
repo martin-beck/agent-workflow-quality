@@ -5,15 +5,19 @@ Use the project's coordinator for every authorized change. This recipe grants no
 new authority and does not replace project-specific instructions or native gates.
 
 1. Select an independently reviewed AWQ source commit or authenticated local wheel.
-2. Run the packaged onboarding diagnostic using the selected Python environment.
-3. Read compatibility findings; unsupported or not-probed capabilities remain blocked.
-4. Inspect the project and preview core initialization without changing files.
-5. Obtain explicit scope approval before initialization; review every generated file.
-6. Keep existing domain tests and native CI. Do not infer equivalence from shadow CI.
-7. Preview migrations using canonical reviewed metadata; never treat a preview as approval.
-8. Authenticate a complete release bundle and inspect the exact dry-run lock diff before update.
-9. Record only bounded aggregate evidence and digests, never logs, prompts or private paths.
+2. Choose the matching packaged offline runtime; provision its pinned inputs separately.
+3. Run `diagnostics` and read every compatibility finding before any mutation.
+4. Obtain explicit project scope approval, then run `adoption` and review generated files.
+5. Run existing project-owned `native-gates` directly before the AWQ `shared-ci` stage.
+6. Review terminology findings and bounded native mappings without weakening native gates.
+7. Complete `review`; a policy diff or migration preview never authorizes an update.
+8. Run each read-only release authentication step and inspect the dry-run lock diff.
+9. Obtain separate lock-only approval before the authenticated update.
+10. Create a credential-free fresh clone separately, then complete `fresh-clone` verification.
+11. Record only bounded aggregate evidence and digests, never logs, prompts or private paths.
 
-Use the packaged agent_recipes.json argv arrays. Replace placeholders as individual
-arguments without constructing a shell command. The installed AWQ release's
-ONBOARDING and PROVENANCE documents define capability and trust limitations.
+Use the packaged agent_recipes.json workflow, runtime records and argv arrays. Replace
+placeholders as individual arguments without constructing a shell command. Empty native-gate
+recipes mean project-owned execution, not permission to skip that stage. The installed AWQ
+release documentation in ONBOARDING, NATIVE_GATE_MAPPINGS and PROVENANCE defines capability,
+equivalence and trust limitations.
