@@ -4,10 +4,19 @@
   "title": "AWQ bounded execution budget and process receipt",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "receipt_id", "evaluated_step", "dimensions", "reservations", "process", "sandbox", "limitation"],
+  "required": ["schema_version", "receipt_id", "source", "evaluated_step", "dimensions", "reservations", "process", "sandbox", "limitation"],
   "properties": {
     "schema_version": {"const": 1},
     "receipt_id": {"type": "string", "maxLength": 100, "pattern": "^RECEIPT-[A-Z0-9]+(?:-[A-Z0-9]+)*$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "sha256"],
+      "properties": {
+        "kind": {"const": "awq-adapter-result-v1"},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
     "evaluated_step": {"type": "integer", "minimum": 0, "maximum": 1000000000000000},
     "dimensions": {
       "type": "array",
@@ -53,7 +62,23 @@
         "limit": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000000000}, {"type": "null"}]},
         "used": {"oneOf": [{"type": "integer", "minimum": 0, "maximum": 1000000000000000}, {"type": "null"}]},
         "measurement": {"oneOf": [{"$ref": "#/$defs/tool"}, {"type": "null"}]}
-      }
+      },
+      "allOf": [
+        {"if": {"properties": {"id": {"const": "actions"}}}, "then": {"properties": {"unit": {"const": "count"}}}},
+        {"if": {"properties": {"id": {"const": "cost"}}}, "then": {"properties": {"unit": {"const": "microunits"}}}},
+        {"if": {"properties": {"id": {"const": "cpu"}}}, "then": {"properties": {"unit": {"const": "milliseconds"}}}},
+        {"if": {"properties": {"id": {"const": "disk"}}}, "then": {"properties": {"unit": {"const": "bytes"}}}},
+        {"if": {"properties": {"id": {"const": "memory"}}}, "then": {"properties": {"unit": {"const": "bytes"}}}},
+        {"if": {"properties": {"id": {"const": "output"}}}, "then": {"properties": {"unit": {"const": "bytes"}}}},
+        {"if": {"properties": {"id": {"const": "pids"}}}, "then": {"properties": {"unit": {"const": "count"}}}},
+        {"if": {"properties": {"id": {"const": "tokens"}}}, "then": {"properties": {"unit": {"const": "count"}}}},
+        {"if": {"properties": {"id": {"const": "wall"}}}, "then": {"properties": {"unit": {"const": "milliseconds"}}}},
+        {
+          "if": {"properties": {"classification": {"const": "unavailable"}}},
+          "then": {"properties": {"limit": {"type": "null"}, "used": {"type": "null"}, "measurement": {"type": "null"}}},
+          "else": {"properties": {"limit": {"type": "integer"}, "used": {"type": "integer"}, "measurement": {"$ref": "#/$defs/tool"}}}
+        }
+      ]
     },
     "reservation": {
       "type": "object",

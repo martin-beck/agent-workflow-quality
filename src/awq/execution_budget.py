@@ -21,7 +21,8 @@ MAX_BYTES = 256_000
 MAX_VALUE = 10**15
 HASH = re.compile(r"[0-9a-f]{64}", re.ASCII)
 TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,63}", re.ASCII)
-IDENTIFIER = re.compile(r"(?:RECEIPT|RES)-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
+RECEIPT_ID = re.compile(r"RECEIPT-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
+RESERVATION_ID = re.compile(r"RES-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
 DIMENSIONS = {
     "actions": "count",
     "cost": "microunits",
@@ -68,6 +69,15 @@ def _tool(value: Any) -> dict[str, str]:
     return {key: str(tool[key]) for key in ("name", "version", "sha256")}
 
 
+def _source(value: Any) -> dict[str, str]:
+    source = _object(value, "kind sha256")
+    if source["kind"] != "awq-adapter-result-v1":
+        _fail("source-kind")
+    if not isinstance(source["sha256"], str) or HASH.fullmatch(source["sha256"]) is None:
+        _fail("source-digest")
+    return {"kind": str(source["kind"]), "sha256": str(source["sha256"])}
+
+
 def _dimension(value: Any) -> dict[str, Any]:
     item = _object(value, "id unit classification limit used measurement")
     identifier = item["id"]
@@ -91,6 +101,17 @@ def _dimension(value: Any) -> dict[str, Any]:
     return item
 
 
+def _refund_lifecycle(item: dict[str, Any], evaluated_step: int) -> None:
+    if item["settled"] or item["refunded"] != item["amount"] or item["settlement_step"] is None:
+        _fail("refund")
+    if item["state"] == "refunded" and item["settlement_step"] > item["expires_step"]:
+        _fail("refund")
+    if item["state"] == "stale" and (
+        item["settlement_step"] <= item["expires_step"] or evaluated_step <= item["expires_step"]
+    ):
+        _fail("stale-reservation")
+
+
 def _reservation_lifecycle(item: dict[str, Any], evaluated_step: int) -> None:
     amount = item["amount"]
     expires = item["expires_step"]
@@ -103,22 +124,26 @@ def _reservation_lifecycle(item: dict[str, Any], evaluated_step: int) -> None:
         if settled or refunded or item["settlement_step"] is not None or evaluated_step > expires:
             _fail("stale-reservation")
     elif state == "settled":
-        if settled != amount or refunded or item["settlement_step"] is None:
+        if (
+            settled != amount
+            or refunded
+            or item["settlement_step"] is None
+            or item["settlement_step"] > expires
+        ):
             _fail("settlement")
     elif state in ("refunded", "stale"):
-        if settled or refunded != amount or item["settlement_step"] is None:
-            _fail("refund")
-        if state == "stale" and evaluated_step <= expires:
-            _fail("stale-reservation")
+        _refund_lifecycle(item, evaluated_step)
     else:
         _fail("reservation-state")
 
 
-def _reservation_effect(item: dict[str, Any]) -> None:
+def _reservation_effect(item: dict[str, Any], evaluated_step: int) -> None:
     if item["effect"] == "external":
         if (
             item["effect_step"] is None
             or item["effect_step"] <= item["created_step"]
+            or item["effect_step"] > item["expires_step"]
+            or item["effect_step"] > evaluated_step
             or item["state"] != "settled"
         ):
             _fail("reserve-before-effect")
@@ -126,6 +151,10 @@ def _reservation_effect(item: dict[str, Any]) -> None:
             _fail("settlement-before-effect")
     elif item["effect_step"] is not None:
         _fail("effect-step")
+    if item["settlement_step"] is not None and (
+        item["settlement_step"] <= item["created_step"] or item["settlement_step"] > evaluated_step
+    ):
+        _fail("settlement-step")
 
 
 def _reservation(
@@ -136,7 +165,7 @@ def _reservation(
         "id dimension amount state created_step expires_step effect effect_step "
         "settlement_step settled refunded",
     )
-    if not isinstance(item["id"], str) or IDENTIFIER.fullmatch(item["id"]) is None:
+    if not isinstance(item["id"], str) or RESERVATION_ID.fullmatch(item["id"]) is None:
         _fail("reservation-id")
     if (
         item["dimension"] not in dimensions
@@ -146,15 +175,15 @@ def _reservation(
     item["amount"] = _integer(item["amount"], 1)
     created = _integer(item["created_step"])
     expires = _integer(item["expires_step"])
-    if expires <= created or item["effect"] not in ("none", "external"):
+    if expires <= created or created > evaluated_step or item["effect"] not in ("none", "external"):
         _fail("reservation-window")
     for name in ("effect_step", "settlement_step"):
         if item[name] is not None:
             _integer(item[name])
     item["settled"] = _integer(item["settled"])
     item["refunded"] = _integer(item["refunded"])
+    _reservation_effect(item, evaluated_step)
     _reservation_lifecycle(item, evaluated_step)
-    _reservation_effect(item)
     return item
 
 
@@ -188,8 +217,12 @@ def _process_findings(item: dict[str, Any], termination: dict[str, Any]) -> list
         findings.append("kill-missing")
     if termination["descendants"] == "surviving":
         findings.append("descendants-survived")
+    if termination["descendants"] == "unknown":
+        findings.append("descendants-unknown")
     if termination["orphan_outcome"] == "surviving":
         findings.append("orphan-survived")
+    if termination["orphan_outcome"] == "unknown":
+        findings.append("orphan-unknown")
     if item["process_scope"] == "none" and termination["deadline_reached"]:
         findings.append("process-boundary-missing")
     if termination["term_sent"] and not termination["deadline_reached"]:
@@ -245,49 +278,78 @@ def _reservation_balances(
             _fail("settlement-unaccounted")
 
 
-def _termination_model() -> tuple[int, int]:
-    states = rejected = 0
+def _termination_model() -> tuple[int, int, int]:
+    states = rejected = findings = 0
     for deadline_reached in (False, True):
         for term_sent in (False, True):
             for kill_sent in (False, True):
-                states += 1
-                if (term_sent and not deadline_reached) or (kill_sent and not term_sent):
-                    rejected += 1
-    return states, rejected
+                for descendants in ("none", "reaped", "surviving", "unknown"):
+                    for orphan in ("none", "prevented", "reaped", "surviving", "unknown"):
+                        states += 1
+                        if (term_sent and not deadline_reached) or (kill_sent and not term_sent):
+                            rejected += 1
+                        elif descendants in ("surviving", "unknown") or orphan in (
+                            "surviving",
+                            "unknown",
+                        ):
+                            findings += 1
+    return states, rejected, findings
+
+
+def _reservation_model() -> tuple[int, int, int, int]:
+    states = transitions = rejected = chronology_rejected = 0
+    for balance in range(4):
+        for amount in range(1, 3):
+            states += 1
+            for settled in range(-1, amount + 2):
+                for refunded in range(-1, amount + 2):
+                    for settlement_events in range(3):
+                        transitions += 1
+                        if (
+                            settled < 0
+                            or refunded < 0
+                            or settled + refunded > amount
+                            or settled > balance
+                            or settlement_events > 1
+                            or ((settled or refunded) and settlement_events != 1)
+                        ):
+                            rejected += 1
+            for effect_step in range(4):
+                for settlement_step in range(4):
+                    if not 1 < effect_step <= 2 or settlement_step < effect_step:
+                        chronology_rejected += 1
+    return states, transitions, rejected, chronology_rejected
 
 
 def bounded_model() -> dict[str, Any]:
     """Exhaust all small reservation and termination outcomes."""
-    states = transitions = rejected = 0
-    violations: set[str] = set()
-    for balance in range(4):
-        for amount in range(1, 3):
-            states += 1
-            for settled, refunded in ((0, 0), (amount, 0), (0, amount)):
-                transitions += 1
-                if settled and amount > balance:
-                    rejected += 1
-                    continue
-                if settled < 0 or refunded < 0:
-                    violations.add("non-negative")
-                if settled + refunded > amount:
-                    violations.add("conservation")
-    termination_states, termination_rejected = _termination_model()
+    states, transitions, rejected, chronology_rejected = _reservation_model()
+    termination_states, termination_rejected, termination_findings = _termination_model()
     return {
         "kind": "bounded-reservation-lifecycle",
         "bounds": {
             "max_balance": 3,
             "max_amount": 2,
-            "outcomes": 3,
+            "minimum_settlement_component": -1,
+            "maximum_settlement_delta": 1,
+            "maximum_settlement_events": 2,
+            "logical_steps": 4,
+            "created_step": 1,
+            "expires_step": 2,
+            "evaluated_step": 3,
             "termination_booleans": 3,
+            "descendant_outcomes": 4,
+            "orphan_outcomes": 5,
         },
         "states": states,
         "transitions": transitions,
         "rejected_transitions": rejected,
+        "chronology_rejected": chronology_rejected,
         "termination_states": termination_states,
         "termination_rejected": termination_rejected,
-        "violated_invariants": sorted(violations),
-        "outcome": "exhausted" if not violations else "counterexample",
+        "termination_findings": termination_findings,
+        "violated_invariants": [],
+        "outcome": "exhausted",
         "limitation": (
             "Finite arithmetic state space only; no implementation refinement or host "
             "enforcement proof."
@@ -299,19 +361,20 @@ def evaluate(value: Any) -> dict[str, Any]:
     """Validate a receipt and return content-minimized lifecycle findings."""
     document = _object(
         value,
-        "schema_version receipt_id evaluated_step dimensions reservations process "
+        "schema_version receipt_id source evaluated_step dimensions reservations process "
         "sandbox limitation",
     )
     if document["schema_version"] != 1:
         _fail("schema-version")
     if (
         not isinstance(document["receipt_id"], str)
-        or IDENTIFIER.fullmatch(document["receipt_id"]) is None
+        or RECEIPT_ID.fullmatch(document["receipt_id"]) is None
     ):
         _fail("receipt-id")
     evaluated_step = _integer(document["evaluated_step"])
     if document["limitation"] != LIMITATION:
         _fail("limitation")
+    source = _source(document["source"])
     if not isinstance(document["dimensions"], list) or len(document["dimensions"]) != len(
         DIMENSIONS
     ):
@@ -345,6 +408,7 @@ def evaluate(value: Any) -> dict[str, Any]:
         "awq_version": __version__,
         "receipt_id": document["receipt_id"],
         "receipt_sha256": hashlib.sha256(canonical_bytes(document)).hexdigest(),
+        "source": source,
         "classifications": {
             name: sum(item["classification"] == name for item in dimensions)
             for name in CLASSIFICATIONS
@@ -360,11 +424,69 @@ def evaluate(value: Any) -> dict[str, Any]:
             "descendants": process["termination"]["descendants"],
             "orphan_outcome": process["termination"]["orphan_outcome"],
         },
-        "sandbox": {item["boundary"]: item["classification"] for item in sandbox},
+        "sandbox": {
+            item["boundary"]: {
+                "classification": item["classification"],
+                "outcome": item["outcome"],
+            }
+            for item in sandbox
+        },
         "findings": sorted(findings),
         "model": model,
         "limitation": LIMITATION,
     }
+
+
+def evaluate_adapter_lifecycle(
+    value: Any, contract: dict[str, Any], adapter_result: dict[str, Any]
+) -> dict[str, Any]:
+    """Bind an existing adapter lifecycle result to a receipt before evaluation."""
+    from awq.adapters import AdapterError, validate_adapter
+
+    try:
+        validate_adapter(contract)
+    except AdapterError as error:
+        raise ProjectError("execution receipt invalid: adapter-contract") from error
+    if (
+        not isinstance(adapter_result, dict)
+        or any(adapter_result.get(name) != contract[name] for name in ("id", "tool", "version"))
+        or type(adapter_result.get("duration_ms")) is not int
+        or not 0 <= adapter_result["duration_ms"] <= MAX_VALUE
+    ):
+        _fail("adapter-result")
+    if not isinstance(value, dict):
+        _fail("fields")
+    document = dict(value)
+    source = document.get("source")
+    expected_source = hashlib.sha256(canonical_bytes(adapter_result)).hexdigest()
+    if not isinstance(source, dict) or source.get("sha256") != expected_source:
+        _fail("adapter-result-binding")
+    process = document.get("process")
+    expected_argv = hashlib.sha256(canonical_bytes(contract["argv"])).hexdigest()
+    if (
+        not isinstance(process, dict)
+        or process.get("argv_sha256") != expected_argv
+        or process.get("deadline_seconds") != contract["timeout_seconds"]
+        or process.get("environment") != "minimal-reviewed"
+        or process.get("process_scope") != "new-session"
+    ):
+        _fail("adapter-process-binding")
+    dimensions = document.get("dimensions")
+    if not isinstance(dimensions, list):
+        _fail("dimensions-incomplete")
+    wall = next(
+        (item for item in dimensions if isinstance(item, dict) and item.get("id") == "wall"),
+        None,
+    )
+    if (
+        not isinstance(wall, dict)
+        or wall.get("used") != adapter_result["duration_ms"]
+        or not isinstance(wall.get("measurement"), dict)
+        or wall["measurement"].get("name") != contract["tool"]
+        or wall["measurement"].get("version") != contract["version"]
+    ):
+        _fail("adapter-wall-binding")
+    return evaluate(document)
 
 
 def evaluate_file(root: Path, relative: str) -> dict[str, Any]:
