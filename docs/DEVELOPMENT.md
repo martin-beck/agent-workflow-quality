@@ -66,3 +66,9 @@ not a composition or implementation-refinement proof and never removes a native 
 AWQ 0.19 adds [strict paired trace maps](REFINEMENT.md) for the review/promotion model.
 Complete state/action maps and reviewed obligations bind bounded caller-declared observations.
 A passing correspondence check is not an implementation-refinement theorem and retains native gates.
+
+## Executable Python refactoring observations
+
+AWQ 0.20 adds [the bounded CPython collector](PYTHON_REFACTORING.md) for a restricted integer-function
+profile. Exact pinned offline execution collects all four refactoring evidence methods while
+retaining native gates and making no universal behavior-preservation claim.

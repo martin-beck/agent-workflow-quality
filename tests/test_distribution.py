@@ -22,6 +22,7 @@ from awq.release import (
     LIFECYCLE_SCHEMA_ASSETS,
     PROMOTION_SCHEMA_ASSETS,
     PROVENANCE_SCHEMA_ASSETS,
+    PYTHON_REFACTOR_SCHEMA_ASSETS,
     REFINEMENT_SCHEMA_ASSETS,
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
@@ -100,6 +101,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
+                ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -123,6 +125,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
+                ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -157,6 +160,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
+                ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -184,6 +188,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
+                ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -219,6 +224,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
+                ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -242,6 +248,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
+                ("awq/schemas/python-refactor.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -267,6 +274,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | FORMAL_SCHEMA_ASSETS
             | LIFECYCLE_SCHEMA_ASSETS
             | REFINEMENT_SCHEMA_ASSETS
+            | PYTHON_REFACTOR_SCHEMA_ASSETS
         ):
             members = [
                 (f"awq/schemas/{name}", packaged_schema_bytes(name))

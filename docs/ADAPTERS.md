@@ -149,3 +149,9 @@ Policy diff treats removal, reduced format coverage, later execution, shorter de
 tool pins/argv/configuration/evidence/limitations, and other behavior changes as weakening. Adapter
 addition, broader or earlier execution, and adding a result protocol are strengthening. Removing or
 changing a result protocol is weakening; remediation-only changes remain review-visible.
+
+## Executable Python refactoring observations
+
+AWQ 0.20 adds [the bounded CPython collector](PYTHON_REFACTORING.md) for a restricted integer-function
+profile. Exact pinned offline execution collects all four refactoring evidence methods while
+retaining native gates and making no universal behavior-preservation claim.

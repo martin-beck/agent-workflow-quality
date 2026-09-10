@@ -192,6 +192,15 @@ def main() -> int:
         value = json.loads((ROOT / name).read_bytes())
         validate(value, "refinement-map.schema.json")
         validate(value, "assurance-contract.schema.json")
+    for name in (
+        "fixtures/conforming/refactoring/quality/python-refactor.json",
+        "templates/python-refactor.json",
+        "fixtures/nonconforming/refactoring/mismatch.json",
+        "fixtures/nonconforming/refactoring/survivor.json",
+        "fixtures/nonconforming/refactoring/error.json",
+        "fixtures/nonconforming/refactoring/property.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "python-refactor.schema.json")
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")

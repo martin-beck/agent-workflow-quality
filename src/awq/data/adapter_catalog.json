@@ -649,6 +649,46 @@
       ]
     },
     {
+      "id": "python-refactoring",
+      "title": "Bounded Python refactoring",
+      "description": "Native restricted CPython characterization, differential, property and explicit mutation observations.",
+      "assumptions": [
+        "Only the reviewed pure integer-function subset is supported on Linux x86-64.",
+        "CPython 3.12.14 and its standard library are independently provisioned and trusted.",
+        "Case domains, expected values and explicit mutants are reviewed; finite agreement is not universal behavior preservation."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-PYTHON-REFACTORING-COLLECT",
+          "tool": "awq-refactor-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-refactor-check",
+            "--version"
+          ],
+          "version_output": "awq-refactor-check 1.0.0 (CPython 3.12.14; integer-function-v1)",
+          "argv": [
+            "awq-refactor-check",
+            "collect"
+          ],
+          "timeout_seconds": 45,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Executed bounded CPython integer-function observations, not general Python equivalence, a theorem, complete mutation coverage or authenticated review. Explicit mutants and finite cases may omit defects. The provisioned interpreter, standard library and host are trusted; AST restrictions and process limits are not a general hostile-code sandbox. Native gates retained.",
+          "remediation": "Review normalized source commitments and bounded cases, repair mismatches or strengthen tests that leave a retained mutant alive.",
+          "formats": [
+            ".json",
+            ".py"
+          ],
+          "config_paths": [
+            "quality/python-refactor.json"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1"
+        }
+      ]
+    },
+    {
       "id": "rust",
       "title": "Rust stable, supply-chain, and advanced evidence adapters",
       "description": "Reviewed offline Rust 1.93.0 and dated-nightly formatting, lint, test, build, dependency, API, coverage, fixed-run fuzz, and mutation-sentinel commands.",
