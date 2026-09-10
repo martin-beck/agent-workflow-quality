@@ -41,6 +41,12 @@ network access. `awq.cli` is a thin stable command-line boundary with text and J
 separate release builder materializes two tracked Git snapshots and binds byte-identical outputs to
 the exact source, registries, and reviewed build dependency closure.
 
+`awq.contracts` exposes the generated public-contract inventory. Discovery requires every shipped
+JSON schema and externally consumed structured registry to have one stable identifier, positive and
+hostile executable fixtures, a fixed offline test argv, implementation mapping, documentation and an
+exact compatibility baseline. Catalog presence is never semantic evidence by itself; the mapped
+implementation test remains the evidence authority.
+
 The adapter runner is an execution boundary, not a process sandbox. It does not initiate network
 access or forward credentials, but a configured third-party executable remains trusted project
 tooling and could use ambient host capabilities. Contracts and their argv therefore require normal

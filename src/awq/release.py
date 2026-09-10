@@ -47,6 +47,8 @@ ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 RELIABILITY_SCHEMA_ASSETS = {"reliability-budget.schema.json"}
 ONBOARDING_SCHEMA_ASSETS = {"onboarding.schema.json"}
 ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
+CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
+CONTRACT_CATALOG_DATA_ASSETS = {"contract_catalog.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
@@ -58,6 +60,7 @@ REQUIRED_SCHEMAS |= (
     | ADVERSARIAL_SCHEMA_ASSETS
     | RELIABILITY_SCHEMA_ASSETS
     | ONBOARDING_SCHEMA_ASSETS
+    | CONTRACT_CATALOG_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -65,7 +68,7 @@ SBOM_SCHEMA_ASSETS = frozenset(
         "spdx-3.0.1.schema.zip",
     }
 )
-REQUIRED_DATA = frozenset({"adapter_catalog.json"})
+REQUIRED_DATA = frozenset({"adapter_catalog.json"}) | CONTRACT_CATALOG_DATA_ASSETS
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 GIT_ID = re.compile(r"^[0-9a-f]{40}$")
 VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
@@ -244,6 +247,7 @@ def _required_schemas(
     require_adversarial_assets: bool,
     require_reliability_assets: bool,
     require_onboarding_assets: bool,
+    require_contract_catalog_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
@@ -266,7 +270,11 @@ def _required_schemas(
         required_schemas = required_schemas - RELIABILITY_SCHEMA_ASSETS
     if not require_onboarding_assets:
         required_schemas = required_schemas - ONBOARDING_SCHEMA_ASSETS
-    return required_schemas
+    return (
+        required_schemas
+        if require_contract_catalog_assets
+        else required_schemas - CONTRACT_CATALOG_SCHEMA_ASSETS
+    )
 
 
 def inspect_archive(
@@ -283,6 +291,7 @@ def inspect_archive(
     require_adversarial_assets: bool = True,
     require_reliability_assets: bool = True,
     require_onboarding_assets: bool = True,
+    require_contract_catalog_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -296,9 +305,15 @@ def inspect_archive(
         require_adversarial_assets,
         require_reliability_assets,
         require_onboarding_assets,
+        require_contract_catalog_assets,
     )
     required_data = (
-        REQUIRED_DATA | ONBOARDING_DATA_ASSETS if require_onboarding_assets else REQUIRED_DATA
+        REQUIRED_DATA
+        if require_contract_catalog_assets
+        else REQUIRED_DATA - CONTRACT_CATALOG_DATA_ASSETS
+    )
+    required_data = (
+        required_data | ONBOARDING_DATA_ASSETS if require_onboarding_assets else required_data
     )
     try:
         if path.name.endswith(".tar.gz"):
@@ -782,6 +797,8 @@ def _verify_artifact(
                 >= (0, 22, 0),
                 require_onboarding_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 23, 0),
+                require_contract_catalog_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 30, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

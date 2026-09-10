@@ -15,6 +15,7 @@ from referencing import Registry, Resource
 
 from awq import lifecycle_model, sbom
 from awq.commands import evidence
+from awq.contracts import load_contract_catalog
 from awq.release import BUILD_CONSTRAINTS_SHA256
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -96,6 +97,7 @@ def _validate_native_mapping_fixtures() -> None:
 
 
 def main() -> int:
+    contract_catalog, _ = load_contract_catalog()
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
     adapter_catalog = json.loads(files("awq.data").joinpath("adapter_catalog.json").read_text())
@@ -274,6 +276,10 @@ def main() -> int:
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog.schema.json")
+    validate(
+        {"schema_version": 1, "contracts": list(contract_catalog.values())},
+        "contract-catalog.schema.json",
+    )
     formal_adapter = next(
         family for family in adapter_catalog["families"] if family["id"] == "formal-model"
     )

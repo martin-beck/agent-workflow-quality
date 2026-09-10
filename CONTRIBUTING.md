@@ -33,6 +33,7 @@ uv run mypy src tests scripts
 uv run coverage run --branch -m unittest discover -s tests -p 'test_*.py'
 uv run coverage report --fail-under=95
 uv run python scripts/generate_catalog.py --check
+uv run python scripts/generate_contract_catalog.py --check
 uv run python scripts/generate_onboarding.py --check
 uv run python scripts/generate_sbom_fixture.py --check
 uv run python scripts/generate_provenance_fixture.py --check

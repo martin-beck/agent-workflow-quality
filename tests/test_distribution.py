@@ -19,6 +19,8 @@ from pathlib import Path
 from awq import __version__
 from awq.release import (
     ADVERSARIAL_SCHEMA_ASSETS,
+    CONTRACT_CATALOG_DATA_ASSETS,
+    CONTRACT_CATALOG_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -94,6 +96,7 @@ class DistributionVerificationTests(unittest.TestCase):
             [
                 ("awq/__init__.py", b""),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -117,6 +120,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/contract_catalog.json", b"{}\n"),
             ],
         )
         source = self.tarball(
@@ -124,7 +128,9 @@ class DistributionVerificationTests(unittest.TestCase):
             [
                 ("awq/src/awq/__init__.py", b""),
                 ("awq/src/awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/src/awq/data/contract_catalog.json", b"{}\n"),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -167,6 +173,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/duplicate", b"first"),
                 ("awq/duplicate", b"second"),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -190,6 +197,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/contract_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
         )
@@ -202,6 +210,7 @@ class DistributionVerificationTests(unittest.TestCase):
             "symlink.whl",
             [
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -225,6 +234,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/contract_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
         )
@@ -245,6 +255,7 @@ class DistributionVerificationTests(unittest.TestCase):
             "missing-data.whl",
             [
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -276,6 +287,7 @@ class DistributionVerificationTests(unittest.TestCase):
             "misplaced-data.whl",
             [
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
+                ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-contract.schema.json", b"{}\n"),
                 ("awq/schemas/adapter-result.schema.json", b"{}\n"),
                 ("awq/schemas/release-manifest.schema.json", b"{}\n"),
@@ -331,7 +343,12 @@ class DistributionVerificationTests(unittest.TestCase):
             ]
             members.extend(
                 (f"awq/data/{name}", b"{}\n")
-                for name in ("adapter_catalog.json", "compatibility.json", "agent_recipes.json")
+                for name in (
+                    "adapter_catalog.json",
+                    "contract_catalog.json",
+                    "compatibility.json",
+                    "agent_recipes.json",
+                )
             )
             for archive in (
                 self.wheel("missing-sbom-asset.whl", members),
@@ -351,7 +368,12 @@ class DistributionVerificationTests(unittest.TestCase):
         ]
         data = [
             (f"awq/data/{name}", b"{}\n")
-            for name in ("adapter_catalog.json", "compatibility.json", "agent_recipes.json")
+            for name in (
+                "adapter_catalog.json",
+                "contract_catalog.json",
+                "compatibility.json",
+                "agent_recipes.json",
+            )
         ]
         for omitted in ("compatibility.json", "agent_recipes.json"):
             members = schemas + [item for item in data if not item[0].endswith("/" + omitted)]
@@ -376,6 +398,55 @@ class DistributionVerificationTests(unittest.TestCase):
         ):
             self.assertEqual([], inspect_archive(archive, require_onboarding_assets=False))
             self.assertEqual(3, len(inspect_archive(archive)))
+
+    def test_pre_catalog_v029_archives_retain_their_original_asset_contract(self) -> None:
+        schemas = frozenset(
+            {
+                "adapter-catalog.schema.json",
+                "adapter-contract.schema.json",
+                "adapter-result.schema.json",
+                "adversarial-campaign.schema.json",
+                "assurance-contract.schema.json",
+                "consumer-equivalence.schema.json",
+                "evidence-identity.schema.json",
+                "lifecycle-model.schema.json",
+                "native-gate-mapping.schema.json",
+                "onboarding.schema.json",
+                "python-refactor.schema.json",
+                "refinement-map.schema.json",
+                "release-license-inventory.schema.json",
+                "release-manifest.schema.json",
+                "release-provenance.schema.json",
+                "release-trust-policy.schema.json",
+                "reliability-budget.schema.json",
+                "spdx-3.0.1.schema.zip",
+            }
+        )
+        data = frozenset({"adapter_catalog.json", "agent_recipes.json", "compatibility.json"})
+        self.assertEqual(
+            {"contract-catalog.schema.json"},
+            CONTRACT_CATALOG_SCHEMA_ASSETS,
+        )
+        self.assertEqual({"contract_catalog.json"}, CONTRACT_CATALOG_DATA_ASSETS)
+        members = [
+            (f"awq/schemas/{name}", packaged_schema_bytes(name)) for name in sorted(schemas)
+        ] + [(f"awq/data/{name}", b"{}\n") for name in sorted(data)]
+        for archive in (
+            self.wheel("agent_workflow_quality-0.29.0-py3-none-any.whl", members),
+            self.tarball("agent_workflow_quality-0.29.0.tar.gz", members),
+        ):
+            self.assertEqual(
+                [],
+                inspect_archive(archive, require_contract_catalog_assets=False),
+            )
+            self.assertEqual(
+                [
+                    f"{archive.name}: required packaged schema is missing: "
+                    "contract-catalog.schema.json",
+                    f"{archive.name}: required packaged data is missing: contract_catalog.json",
+                ],
+                inspect_archive(archive),
+            )
 
 
 if __name__ == "__main__":

@@ -64,7 +64,11 @@ class SignedRelease:
             set(provenance.MATERIAL_PATHS)
             | set(sbom.INPUT_PATHS)
             | {"schemas/" + name for name in REQUIRED_SCHEMAS}
-            | {"src/awq/data/compatibility.json", "src/awq/data/agent_recipes.json"}
+            | {
+                "src/awq/data/contract_catalog.json",
+                "src/awq/data/compatibility.json",
+                "src/awq/data/agent_recipes.json",
+            }
         )
         for name in names:
             target = self.source / name
@@ -163,7 +167,7 @@ class SignedRelease:
         entries["awq/data/adapter_catalog.json"] = (
             self.source / "src/awq/data/adapter_catalog.json"
         ).read_bytes()
-        for data_name in ("compatibility.json", "agent_recipes.json"):
+        for data_name in ("contract_catalog.json", "compatibility.json", "agent_recipes.json"):
             entries["awq/data/" + data_name] = (
                 self.source / "src/awq/data" / data_name
             ).read_bytes()

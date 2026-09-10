@@ -17,6 +17,7 @@ from awq import (
     adversarial,
     assurance,
     commands,
+    contracts,
     native_mapping,
     onboarding,
     promotion,
@@ -38,7 +39,7 @@ def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="awq")
     result.add_argument("--root", type=Path, default=Path.cwd())
     sub = result.add_subparsers(dest="command", required=True)
-    for name in ("inspect", "doctor", "standards", "governance"):
+    for name in ("inspect", "doctor", "standards", "governance", "contract-catalog"):
         _format_argument(sub.add_parser(name))
     item = sub.add_parser("onboarding")
     item.add_argument("--capability", choices=onboarding.CAPABILITIES, default="core")
@@ -160,6 +161,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
             args.manifest, args.trust_policy, args.source, args.tag, args.tag_object
         ),
         "governance": lambda: commands.governance(root),
+        "contract-catalog": contracts.summary,
         "adapter-run": lambda: commands.adapter_run(root, args.contract),
         "adapter-catalog": lambda: commands.adapter_catalog(args.family),
         "hosting-observe": lambda: commands.hosting_observation(args.repository),
@@ -184,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         payload = _dispatch(args, confined_root(args.root))
     except (
         ProjectError,
+        contracts.ContractCatalogError,
         RegistryError,
         ReleaseError,
         json.JSONDecodeError,
