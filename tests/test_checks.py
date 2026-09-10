@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -56,6 +57,13 @@ class CheckTests(unittest.TestCase):
 
     def test_merge_format_action_and_workflow(self) -> None:
         marker = self.repo.write("merge.txt", "<<<<<<< ours\n=======\n>>>>>>> theirs\n")
+        tla = self.repo.write(
+            "formal/Model.tla",
+            "---- MODULE Model ----\n"
+            "=============================================================================\n",
+        )
+        self.assertTrue(self.run_one(checks.merge_markers, marker))
+        self.assertEqual([], self.run_one(checks.merge_markers, tla))
         unknown = self.repo.write("data.odd", "x\n")
         workflow = self.repo.write(
             ".github/workflows/test.yml",
@@ -98,16 +106,66 @@ class CheckTests(unittest.TestCase):
         formal_readme = self.repo.write("formal/README.md", "This is verified.\n")
         self.assertTrue(checks.rust_lock(self.repo.root, [cargo], self.policy))
         self.assertTrue(checks.gradle_integrity(self.repo.root, [gradle], self.policy))
-        self.assertTrue(checks.formal_claims(self.repo.root, [model, formal_readme], self.policy))
+        missing = checks.formal_claims(self.repo.root, [model, formal_readme], self.policy)
+        self.assertEqual("formal-evidence-metadata", missing[0].code)
+        metadata = self.repo.json(
+            "formal/evidence.json",
+            {
+                "schema_version": 1,
+                "evidence_class": "bounded-model",
+                "scope": "handoffctl-model",
+                "bounds": {"max_states": 1000},
+                "assumptions": ["finite model scope"],
+                "correspondence": "not-proven",
+                "non_claims": ["does not prove implementation correctness"],
+                "limitations": ["bounded execution only"],
+            },
+        )
         self.repo.write("Cargo.lock", "version = 4\n")
         self.repo.write("gradle/verification-metadata.xml", "<verification-metadata/>\n")
-        formal_readme.write_text(
-            "Bounded result. Assumption listed. Models do not prove runtime.\n"
-        )
         self.assertEqual([], checks.rust_lock(self.repo.root, [], self.policy))
         self.assertEqual([], checks.gradle_integrity(self.repo.root, [], self.policy))
         self.assertEqual(
-            [], checks.formal_claims(self.repo.root, [model, formal_readme], self.policy)
+            [], checks.formal_claims(self.repo.root, [model, formal_readme, metadata], self.policy)
+        )
+        invalid_cases = [
+            ({"schema_version": 1}, "invalid evidence fields"),
+            (
+                {**json.loads(metadata.read_text()), "schema_version": 2},
+                "invalid evidence classification",
+            ),
+            ({**json.loads(metadata.read_text()), "scope": "Bad Scope"}, "invalid evidence scope"),
+            (
+                {**json.loads(metadata.read_text()), "bounds": {"max_states": 0}},
+                "invalid evidence bounds",
+            ),
+            (
+                {**json.loads(metadata.read_text()), "limitations": []},
+                "invalid evidence limitations",
+            ),
+        ]
+        for value, message in invalid_cases:
+            with self.subTest(message=message):
+                metadata.write_text(json.dumps(value), encoding="utf-8")
+                finding = checks.formal_claims(
+                    self.repo.root, [model, formal_readme, metadata], self.policy
+                )[0]
+                self.assertEqual("formal-evidence-metadata", finding.code)
+                self.assertEqual(message, finding.message)
+        metadata.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "evidence_class": "bounded-model",
+                    "scope": "handoffctl-model",
+                    "bounds": {"max_states": 1000},
+                    "assumptions": ["finite model scope"],
+                    "correspondence": "not-proven",
+                    "non_claims": ["does not prove implementation correctness"],
+                    "limitations": ["bounded execution only"],
+                }
+            ),
+            encoding="utf-8",
         )
 
     def test_lock_exception_and_extensions(self) -> None:

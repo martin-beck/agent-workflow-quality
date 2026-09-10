@@ -72,6 +72,14 @@ TIER_INDEX = {
     name: index
     for index, name in enumerate(("local", "pr", "scheduled", "trusted-host", "release"))
 }
+FORMAL_EVIDENCE_PATH = "formal/evidence.json"
+FORMAL_EVIDENCE_CLASSES = {
+    "mechanical",
+    "contract-test",
+    "property-or-fuzz",
+    "bounded-model",
+    "environmental",
+}
 
 
 @dataclass(frozen=True)
@@ -167,11 +175,35 @@ def path_integrity(root: Path, paths: list[Path], policy: dict[str, Any]) -> lis
 
 def merge_markers(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
-    marker = re.compile(r"^(<<<<<<<|=======|>>>>>>>)", re.MULTILINE)
+    start_marker = re.compile(r"^<<<<<<<(?:[ \t].*)?$")
+    separator = re.compile(r"^=======$")
+    end_marker = re.compile(r"^>>>>>>>(?:[ \t].*)?$")
     for path in paths:
         relative = _relative(root, path)
         text = None if _is_fixture(relative, policy) else _read_text(path)
-        if text is not None and marker.search(text):
+        if text is None:
+            continue
+        lines = text.splitlines()
+        conflict = False
+        for index, line in enumerate(lines):
+            if not start_marker.fullmatch(line):
+                continue
+            limit = min(len(lines), index + 202)
+            separator_index = next(
+                (
+                    candidate
+                    for candidate in range(index + 1, limit)
+                    if separator.fullmatch(lines[candidate])
+                ),
+                None,
+            )
+            if separator_index is not None and any(
+                end_marker.fullmatch(lines[candidate])
+                for candidate in range(separator_index + 1, limit)
+            ):
+                conflict = True
+                break
+        if conflict:
             findings.append(Finding("merge-marker", relative, "unresolved merge marker"))
     return findings
 
@@ -390,24 +422,83 @@ def lock_integrity(root: Path, paths: list[Path], policy: dict[str, Any]) -> lis
 
 
 def formal_claims(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
-    del root, policy
+    del policy
     formal = [path for path in paths if "formal" in path.parts and path.suffix in {".tla", ".als"}]
     if not formal:
         return []
-    documentation = "\n".join(
-        (_read_text(path) or "")
-        for path in paths
-        if path.suffix == ".md" and "formal" in path.parts
+    metadata = next(
+        (path for path in paths if _relative(root, path) == FORMAL_EVIDENCE_PATH),
+        None,
     )
-    required = ("bounded", "assumption", "do not prove")
-    if not all(term in documentation.lower() for term in required):
+    if metadata is None:
         return [
             Finding(
-                "unclassified-formal-evidence",
+                "formal-evidence-metadata",
                 "formal",
-                "formal evidence lacks bounds, assumptions or explicit non-claims",
+                "formal evidence requires formal/evidence.json",
             )
         ]
+    raw = _read_text(metadata)
+    try:
+        value = json.loads(
+            raw or "", object_pairs_hook=_unique_json_object, parse_constant=_reject_json_constant
+        )
+    except (TypeError, ValueError, RecursionError):
+        value = None
+    required = {
+        "schema_version",
+        "evidence_class",
+        "scope",
+        "bounds",
+        "assumptions",
+        "correspondence",
+        "non_claims",
+        "limitations",
+    }
+    if not isinstance(value, dict) or set(value) != required:
+        return [
+            Finding("formal-evidence-metadata", FORMAL_EVIDENCE_PATH, "invalid evidence fields")
+        ]
+    if value["schema_version"] != 1 or value["evidence_class"] not in FORMAL_EVIDENCE_CLASSES:
+        return [
+            Finding(
+                "formal-evidence-metadata", FORMAL_EVIDENCE_PATH, "invalid evidence classification"
+            )
+        ]
+    if (
+        not isinstance(value["scope"], str)
+        or re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", value["scope"]) is None
+        or value["correspondence"] not in {"not-proven", "bounded-correspondence"}
+    ):
+        return [Finding("formal-evidence-metadata", FORMAL_EVIDENCE_PATH, "invalid evidence scope")]
+    bounds = value["bounds"]
+    if (
+        not isinstance(bounds, dict)
+        or not bounds
+        or any(
+            not isinstance(key, str)
+            or re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", key) is None
+            or type(item) is not int
+            or not 1 <= item <= 1_000_000
+            for key, item in bounds.items()
+        )
+    ):
+        return [
+            Finding("formal-evidence-metadata", FORMAL_EVIDENCE_PATH, "invalid evidence bounds")
+        ]
+    for field in ("assumptions", "non_claims", "limitations"):
+        items = value[field]
+        if (
+            not isinstance(items, list)
+            or not 1 <= len(items) <= 64
+            or len(set(items)) != len(items)
+            or any(not isinstance(item, str) or not 1 <= len(item) <= 500 for item in items)
+        ):
+            return [
+                Finding(
+                    "formal-evidence-metadata", FORMAL_EVIDENCE_PATH, f"invalid evidence {field}"
+                )
+            ]
     return []
 
 

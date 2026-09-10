@@ -69,6 +69,11 @@ def _validate_onboarding_fixtures() -> None:
         validate(json.loads((ROOT / name).read_bytes()), "onboarding.schema.json")
 
 
+def _validate_formal_evidence_fixtures() -> None:
+    for name in ("templates/formal-evidence.json",):
+        validate(json.loads((ROOT / name).read_bytes()), "formal-evidence.schema.json")
+
+
 def main() -> int:
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())
@@ -241,6 +246,7 @@ def main() -> int:
     ):
         validate(json.loads((ROOT / name).read_bytes()), "adversarial-campaign.schema.json")
     _validate_onboarding_fixtures()
+    _validate_formal_evidence_fixtures()
     _validate_reliability_fixtures()
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
