@@ -28,7 +28,16 @@ class PortableOnboardingTests(unittest.TestCase):
             (root / "README.md").write_text(
                 "Public onboarding fixture.\n", encoding="utf-8", newline="\n"
             )
-            self.assertEqual("pass", onboarding.diagnose()["status"])
+            diagnosis = onboarding.diagnose()
+            detail = {
+                "findings": diagnosis["findings"],
+                "package": diagnosis["package"],
+                "metadata_crlf": {
+                    name: b"\r\n" in onboarding._data(name)
+                    for name in ("compatibility.json", "agent_recipes.json")
+                },
+            }
+            self.assertEqual("pass", diagnosis["status"], detail)
             before = sorted(path.relative_to(root).as_posix() for path in root.rglob("*"))
             preview = commands.initialize(root, ["core"], True)
             self.assertTrue(preview["dry_run"])
