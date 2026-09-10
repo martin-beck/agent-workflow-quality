@@ -95,11 +95,50 @@ class PortableOnboardingTests(unittest.TestCase):
             )
 
     def test_all_agent_argv_recipes_match_the_actual_parser(self) -> None:
-        for recipe in onboarding.recipes()["recipes"]:
-            self.assertEqual(["python", "-m", "awq"], recipe["argv"][:3])
-            arguments = parser().parse_args(recipe["argv"][3:])
+        metadata = onboarding.recipes()
+        prefix = metadata["composition"]["canonical_prefix"]
+        self.assertEqual("command-prefix-plus-recipe-tail", metadata["composition"]["rule"])
+        self.assertEqual(["python", "-m", "awq"], prefix)
+        for recipe in metadata["recipes"]:
+            self.assertEqual(prefix, recipe["argv"][: len(prefix)])
+            tail = recipe["argv"][len(prefix) :]
+            arguments = parser().parse_args(tail)
             self.assertTrue(arguments.command)
-        for recipe in onboarding.recipes()["recipes"]:
+            self.assertIn(
+                recipe["effect"],
+                {
+                    "read-only",
+                    "project-files",
+                    "executes-reviewed-gates",
+                    "reads-recorded-results",
+                    "lock-file-only",
+                },
+            )
+        expected_prefixes = {
+            "offline-source": [
+                "uv",
+                "run",
+                "--directory",
+                "{awq-source}",
+                "--frozen",
+                "--offline",
+                "python",
+                "-m",
+                "awq",
+            ],
+            "offline-wheel": ["{python}", "-m", "awq"],
+        }
+        self.assertEqual(
+            list(expected_prefixes), [runtime["id"] for runtime in metadata["runtimes"]]
+        )
+        for runtime in metadata["runtimes"]:
+            expected_prefix = expected_prefixes[runtime["id"]]
+            self.assertEqual(expected_prefix, runtime["command_prefix"])
+            for recipe in metadata["recipes"]:
+                tail = recipe["argv"][len(prefix) :]
+                composed = runtime["command_prefix"] + tail
+                self.assertEqual(expected_prefix + tail, composed)
+        for recipe in metadata["recipes"]:
             if recipe["id"] == "authenticated-dry-run":
                 self.assertIn("--dry-run", recipe["argv"])
                 self.assertIn("--tag-object", recipe["argv"])

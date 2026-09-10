@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from unittest import mock
@@ -58,6 +59,95 @@ class OnboardingTests(unittest.TestCase):
             subject.validate_metadata({}, "unknown")
         self.assertEqual((subject.compatibility(), subject.recipes()), subject.load_metadata())
         self.assertTrue(subject.package_diagnostic()["assets_complete"])
+
+    def test_agent_workflow_binds_contracts_effects_and_dependency_order(self) -> None:
+        value = subject.recipes()
+        self.assertEqual(2, value["schema_version"])
+        schema_versions = {
+            name: json.loads((ROOT / "schemas" / name).read_bytes())["properties"]["schema_version"]
+            for name in (
+                "project-policy.schema.json",
+                "terminology-registry.schema.json",
+                "native-gate-mapping.schema.json",
+                "release-manifest.schema.json",
+            )
+        }
+        self.assertEqual(
+            {
+                "project_policy_schema": schema_versions["project-policy.schema.json"]["const"],
+                "terminology_registry_schema": schema_versions["terminology-registry.schema.json"][
+                    "const"
+                ],
+                "native_gate_mapping_schema": schema_versions["native-gate-mapping.schema.json"][
+                    "const"
+                ],
+                "release_manifest_schemas": schema_versions["release-manifest.schema.json"]["enum"],
+            },
+            value["contracts"],
+        )
+        recipes = {item["id"]: item for item in value["recipes"]}
+        self.assertEqual(len(recipes), len(value["recipes"]))
+        stages = value["workflow"]
+        self.assertEqual(
+            [
+                "diagnostics",
+                "adoption",
+                "native-gates",
+                "shared-ci",
+                "review",
+                "release",
+                "fresh-clone",
+            ],
+            [item["id"] for item in stages],
+        )
+        for index, stage in enumerate(stages):
+            self.assertEqual([] if index == 0 else [stages[index - 1]["id"]], stage["requires"])
+            self.assertTrue(set(stage["recipes"]) <= set(recipes))
+        self.assertEqual([], stages[2]["recipes"])
+        self.assertEqual("project-owned-native-gates", stages[2]["kind"])
+        self.assertEqual(
+            {"initialize-profiles": "project-files", "authenticated-update": "lock-file-only"},
+            {
+                identifier: item["effect"]
+                for identifier, item in recipes.items()
+                if item["effect"] in {"project-files", "lock-file-only"}
+            },
+        )
+        self.assertEqual("reads-recorded-results", recipes["evaluate-native-mapping"]["effect"])
+        self.assertEqual("release-authentication", recipes["authenticate-release"]["operation"])
+        for runtime in value["runtimes"]:
+            self.assertEqual("forbidden", runtime["network"])
+            self.assertIsInstance(runtime["install_argv"], list)
+            self.assertIsInstance(runtime["command_prefix"], list)
+        self.assertIn("--offline", value["runtimes"][0]["install_argv"])
+        self.assertIn("--no-index", value["runtimes"][1]["install_argv"])
+        self.assertIn("--no-deps", value["runtimes"][1]["install_argv"])
+
+        mutators: tuple[Callable[[dict[str, Any]], None], ...] = (
+            lambda changed: changed["workflow"][3].update(requires=[]),
+            lambda changed: changed["recipes"][3].update(effect="read-only"),
+            lambda changed: changed["runtimes"][0].update(network="allowed"),
+            lambda changed: changed["contracts"].update(project_policy_schema=99),
+            lambda changed: changed["composition"].update(canonical_prefix=["awq"]),
+            lambda changed: changed["composition"].update(rule="concatenate-shell"),
+        )
+        for mutate in mutators:
+            changed = copy.deepcopy(value)
+            mutate(changed)
+            with self.assertRaises(ProjectError):
+                subject.validate_metadata(changed, "awq-agent-recipes")
+        for invalid_schema in (
+            b"{}\n",
+            b"[]\n",
+            b'{"schema_version":1,"schema_version":1}\n',
+            b'{"schema_version":NaN}\n',
+            b"\xff",
+        ):
+            with (
+                mock.patch.object(subject, "_schema_bytes", return_value=invalid_schema),
+                self.assertRaisesRegex(ProjectError, "agent recipe schema metadata is invalid"),
+            ):
+                subject.recipes()
 
     def test_actual_environment_is_normalized_without_host_details(self) -> None:
         for system, machine, expected in (

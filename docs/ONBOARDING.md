@@ -31,6 +31,45 @@ branches and abbreviated hashes before the AWQ checkout. Its action references
 are immutable full commits. The recipe does not authenticate an arbitrary supplied
 commit, initialize a consumer or remove native CI. Review it before copying it.
 
+## Generated agent integration workflow
+
+The packaged `agent_recipes.json` is the complete machine-readable adoption workflow. Its
+`contracts` object binds the project-policy, terminology, native-mapping and release-manifest
+schema versions used to generate the recipe. Its `awq_version` binds the release metadata. The
+workflow is an ordered dependency graph, not an executor or authority grant:
+
+1. `diagnostics` performs package and project inspection plus an initialization preview.
+2. `adoption` makes the separately approved project-file mutation and checks the consumer-owned
+   terminology registry.
+3. `native-gates` is an intentionally empty, project-owned stage. The consumer runs its existing
+   gates directly; AWQ neither knows nor wraps their argv.
+4. `shared-ci` evaluates already recorded native/AWQ pairs, then runs the portable PR tier. It
+   depends on native gates, so copying the recipe cannot reorder AWQ ahead of domain validation.
+5. `review` exposes the policy diff and read-only migration preview.
+6. `release` verifies the local bundle, authenticates the exact tag and source, previews the
+   lock-only update, and mutates the lock only after separate approval.
+7. `fresh-clone` repeats diagnostics and the PR tier in a newly created consumer checkout.
+
+Every referenced recipe declares an `operation`, an observable `effect`, an approval class and a
+fixed argument array. Diagnostics and previews are read-only. Initialization is the only
+project-file mutation, and authenticated update is the only lock-file mutation. Native mapping
+reads recorded digest-only results; it does not execute the declared native commands. Release
+verification and authentication are read-only and do not publish a release.
+
+Composition is exact: verify that the recipe starts with the declared three-element
+`composition.canonical_prefix`, remove those three elements, and execute
+`runtime.command_prefix + recipe.argv[3:]` as one argument array. A missing or different recipe
+prefix is contract drift and must block; never concatenate either array into a shell string. The
+wheel runtime invokes the selected interpreter directly, so normal runtime has no uv dependency.
+
+The `offline-source` and `offline-wheel` runtime records are portable argument arrays, never shell
+programs. Their setup commands explicitly forbid network access. The source path therefore
+requires the exact locked environment to have been acquired into the local uv cache during a
+separate reviewed setup step. The wheel path accepts only an already authenticated local wheel and
+uses `--offline --no-index --no-deps`. Substitute placeholders as individual arguments. For either
+runtime, create the consumer fresh clone separately with reviewed Git and then use that checkout as
+`{consumer}`; the recipe does not perform cloning or carry credentials.
+
 ## Fresh Linux, macOS and Windows checkouts
 
 The repository attributes keep text as LF even when Git enables automatic CRLF conversion.
@@ -131,10 +170,12 @@ Native gates and consumer policy remain untouched.
 
 The machine interfaces are packaged `compatibility.json`, `agent_recipes.json` and
 [onboarding.schema.json](../schemas/onboarding.schema.json). Recipes are fixed argv
-arrays with explicit placeholders and approval classes; they are instructions,
-not an executable plugin protocol. Substitute reviewed values as individual argv
-elements, never concatenate them into a shell program. Tests parse every recipe
-against the real CLI and exercise positive/negative migration fixtures.
+arrays with explicit placeholders, operations, effects and approval classes; they are
+instructions, not an executable plugin protocol. The workflow dependency graph retains
+consumer-native CI and separates read-only operations from the two explicit mutation classes.
+Substitute reviewed values as individual argv elements, never concatenate them into a shell
+program. Tests parse every AWQ recipe against the real CLI, bind the declared schema versions,
+reject contract drift and exercise positive/negative migration fixtures.
 
 Run `python scripts/generate_onboarding.py --check` with the other generated gates.
 When changing the release version or reviewed recipes, regenerate this metadata
