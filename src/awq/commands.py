@@ -69,6 +69,8 @@ def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
         profiles.add("android-jvm")
     if any("formal" in path.relative_to(root).parts for path in paths):
         profiles.add("formal-evidence")
+    if any(path.relative_to(root).as_posix() == "quality/terminology.json" for path in paths):
+        profiles.add("terminology")
     return sorted(profiles), dict(sorted(suffixes.items()))
 
 

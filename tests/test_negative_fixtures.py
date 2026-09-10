@@ -27,6 +27,7 @@ class NegativeFixtureTests(unittest.TestCase):
             ("rust", checks.rust_lock),
             ("android", checks.gradle_integrity),
             ("formal", checks.formal_claims),
+            ("terminology", checks.terminology_vocabulary),
         ]
         for name, function in cases:
             root = BROKEN / name

@@ -26,7 +26,7 @@ from tests.support import Repository, base_policy
 class RegistryTests(unittest.TestCase):
     def test_registry_is_complete_and_stable(self) -> None:
         requirements, profiles, digest = load_registry()
-        self.assertEqual(16, len(requirements))
+        self.assertEqual(17, len(requirements))
         self.assertIn("core", profiles)
         self.assertEqual(64, len(digest))
         self.assertEqual(canonical_bytes({"b": 1, "a": 2}), b'{"a":2,"b":1}\n')
@@ -51,6 +51,14 @@ class ProjectTests(unittest.TestCase):
             confined_path(root, "../escape")
         with self.assertRaisesRegex(ProjectError, "unsafe"):
             confined_path(root, str(Path(root.anchor) / "escape"))
+
+    def test_initialization_rejects_symlink_parent(self) -> None:
+        target = self.repo.root / "outside-quality"
+        target.mkdir()
+        (self.repo.root / "quality").symlink_to(target, target_is_directory=True)
+        policy, lock = make_policy(["core"])
+        with self.assertRaisesRegex(ProjectError, "symlink parent"):
+            write_initialization(self.repo.root, policy, lock)
 
     def test_symlink_root_and_component_are_rejected(self) -> None:
         target = self.repo.root / "target"

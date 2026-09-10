@@ -535,6 +535,24 @@ def gradle_integrity(root: Path, paths: list[Path], policy: dict[str, Any]) -> l
     )
 
 
+def terminology_vocabulary(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+    """Apply the consumer-owned bounded lexical terminology contract."""
+    del policy
+    from awq.terminology import TerminologyError, evaluate
+
+    try:
+        findings, _ = evaluate(root, paths)
+    except TerminologyError:
+        return [
+            Finding(
+                "terminology-contract",
+                "quality/terminology.json",
+                "terminology contract is invalid",
+            )
+        ]
+    return [Finding(**item) for item in findings]
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -552,11 +570,14 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "formal-claims": formal_claims,
     "rust-lock": rust_lock,
     "gradle-integrity": gradle_integrity,
+    "terminology-vocabulary": terminology_vocabulary,
 }
 
 
 def _exceptions(policy: dict[str, Any], requirement: str, finding: Finding) -> list[str]:
     """Return active exception identifiers matching one bounded finding path."""
+    if requirement == "AWQ-TERM-001":
+        return []
     matched: list[str] = []
     now = time.time()
     for item in policy["exceptions"]:
@@ -585,18 +606,34 @@ def run_requirement(
 ) -> dict[str, Any]:
     """Run one built-in requirement and return a bounded evidence record."""
     started = time.monotonic()
-    findings = CHECKS[requirement["command"]](root, paths, policy)
+    intrinsic: list[str] = []
+    if requirement["command"] == "terminology-vocabulary":
+        from awq.terminology import TerminologyError, evaluate
+
+        try:
+            raw_findings, intrinsic = evaluate(root, paths)
+            findings = [Finding(**item) for item in raw_findings]
+        except TerminologyError:
+            findings = [
+                Finding(
+                    "terminology-contract",
+                    "quality/terminology.json",
+                    "terminology contract is invalid",
+                )
+            ]
+    else:
+        findings = CHECKS[requirement["command"]](root, paths, policy)
     used = sorted(
         {
             identifier
             for finding in findings
             for identifier in _exceptions(policy, requirement["id"], finding)
-        }
+        }.union(intrinsic)
     )
     findings = [
         finding for finding in findings if not _exceptions(policy, requirement["id"], finding)
     ]
-    failed = bool(findings) and not (
+    failed = any(item.code != "terminology-advisory" for item in findings) and not (
         requirement["command"] == "classified-formats" and policy["unknown_formats"] == "advisory"
     )
     return {

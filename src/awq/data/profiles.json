@@ -12,6 +12,7 @@
     {"name":"formal-evidence","description":"Truthful bounded formal-evidence claims.","requirements":["AWQ-FORMAL-001"]},
     {"name":"formal-model","description":"Bounded external formal-model execution contracts.","requirements":["AWQ-FORMAL-001"]},
     {"name":"rust","description":"Rust dependency-integrity baseline.","requirements":["AWQ-RUST-001"]},
-    {"name":"android-jvm","description":"Gradle and Android dependency-integrity baseline.","requirements":["AWQ-JVM-001"]}
+    {"name":"android-jvm","description":"Gradle and Android dependency-integrity baseline.","requirements":["AWQ-JVM-001"]},
+    {"name":"terminology","description":"Consumer-owned canonical vocabulary and bounded lexical scope enforcement.","requirements":["AWQ-TERM-001"]}
   ]
 }

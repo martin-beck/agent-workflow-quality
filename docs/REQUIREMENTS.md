@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `8a31c9c8902bc63db468ba55a1e9d3bc996db76035e40dd93b1fd6bbea3838d8`
+Registry SHA-256: `5c528388a642f111aacb9182249168b48d7d391520e5eeaaeaaaba5bb338e2bc`
 
 ## Profiles
 
@@ -20,6 +20,7 @@ Registry SHA-256: `8a31c9c8902bc63db468ba55a1e9d3bc996db76035e40dd93b1fd6bbea383
 | `schemas` | Machine-readable JSON baseline. | 1 |
 | `shell` | Shell entry-point baseline. | 1 |
 | `supply-chain` | Pinned AWQ policy supply chain. | 1 |
+| `terminology` | Consumer-owned canonical vocabulary and bounded lexical scope enforcement. | 1 |
 
 ## Requirements
 
@@ -246,3 +247,17 @@ The project lock binds profiles and requirements to an immutable registry digest
 - Remediation: Run an explicit reviewed AWQ update from the intended release.
 - Exception policy: No floating bundle references.
 - Standards: SLSA-PROVENANCE-V1
+
+### AWQ-TERM-001: Canonical terminology
+
+Selected tracked text uses consumer-declared canonical vocabulary in each applicable lexical scope.
+
+- Profiles: `terminology`
+- Tier: `pr`
+- Evidence: `mechanical`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: Lexical matching does not establish meaning, intent, translation quality, or complete natural-language interpretation.
+- Remediation: Use the canonical label or add a narrow, reviewed, time-bounded terminology exception.
+- Exception policy: Exceptions bind one term to explicit paths and scopes for at most 90 days.
+- Standards: NIST-SSDF-PO.1

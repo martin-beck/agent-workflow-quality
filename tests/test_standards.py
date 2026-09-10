@@ -33,7 +33,7 @@ class StandardsRegistryTests(unittest.TestCase):
             },
             set(self.sources),
         )
-        self.assertEqual(17, len(self.mappings))
+        self.assertEqual(18, len(self.mappings))
         self.assertEqual(64, len(self.digest))
         self.assertEqual(
             set(self.requirements),

@@ -478,7 +478,10 @@ def write_initialization(root: Path, policy: dict[str, Any], lock: dict[str, Any
         raise ProjectError(
             "initialization refuses to overwrite: " + ", ".join(str(p) for p in existing)
         )
-    policy_path.parent.mkdir(parents=True)
+    for parent in (policy_path.parent, wrapper.parent):
+        if parent.is_symlink():
+            raise ProjectError("initialization refuses a symlink parent")
+    policy_path.parent.mkdir(parents=True, exist_ok=True)
     wrapper.parent.mkdir(parents=True, exist_ok=True)
     policy_path.write_bytes(canonical_bytes(policy))
     lock_path.write_bytes(canonical_bytes(lock))

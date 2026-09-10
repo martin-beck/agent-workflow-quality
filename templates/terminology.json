@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "default_scope": "normative",
+  "formats": [".json", ".md", ".txt", ".yaml", ".yml"],
+  "scope_rules": [
+    {"scope": "generated", "paths": ["generated/**"]},
+    {"scope": "example", "paths": ["fixtures/**"]}
+  ],
+  "terms": [
+    {
+      "id": "TERM-0001",
+      "canonical": "canonical term",
+      "aliases": ["deprecated synonym"],
+      "scopes": ["normative"],
+      "severity": "error",
+      "case_policy": "casefold"
+    }
+  ],
+  "exceptions": []
+}
