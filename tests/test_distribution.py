@@ -19,6 +19,7 @@ from pathlib import Path
 from awq import __version__
 from awq.release import (
     FORMAL_SCHEMA_ASSETS,
+    LIFECYCLE_SCHEMA_ASSETS,
     PROMOTION_SCHEMA_ASSETS,
     PROVENANCE_SCHEMA_ASSETS,
     REQUIRED_SCHEMAS,
@@ -96,6 +97,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/release-trust-policy.schema.json", b"{}\n"),
                 ("awq/schemas/consumer-equivalence.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -117,6 +119,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/release-trust-policy.schema.json", b"{}\n"),
                 ("awq/schemas/consumer-equivalence.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -149,6 +152,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/release-trust-policy.schema.json", b"{}\n"),
                 ("awq/schemas/consumer-equivalence.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -174,6 +178,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/release-trust-policy.schema.json", b"{}\n"),
                 ("awq/schemas/consumer-equivalence.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -207,6 +212,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/release-trust-policy.schema.json", b"{}\n"),
                 ("awq/schemas/consumer-equivalence.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -228,6 +234,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/release-trust-policy.schema.json", b"{}\n"),
                 ("awq/schemas/consumer-equivalence.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 (
                     "awq/schemas/spdx-3.0.1.schema.zip",
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
@@ -251,6 +258,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | PROVENANCE_SCHEMA_ASSETS
             | PROMOTION_SCHEMA_ASSETS
             | FORMAL_SCHEMA_ASSETS
+            | LIFECYCLE_SCHEMA_ASSETS
         ):
             members = [
                 (f"awq/schemas/{name}", packaged_schema_bytes(name))
