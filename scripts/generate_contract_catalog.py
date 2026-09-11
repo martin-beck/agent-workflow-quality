@@ -241,6 +241,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_public_schema_accepts_template_and_rejects_unknown_fields",
         "docs/TERMINOLOGY.md",
     ),
+    "test-report-evidence": (
+        "test_reports",
+        "TestReportEvidenceTests",
+        "test_python_jvm_and_mixed_module_reports_prove_execution",
+        "test_remaining_path_time_structure_and_order_guards",
+        "docs/TEST_REPORTS.md",
+    ),
 }
 VERSIONS = {"project-policy": 3, "lock": 2, "release-manifest": 3}
 REGISTRIES = {
@@ -426,6 +433,50 @@ def verify_baseline(catalog: dict[str, Any], baseline: object) -> None:  # noqa:
                 raise ValueError(f"{identifier} contract bytes or semantics changed in place")
 
 
+def evolve_baseline(
+    catalog: dict[str, Any],
+    baseline: dict[str, Any],
+    additions: list[str],
+    compatibles: list[str],
+    reason: str,
+) -> dict[str, Any]:
+    """Record reviewed new contracts and byte-compatible contract evolution."""
+    if len(reason.strip()) < 20:
+        raise ValueError("contract baseline updates require a reviewed reason")
+    current = {item["id"]: item for item in build_baseline(catalog)["entries"]}
+    addition_ids = set(additions)
+    compatible_ids = set(compatibles)
+    if len(addition_ids) != len(additions) or len(compatible_ids) != len(compatibles):
+        raise ValueError("contract baseline updates name duplicate contracts")
+    if not addition_ids | compatible_ids <= set(current):
+        raise ValueError("contract baseline updates name unknown contracts")
+    if addition_ids & compatible_ids:
+        raise ValueError("a contract cannot be both new and compatible")
+    actual_ids = {item["id"] for item in baseline["entries"]}
+    if addition_ids & actual_ids or not compatible_ids <= actual_ids:
+        raise ValueError("contract additions and compatible updates must match baseline state")
+
+    for item in baseline["entries"]:
+        if item["id"] in compatible_ids:
+            candidate = current[item["id"]]["history"][-1]
+            latest = item["history"][-1]
+            if (
+                latest["semantic"] != candidate["semantic"]
+                or latest["semantic_sha256"] != candidate["semantic_sha256"]
+            ):
+                raise ValueError(
+                    f"{item['id']} is semantically incompatible; add a new versioned contract path"
+                )
+            item["history"].append({**candidate, "classification": "compatible", "reason": reason})
+    for identifier in addition_ids:
+        item = current[identifier]
+        item["history"][0]["reason"] = reason
+        baseline["entries"].append(item)
+    baseline["entries"].sort(key=lambda item: item["id"])
+    verify_baseline(catalog, baseline)
+    return baseline
+
+
 def _resolve_test_handler(item: dict[str, Any]) -> tuple[Path, set[str]]:
     contract_id = item["id"]
     conformance = item["implementation_conformance"]
@@ -522,10 +573,14 @@ def main() -> int:  # noqa: C901
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--accept-initial", action="store_true")
+    parser.add_argument("--accept-addition", action="append", default=[])
     parser.add_argument("--accept-compatible", action="append", default=[])
     parser.add_argument("--reason")
     args = parser.parse_args()
-    if sum((args.check, args.accept_initial, bool(args.accept_compatible))) > 1:
+    if (
+        sum((args.check, args.accept_initial, bool(args.accept_addition or args.accept_compatible)))
+        > 1
+    ):
         raise SystemExit("catalog generation modes are mutually exclusive")
     catalog = build_catalog()
     outputs = {CATALOG: canonical_bytes(catalog), DOCUMENT: render(catalog).encode()}
@@ -537,31 +592,16 @@ def main() -> int:  # noqa: C901
         BASELINE.parent.mkdir(parents=True, exist_ok=True)
         BASELINE.write_bytes(canonical_bytes(build_baseline(catalog)))
         DOCUMENT.write_bytes(outputs[DOCUMENT])
-    elif args.accept_compatible:
-        if not args.reason or len(args.reason.strip()) < 20:
-            raise SystemExit("compatible baseline updates require a reviewed reason")
+    elif args.accept_addition or args.accept_compatible:
+        if not args.reason:
+            raise SystemExit("contract baseline updates require a reviewed reason")
         baseline = json.loads(BASELINE.read_bytes())
-        current = {item["id"]: item for item in build_baseline(catalog)["entries"]}
-        selected = set(args.accept_compatible)
-        if len(selected) != len(args.accept_compatible) or not selected <= set(current):
-            raise SystemExit("compatible baseline update names unknown or duplicate contracts")
-        for item in baseline["entries"]:
-            if item["id"] in selected:
-                selected_id = item["id"]
-                candidate = current[selected_id]["history"][-1]
-                latest = item["history"][-1]
-                if (
-                    latest["semantic"] != candidate["semantic"]
-                    or latest["semantic_sha256"] != candidate["semantic_sha256"]
-                ):
-                    raise SystemExit(
-                        f"{selected_id} is semantically incompatible; add a new versioned "
-                        "contract path"
-                    )
-                item["history"].append(
-                    {**candidate, "classification": "compatible", "reason": args.reason}
-                )
-        verify_baseline(catalog, baseline)
+        try:
+            evolve_baseline(
+                catalog, baseline, args.accept_addition, args.accept_compatible, args.reason
+            )
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
         BASELINE.write_bytes(canonical_bytes(baseline))
         CATALOG.write_bytes(outputs[CATALOG])
         DOCUMENT.write_bytes(outputs[DOCUMENT])

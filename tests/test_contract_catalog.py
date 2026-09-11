@@ -181,6 +181,52 @@ class ContractCatalogTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 generator.verify_baseline(catalog, value)
 
+    def test_reviewed_baseline_evolution_adds_and_updates_exact_contracts(self) -> None:
+        catalog = self.document()
+        baseline = generator.build_baseline(catalog)
+        addition = "AWQ-CONTRACT-TEST-REPORT-EVIDENCE-V1"
+        registry = "AWQ-CONTRACT-CONTRACT-CATALOG-REGISTRY-V1"
+        baseline["entries"] = [item for item in baseline["entries"] if item["id"] != addition]
+        registry_entry = next(item for item in baseline["entries"] if item["id"] == registry)
+        registry_entry["history"][0]["sha256"] = "f" * 64
+        reason = "Reviewed v0.31 test-report contract catalog addition."
+        evolved = generator.evolve_baseline(catalog, baseline, [addition], [registry], reason)
+        added = next(item for item in evolved["entries"] if item["id"] == addition)
+        updated = next(item for item in evolved["entries"] if item["id"] == registry)
+        self.assertEqual("initial", added["history"][0]["classification"])
+        self.assertEqual(reason, added["history"][0]["reason"])
+        self.assertEqual(
+            ["initial", "compatible"], [x["classification"] for x in updated["history"]]
+        )
+        generator.verify_baseline(catalog, evolved)
+
+    def test_baseline_evolution_rejects_unknown_duplicate_and_state_mismatch(self) -> None:
+        catalog = self.document()
+        baseline = generator.build_baseline(catalog)
+        reason = "Reviewed hostile baseline evolution classification."
+        addition = "AWQ-CONTRACT-TEST-REPORT-EVIDENCE-V1"
+        registry = "AWQ-CONTRACT-CONTRACT-CATALOG-REGISTRY-V1"
+        without_addition = copy.deepcopy(baseline)
+        without_addition["entries"] = [
+            item for item in without_addition["entries"] if item["id"] != addition
+        ]
+        cases = [
+            (baseline, ["AWQ-CONTRACT-UNKNOWN-V1"], []),
+            (baseline, [baseline["entries"][0]["id"]], []),
+            (baseline, [], ["AWQ-CONTRACT-UNKNOWN-V1"]),
+            (without_addition, [addition, addition], []),
+            (baseline, [], [registry, registry]),
+            (baseline, [registry], [registry]),
+        ]
+        for starting, additions, compatibles in cases:
+            with (
+                self.subTest(additions=additions, compatibles=compatibles),
+                self.assertRaises(ValueError),
+            ):
+                generator.evolve_baseline(
+                    catalog, copy.deepcopy(starting), additions, compatibles, reason
+                )
+
     def test_semantic_fingerprint_covers_nested_schema_constraints(self) -> None:
         first: dict[str, Any] = {
             "$id": "https://example.invalid/schema.json",
