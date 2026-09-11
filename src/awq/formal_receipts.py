@@ -172,6 +172,12 @@ def _result(value: Any) -> dict[str, Any]:
         outcome in PASS_OUTCOMES
     ) or outcome not in PASS_OUTCOMES | FAIL_OUTCOMES:
         _fail("result-status-outcome")
+    explored_states = _integer(result["explored_states"], 0, 1_000_000, "result-states")
+    explored_transitions = _integer(
+        result["explored_transitions"], 0, 1_000_000, "result-transitions"
+    )
+    if outcome == "exhausted" and (explored_states == 0 or explored_transitions == 0):
+        _fail("result-exhausted-counts")
     counterexample = result["counterexample_sha256"]
     if outcome == "counterexample":
         _digest(counterexample, "result-counterexample-digest")
@@ -180,10 +186,8 @@ def _result(value: Any) -> dict[str, Any]:
     return {
         "status": status,
         "outcome": outcome,
-        "explored_states": _integer(result["explored_states"], 0, 1_000_000, "result-states"),
-        "explored_transitions": _integer(
-            result["explored_transitions"], 0, 1_000_000, "result-transitions"
-        ),
+        "explored_states": explored_states,
+        "explored_transitions": explored_transitions,
         "result_sha256": _digest(result["result_sha256"], "result-digest"),
         "counterexample_sha256": counterexample,
     }
@@ -337,7 +341,9 @@ def _expectation(value: Any) -> dict[str, Any]:
             "run",
             "bounds",
             "expected_outcome",
+            "result",
             "sensitivity",
+            "correspondence",
         ),
         "expectation",
     )
@@ -350,6 +356,9 @@ def _expectation(value: Any) -> dict[str, Any]:
     tool = _tool(expected["tool"])
     run = _run(expected["run"])
     bounds = _bounds(expected["bounds"])
+    result = _result(expected["result"])
+    if expected["expected_outcome"] != result["outcome"]:
+        _fail("expectation-result-outcome")
     return {
         "source": source,
         "model": model,
@@ -361,7 +370,9 @@ def _expectation(value: Any) -> dict[str, Any]:
             r"(?:counterexample|exhausted|incomplete|tool-error|verified)",
             "expected-outcome",
         ),
+        "result": result,
         "sensitivity": _sensitivity(expected["sensitivity"], model, tool, run, bounds),
+        "correspondence": expected["correspondence"],
     }
 
 
@@ -406,13 +417,23 @@ def evaluate(value: Any, expected_value: Any) -> dict[str, Any]:
         "bounds": bounds,
         "expected_outcome": result["outcome"],
     }
-    expected_identity = {key: value for key, value in expected.items() if key != "sensitivity"}
+    correspondence = _correspondence(receipt["correspondence"], model)
+    expected_correspondence = _correspondence(expected["correspondence"], expected["model"])
+    observed_identity["result"] = result
+    observed_identity["correspondence"] = receipt["correspondence"]
+    expected_identity = {
+        key: value
+        for key, value in expected.items()
+        if key not in {"sensitivity", "correspondence"}
+    }
+    expected_identity["correspondence"] = expected["correspondence"]
     if observed_identity != expected_identity:
         _fail("trusted-identity-mismatch")
     sensitivity = _sensitivity(receipt["sensitivity"], model, tool, run, bounds)
     if sensitivity != expected["sensitivity"]:
         _fail("trusted-identity-mismatch")
-    correspondence = _correspondence(receipt["correspondence"], model)
+    if correspondence != expected_correspondence:
+        _fail("trusted-identity-mismatch")
     if receipt["non_claims"] != list(NON_CLAIMS):
         _fail("proof-inflation")
     if receipt["limitations"] != list(LIMITATIONS):

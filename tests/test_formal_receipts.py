@@ -120,7 +120,12 @@ class FormalExecutionReceiptTests(unittest.TestCase):
             (["run", "attempt"], 2),
             (["run", "argv_sha256"], "6" * 64),
             (["bounds", "max_steps"], 17),
+            (["result", "explored_states"], 15),
+            (["result", "explored_transitions"], 14),
+            (["result", "result_sha256"], "5" * 64),
             (["result", "outcome"], "verified"),
+            (["correspondence", "implementation_source_sha256"], "5" * 64),
+            (["correspondence", "observation_definition_sha256"], "4" * 64),
         ]
         for path, replacement in changes:
             value = receipt()
@@ -135,6 +140,37 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 self.assertRaisesRegex(ProjectError, "trusted-identity-mismatch"),
             ):
                 formal_receipts.evaluate(value, expectation())
+
+        value = receipt()
+        value["correspondence"]["trace"][0]["observation_sha256"] = "3" * 64
+        bind_trace(value)
+        with self.assertRaisesRegex(ProjectError, "trusted-identity-mismatch"):
+            formal_receipts.evaluate(value, expectation())
+
+        for mapping, implementation, trace_field in (
+            ("operation_map", "OP-0001", "implementation_operation"),
+            ("state_map", "STATE-0001", "implementation_state"),
+        ):
+            value = receipt()
+            value["correspondence"][mapping][0]["implementation"] = implementation
+            value["correspondence"]["trace"][0][trace_field] = implementation
+            bind_trace(value)
+            with (
+                self.subTest(mapping=mapping),
+                self.assertRaisesRegex(ProjectError, "trusted-identity-mismatch"),
+            ):
+                formal_receipts.evaluate(value, expectation())
+
+        value = receipt()
+        value["result"].update(
+            status="fail", outcome="counterexample", counterexample_sha256="8" * 64
+        )
+        expected = expectation()
+        expected["expected_outcome"] = "counterexample"
+        expected["result"] = copy.deepcopy(value["result"])
+        value["result"]["counterexample_sha256"] = "9" * 64
+        with self.assertRaisesRegex(ProjectError, "trusted-identity-mismatch"):
+            formal_receipts.evaluate(value, expected)
 
     def test_sensitivity_execution_mutation_and_result_bindings_fail_closed(self) -> None:
         for field, replacement in (
@@ -206,11 +242,13 @@ class FormalExecutionReceiptTests(unittest.TestCase):
         )
         expected = expectation()
         expected["expected_outcome"] = "counterexample"
+        expected["result"] = copy.deepcopy(counterexample["result"])
         self.assertEqual("fail", formal_receipts.evaluate(counterexample, expected)["status"])
         incomplete = receipt()
         incomplete["result"].update(status="fail", outcome="incomplete")
         expected = expectation()
         expected["expected_outcome"] = "incomplete"
+        expected["result"] = copy.deepcopy(incomplete["result"])
         self.assertEqual("incomplete", formal_receipts.evaluate(incomplete, expected)["outcome"])
         for outcome, digest in (
             ("counterexample", None),
@@ -225,6 +263,29 @@ class FormalExecutionReceiptTests(unittest.TestCase):
             )
             with self.subTest(outcome=outcome), self.assertRaises(ProjectError):
                 formal_receipts.evaluate(value, expectation())
+
+    def test_outcome_specific_exploration_counts_match_schema_and_runtime(self) -> None:
+        for field in ("explored_states", "explored_transitions"):
+            value = receipt()
+            value["result"][field] = 0
+            expected = expectation()
+            expected["result"][field] = 0
+            with self.subTest(field=field):
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(value, "formal-execution-receipt.schema.json")
+                with self.assertRaisesRegex(ProjectError, "result-exhausted-counts"):
+                    formal_receipts.evaluate(value, expected)
+
+        verified = receipt()
+        verified["result"].update(
+            status="pass", outcome="verified", explored_states=0, explored_transitions=0
+        )
+        expected = expectation()
+        expected["expected_outcome"] = "verified"
+        expected["result"] = copy.deepcopy(verified["result"])
+        validate(verified, "formal-execution-receipt.schema.json")
+        validate(expected, "formal-execution-expectation.schema.json")
+        self.assertEqual("pass", formal_receipts.evaluate(verified, expected)["status"])
 
     def test_incomplete_duplicate_and_reordered_mappings_fail(self) -> None:
         for field in ("operation_map", "state_map"):
@@ -291,6 +352,28 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 with self.assertRaises(ProjectError) as caught:
                     formal_receipts.evaluate(value, expectation())
                 self.assertNotIn("PRIVATE-OUTPUT", str(caught.exception))
+
+    def test_expectation_schema_and_runtime_require_complete_trusted_evidence(self) -> None:
+        cases = []
+        for field in ("result", "correspondence"):
+            value = expectation()
+            del value[field]
+            cases.append(value)
+        unknown = expectation()
+        unknown["private_output"] = "PRIVATE-OUTPUT"
+        cases.append(unknown)
+        for value in cases:
+            with self.subTest(fields=sorted(value)):
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(value, "formal-execution-expectation.schema.json")
+                with self.assertRaises(ProjectError) as caught:
+                    formal_receipts.evaluate(receipt(), value)
+                self.assertNotIn("PRIVATE-OUTPUT", str(caught.exception))
+
+        mismatch = expectation()
+        mismatch["expected_outcome"] = "verified"
+        with self.assertRaisesRegex(ProjectError, "expectation-result-outcome"):
+            formal_receipts.evaluate(receipt(), mismatch)
 
     def test_canonical_bounded_confined_file_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

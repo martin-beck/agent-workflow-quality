@@ -4,16 +4,18 @@
   "additionalProperties": false,
   "properties": {
     "bounds": {"$ref": "formal-execution-receipt.schema.json#/properties/bounds"},
+    "correspondence": {"$ref": "formal-execution-receipt.schema.json#/properties/correspondence"},
     "expected_outcome": {"enum": ["counterexample", "exhausted", "incomplete", "tool-error", "verified"]},
     "kind": {"const": "formal-execution-expectation"},
     "model": {"$ref": "formal-execution-receipt.schema.json#/properties/model"},
     "run": {"$ref": "formal-execution-receipt.schema.json#/properties/run"},
+    "result": {"$ref": "formal-execution-receipt.schema.json#/properties/result"},
     "schema_version": {"const": 1},
     "sensitivity": {"$ref": "formal-execution-receipt.schema.json#/properties/sensitivity"},
     "source": {"$ref": "formal-execution-receipt.schema.json#/properties/source"},
     "tool": {"$ref": "formal-execution-receipt.schema.json#/properties/tool"}
   },
-  "required": ["bounds", "expected_outcome", "kind", "model", "run", "schema_version", "sensitivity", "source", "tool"],
+  "required": ["bounds", "correspondence", "expected_outcome", "kind", "model", "result", "run", "schema_version", "sensitivity", "source", "tool"],
   "title": "Trusted formal execution expectation v1",
   "type": "object"
 }

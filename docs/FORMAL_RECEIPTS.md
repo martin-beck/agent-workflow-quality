@@ -13,13 +13,15 @@ and one million per value. Model operation and state vocabularies are sorted, un
 
 The normalized result binds a result digest, explored state/transition counts, and exactly one of:
 
-- `exhausted` or `verified` with pass status and no counterexample digest;
+- `exhausted` with pass status, no counterexample digest, and at least one explored state and transition;
+- `verified` with pass status and no counterexample digest; proof-oriented tools may report zero explored states and transitions;
 - `counterexample` with fail status and an exact counterexample digest;
 - `incomplete` or `tool-error` with fail status and no counterexample digest.
 
 A separately supplied, [versioned trusted expectation](../schemas/formal-execution-expectation.schema.json)
-repeats the exact source, model, configuration, tool, run, argv, bounds, expected outcome, and the
-complete negative sensitivity identity and evidence commitments. Evaluation fails unless every normalized identity matches;
+repeats the exact source, model, configuration, tool, run, argv, bounds, complete primary result,
+complete correspondence record, expected outcome, and the complete negative sensitivity identity and evidence
+commitments. Evaluation fails unless every normalized identity and evidence commitment matches;
 the receipt cannot establish its own expected identity. Tool versions must contain a numeric
 component and reject ref-like labels even when digits are appended; all identifiers and echoed evidence remain bounded. A pass is evidence only for the
 trusted exact identity and is not an unbounded proof.

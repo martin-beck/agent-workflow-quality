@@ -205,6 +205,17 @@
     },
     "result": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {"properties": {"outcome": {"const": "exhausted"}}, "required": ["outcome"]},
+          "then": {
+            "properties": {
+              "explored_states": {"minimum": 1},
+              "explored_transitions": {"minimum": 1}
+            }
+          }
+        }
+      ],
       "properties": {
         "counterexample_sha256": {
           "oneOf": [
