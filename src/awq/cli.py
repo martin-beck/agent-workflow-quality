@@ -27,6 +27,7 @@ from awq import (
     promotion,
     refactor,
     reliability,
+    structural_refactoring,
     test_reports,
     verified_update,
     vulnerability_supply,
@@ -144,6 +145,9 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("contract")
     item.add_argument("--as-of", required=True)
     item.add_argument("--trusted-prior-head", required=True)
+    item = sub.add_parser("structural-refactor-verify")
+    item.add_argument("contract")
+    _format_argument(item)
     _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
@@ -188,6 +192,8 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "execution-receipt-evaluate": lambda: execution_budget.evaluate_file(root, args.receipt),
         "evidence-lifecycle-evaluate": lambda: evidence_lifecycle.evaluate_file(
             root, args.contract, args.as_of, args.trusted_prior_head
+        "structural-refactor-verify": lambda: structural_refactoring.evaluate_file(
+            root, args.contract
         ),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
