@@ -159,6 +159,16 @@ class ContractCatalogTests(unittest.TestCase):
         current["reason"] = "Reviewed byte-only canonicalization with unchanged semantics."
         history.append(current)
         generator.verify_baseline(catalog, compatible)
+        registry = next(
+            item["history"][0]["semantic"]
+            for item in baseline["entries"]
+            if item["history"][0]["semantic"]["kind"] == "structured-registry"
+        )
+        registry_update = copy.deepcopy(registry)
+        registry_update["canonical_document_sha256"] = "e" * 64
+        self.assertTrue(generator._compatible_semantics(registry, registry_update))
+        registry_update["keys"].append("new-root-key")
+        self.assertFalse(generator._compatible_semantics(registry, registry_update))
         cases = []
         changed_bytes = copy.deepcopy(baseline)
         changed_bytes["entries"][0]["history"][-1]["sha256"] = "0" * 64

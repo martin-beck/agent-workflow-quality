@@ -1,0 +1,114 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/evidence-lifecycle.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "hash": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "revision": {"pattern": "^[0-9a-f]{40}$", "type": "string"},
+    "run": {"maxLength": 100, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$", "type": "string"},
+    "timestamp": {
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "inventory": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_role": {"enum": ["gate-evidence", "publication", "diagnostic", "release"]},
+          "artifact_sha256": {"$ref": "#/$defs/hash"},
+          "bytes": {"maximum": 100000000000, "minimum": 1, "type": "integer"},
+          "created_at": {"$ref": "#/$defs/timestamp"},
+          "id": {"maxLength": 100, "pattern": "^EVIDENCE-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
+          "provenance": {"enum": ["complete", "partial", "unknown"]},
+          "run_id": {"oneOf": [{"$ref": "#/$defs/run"}, {"type": "null"}]},
+          "run_state": {"enum": ["active", "completed", "cancelled", "unknown"]},
+          "source_head": {"$ref": "#/$defs/revision"}
+        },
+        "required": ["id", "artifact_sha256", "artifact_role", "bytes", "created_at", "source_head", "run_id", "run_state", "provenance"],
+        "type": "object"
+      },
+      "maxItems": 512,
+      "type": "array"
+    },
+    "kind": {"const": "evidence-lifecycle"},
+    "lineage_head_sha256": {"$ref": "#/$defs/hash"},
+    "lineage": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {"$ref": "#/$defs/hash"},
+          "attempt_id": {"$ref": "#/$defs/run"},
+          "evidence_class": {"enum": ["mechanical", "contract-test", "property-or-fuzz", "bounded-model", "environmental"]},
+          "id": {"maxLength": 100, "pattern": "^LINEAGE-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
+          "kind": {"enum": ["observation", "decision"]},
+          "observed_at": {"$ref": "#/$defs/timestamp"},
+          "outcome": {"enum": ["pass", "fail", "error", "cancelled", "unavailable"]},
+          "parent_sha256": {"oneOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]},
+          "record_sha256": {"$ref": "#/$defs/hash"},
+          "score": {"oneOf": [{"maximum": 1000000, "minimum": -1000000, "type": "integer"}, {"type": "null"}]},
+          "source_revision": {"$ref": "#/$defs/revision"},
+          "verifier_contract_sha256": {"$ref": "#/$defs/hash"}
+        },
+        "required": ["id", "kind", "parent_sha256", "record_sha256", "source_revision", "verifier_contract_sha256", "artifact_sha256", "evidence_class", "attempt_id", "outcome", "score", "observed_at"],
+        "type": "object"
+      },
+      "maxItems": 256,
+      "minItems": 1,
+      "type": "array"
+    },
+    "publications": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "artifact_sha256": {"$ref": "#/$defs/hash"},
+          "continue_on_error": {"type": "boolean"},
+          "id": {"maxLength": 100, "pattern": "^ARTIFACT-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
+          "prerequisites": {
+            "items": {"maxLength": 100, "pattern": "^ARTIFACT-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
+            "maxItems": 16,
+            "type": "array",
+            "uniqueItems": true
+          },
+          "publication_state": {"enum": ["pending", "published", "failed", "unavailable", "cancelled", "not-requested"]},
+          "requirement": {"enum": ["required", "optional"]},
+          "validation_outcome": {"enum": ["pass", "fail", "error", "cancelled", "unavailable"]}
+        },
+        "required": ["id", "artifact_sha256", "requirement", "validation_outcome", "publication_state", "prerequisites", "continue_on_error"],
+        "type": "object"
+      },
+      "maxItems": 64,
+      "type": "array"
+    },
+    "retention_policy": {
+      "additionalProperties": false,
+      "properties": {
+        "diagnostic_window_seconds": {"maximum": 2678400, "minimum": 0, "type": "integer"},
+        "high_watermark_bytes": {"maximum": 1000000000000, "minimum": 1, "type": "integer"},
+        "low_watermark_bytes": {"maximum": 1000000000000, "minimum": 0, "type": "integer"},
+        "maximum_selection_count": {"maximum": 100, "minimum": 1, "type": "integer"},
+        "minimum_age_seconds": {"maximum": 31536000, "minimum": 0, "type": "integer"},
+        "protected_references": {
+          "additionalProperties": false,
+          "properties": {
+            "active_run_ids": {"items": {"$ref": "#/$defs/run"}, "maxItems": 64, "type": "array", "uniqueItems": true},
+            "current_main": {"$ref": "#/$defs/revision"},
+            "open_pr_heads": {"items": {"$ref": "#/$defs/revision"}, "maxItems": 64, "type": "array", "uniqueItems": true},
+            "release_heads": {"items": {"$ref": "#/$defs/revision"}, "maxItems": 64, "type": "array", "uniqueItems": true}
+          },
+          "required": ["current_main", "open_pr_heads", "release_heads", "active_run_ids"],
+          "type": "object"
+        }
+      },
+      "required": ["minimum_age_seconds", "diagnostic_window_seconds", "high_watermark_bytes", "low_watermark_bytes", "maximum_selection_count", "protected_references"],
+      "type": "object"
+    },
+    "schema_version": {"const": 1},
+    "source_revision": {"$ref": "#/$defs/revision"}
+  },
+  "required": ["schema_version", "kind", "source_revision", "lineage_head_sha256", "lineage", "publications", "retention_policy", "inventory"],
+  "title": "Immutable evidence lineage, publication outcomes and retention planning",
+  "type": "object"
+}

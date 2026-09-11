@@ -21,6 +21,8 @@ profile and binds it to the registry SHA-256 and AWQ version.
 - Evidence stores classifications, identifiers, timings and digests, never subprocess output.
 - Correlated observation sets bind exact source, scope and reviewed definitions while keeping
   producer-specific tool, run, attempt and collection provenance separate.
+- Evidence lifecycle records form bounded canonical parent chains; publication outcomes and
+  non-authorizing retention candidates remain separate from quality outcomes.
 - `init --dry-run` is read-only. Mutating initialization refuses to overwrite existing policy.
 - A central release cannot change a consumer until its pinned lock is explicitly updated.
 

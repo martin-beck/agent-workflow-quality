@@ -25,6 +25,7 @@ from awq.release import (
     BUILD_CONSTRAINTS_PATH,
     BUILD_CONSTRAINTS_SHA256,
     CONTRACT_CATALOG_SCHEMA_ASSETS,
+    EVIDENCE_LIFECYCLE_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -537,6 +538,29 @@ class ReleaseVerificationTests(unittest.TestCase):
                 self.assertEqual(
                     required,
                     inspect.call_args.kwargs["require_contract_catalog_assets"],
+                )
+
+    def test_evidence_lifecycle_assets_are_required_starting_with_v033(self) -> None:
+        self.assertEqual(
+            {"evidence-lifecycle.schema.json"},
+            EVIDENCE_LIFECYCLE_SCHEMA_ASSETS,
+        )
+        for version, required in (("0.32.0", False), ("0.33.0", True)):
+            with self.subTest(version=version):
+                self.version = version
+                wheel = self.wheel()
+                item = {
+                    "name": wheel.name,
+                    "kind": "wheel",
+                    "media_type": "application/zip",
+                    "size": wheel.stat().st_size,
+                    "sha256": sha256_file(wheel),
+                }
+                with mock.patch("awq.release.inspect_archive", return_value=[]) as inspect:
+                    _verify_artifact(self.root, item, version, 1_788_930_927)
+                self.assertEqual(
+                    required,
+                    inspect.call_args.kwargs["require_evidence_lifecycle_assets"],
                 )
 
 

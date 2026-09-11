@@ -96,6 +96,14 @@ def _validate_native_mapping_fixtures() -> None:
         validate(observation["identity"], "evidence-identity.schema.json")
 
 
+def _validate_evidence_lifecycle_fixtures() -> None:
+    for name in (
+        "fixtures/conforming/evidence-lifecycle.json",
+        "fixtures/nonconforming/evidence-lifecycle/broken-parent.json",
+    ):
+        validate(json.loads((ROOT / name).read_bytes()), "evidence-lifecycle.schema.json")
+
+
 def main() -> int:
     contract_catalog, _ = load_contract_catalog()
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
@@ -220,6 +228,7 @@ def main() -> int:
     ):
         validate(json.loads((ROOT / name).read_bytes()), "consumer-equivalence.schema.json")
     _validate_native_mapping_fixtures()
+    _validate_evidence_lifecycle_fixtures()
     for name in (
         "fixtures/conforming/assurance/model.json",
         "fixtures/conforming/assurance/refactor.json",

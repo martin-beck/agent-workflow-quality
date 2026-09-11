@@ -112,6 +112,12 @@ record identities, confirms legal/audit holds and recovery policy, then removes
 only exact authorized objects using the owning storage interface. This command
 performs no deletion and changes no consumer lock or gate.
 
+For immutable parent-linked observation and decision metadata, artifact roles,
+protected Git references, active-run protection, diagnostic windows and
+high/low-watermark cleanup planning, use the separate
+[evidence lifecycle contract](EVIDENCE_LIFECYCLE.md). Its output is also
+non-authorizing: AWQ performs neither deletion nor upload.
+
 Retain the minimized observation and decision with their digests, reviewed reference
 contract, and immutable collector release identity. Do not retain worker stdout,
 stderr, source snapshots or environment values. Larger representative workloads,

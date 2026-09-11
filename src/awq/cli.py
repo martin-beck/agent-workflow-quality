@@ -18,6 +18,7 @@ from awq import (
     assurance,
     commands,
     contracts,
+    evidence_lifecycle,
     native_mapping,
     onboarding,
     promotion,
@@ -112,6 +113,10 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("native-map-evaluate")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("evidence-lifecycle-evaluate")
+    item.add_argument("contract")
+    item.add_argument("--as-of", required=True)
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -143,6 +148,9 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "check": lambda: commands.check(root, args.tier, args.requirement),
         "promotion-evaluate": lambda: promotion.evaluate_file(root, args.evidence, args.as_of),
         "native-map-evaluate": lambda: native_mapping.evaluate_file(root, args.contract),
+        "evidence-lifecycle-evaluate": lambda: evidence_lifecycle.evaluate_file(
+            root, args.contract, args.as_of
+        ),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,
