@@ -219,7 +219,7 @@ class ContractCatalogTests(unittest.TestCase):
             self.assertNotEqual(initial, generator._semantic(path))
 
     def test_nested_schema_release_identity_is_not_contract_drift(self) -> None:
-        first = {"oneOf": [{"const": {"awq_version": "0.29.0", "kind": "stable"}}]}
+        first: dict[str, Any] = {"oneOf": [{"const": {"awq_version": "0.29.0", "kind": "stable"}}]}
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "release.schema.json"
             path.write_text(json.dumps(first), encoding="utf-8")
@@ -231,6 +231,18 @@ class ContractCatalogTests(unittest.TestCase):
             release["oneOf"][0]["const"]["kind"] = "changed"
             path.write_text(json.dumps(release), encoding="utf-8")
             self.assertNotEqual(initial, generator._semantic(path))
+
+            release = copy.deepcopy(first)
+            release["oneOf"][0]["const"]["awq_version"] = {"value": "0.30.0"}
+            path.write_text(json.dumps(release), encoding="utf-8")
+            self.assertNotEqual(initial, generator._semantic(path))
+
+            property_schema = {"properties": {"awq_version": {"type": "string"}}}
+            path.write_text(json.dumps(property_schema), encoding="utf-8")
+            property_initial = generator._semantic(path)
+            property_schema["properties"]["awq_version"]["type"] = "integer"
+            path.write_text(json.dumps(property_schema), encoding="utf-8")
+            self.assertNotEqual(property_initial, generator._semantic(path))
 
     def test_packaged_catalog_cli_is_content_minimized_and_non_claiming(self) -> None:
         entries, digest = contracts.load_contract_catalog()

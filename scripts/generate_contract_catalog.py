@@ -9,6 +9,7 @@ import argparse
 import ast
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "src/awq/data/contract_catalog.json"
 BASELINE = ROOT / "contracts/contract-baseline-v1.json"
 DOCUMENT = ROOT / "docs/CONTRACTS.md"
+RELEASE_VERSION = re.compile(r"^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})$")
 
 # module, class, positive case, hostile case, documentation
 FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
@@ -306,7 +308,13 @@ def build_catalog() -> dict[str, Any]:
 def _contract_semantic_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {
-            key: "<release-version>" if key == "awq_version" else _contract_semantic_value(item)
+            key: (
+                "<release-version>"
+                if key == "awq_version"
+                and isinstance(item, str)
+                and RELEASE_VERSION.fullmatch(item)
+                else _contract_semantic_value(item)
+            )
             for key, item in value.items()
         }
     if isinstance(value, list):
