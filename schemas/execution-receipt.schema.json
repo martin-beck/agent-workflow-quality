@@ -47,7 +47,7 @@
       "required": ["name", "version", "sha256"],
       "properties": {
         "name": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"},
-        "version": {"type": "string", "pattern": "^(?!.*[+].*[+])(?!.*(?:^|[._+-])(?:[dD][eE][vV]|[hH][eE][aA][dD]|[lL][aA][tT][eE][sS][tT]|[mM][aA][iI][nN]|[mM][aA][sS][tT][eE][rR]|[nN][iI][gG][hH][tT][lL][yY]|[rR][eE][lL][eE][aA][sS][eE]|[sS][nN][aA][pP][sS][hH][oO][tT]|[tT][iI][pP]|[tT][rR][uU][nN][kK]|[xX])[0-9]*(?:$|[._+-]))[0-9][A-Za-z0-9]*(?:[._+-][A-Za-z0-9]+)*$"},
+        "version": {"type": "string", "maxLength": 64, "pattern": "^(?!.*[+].*[+])(?!.*(?:^|[._+-])(?:[dD][eE][vV]|[hH][eE][aA][dD]|[lL][aA][tT][eE][sS][tT]|[mM][aA][iI][nN]|[mM][aA][sS][tT][eE][rR]|[nN][iI][gG][hH][tT][lL][yY]|[rR][eE][lL][eE][aA][sS][eE]|[sS][nN][aA][pP][sS][hH][oO][tT]|[tT][iI][pP]|[tT][rR][uU][nN][kK]|[xX])[0-9]*(?:$|[._+-]))[0-9][A-Za-z0-9]*(?:[._+-][A-Za-z0-9]+)*$"},
         "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
       }
     },

@@ -100,6 +100,21 @@ class ExecutionBudgetTests(unittest.TestCase):
             with self.assertRaises(jsonschema.ValidationError):
                 validate(candidate, "execution-receipt.schema.json")
 
+    def test_measurement_tool_token_bounds_match_schema(self) -> None:
+        for field in ("name", "version"):
+            for length, accepted in ((64, True), (65, False), (1000, False)):
+                with self.subTest(field=field, length=length):
+                    value = receipt()
+                    value["dimensions"][0]["measurement"][field] = "1" + "a" * (length - 1)
+                    if accepted:
+                        validate(value, "execution-receipt.schema.json")
+                        self.assertEqual("pass", execution_budget.evaluate(value)["status"])
+                    else:
+                        with self.assertRaises(jsonschema.ValidationError):
+                            validate(value, "execution-receipt.schema.json")
+                        with self.assertRaisesRegex(ProjectError, "tool"):
+                            execution_budget.evaluate(value)
+
     def test_hostile_closed_leaf_and_collection_branches_fail(self) -> None:
         cases: list[tuple[str, dict[str, Any]]] = []
         value = receipt()
