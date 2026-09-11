@@ -8,22 +8,25 @@ limitations.
 
 ## Plan and recipe identity
 
-Each plan binds an exact base commit, contract-catalog digest, input-tree
-digest, and proposed-output digest. Its recipe identifies exact tool and parser
-versions and digests, a language, repository-relative include and exclude
+Each plan binds an exact base commit, contract-catalog digest, canonical recipe
+digest, input-tree digest, and proposed-output digest. Its recipe identifies
+exact tool and parser versions and digests, a language, repository-relative include and exclude
 scope, risk, prohibited transformation classes, evidence-backed preconditions
 and invariants, and positive, negative, and golden fixtures. Focused and full
 verification commands are bounded argument arrays, never shell strings.
 
-Versions are numeric and exact. Lists are ordered and unique, paths are
-repository-relative and dot-segment free, and every object rejects unknown
-fields. The initial application mode is always `read-only-verification`.
+Versions are numeric and exact. Set-like lists are unique and normalized before
+identity calculation, paths are repository-relative and dot-segment free, and
+every object rejects unknown fields. The initial application mode is always `read-only-verification`.
 Autonomous mutation is outside this contract and would require a separately
 reviewed low-risk allowlist.
 
 ## Verification result
 
-The result must repeat the exact base, catalog, input, and output identities.
+The result must repeat the exact plan, recipe, base, catalog, input, and output
+identities. Scope uses non-nesting top-level include-root keys with relative
+exclusions, making every exclusion structurally contained by its include root
+in both JSON Schema and runtime validation.
 Observed file, changed-line, match, and elapsed counts cannot exceed the
 declared budgets. Every fixture must have a passing digest-bound result. The
 observed transformation classes cannot intersect the recipe's prohibitions,

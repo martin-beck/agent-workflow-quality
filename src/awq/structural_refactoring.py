@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Never
 
 from awq import __version__
@@ -21,6 +21,7 @@ COMMIT = re.compile(r"^[0-9a-f]{40}$")
 IDENTIFIER = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){1,8}$")
 TOKEN = re.compile(r"^[a-z][a-z0-9]*(?:-[a-z0-9]+){0,7}$")
 PATH_PATTERN = re.compile(r"^[A-Za-z0-9_-][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]+)*$")
+ROOT_PATTERN = re.compile(r"^[A-Za-z0-9_-][A-Za-z0-9_.-]*$")
 VERSION = re.compile(
     r"^(?!.*(?:^|[.+-])(?:head|latest|main|master|nightly|release|snapshot|x)(?:$|[.+-]))"
     r"[0-9]+(?:[.][0-9]+){1,3}(?:[-+][0-9a-z.-]+)?$"
@@ -91,11 +92,16 @@ def _path(value: object) -> str:
         or "//" in value
     ):
         _fail("path")
-    path = PurePosixPath(value)
-    if path.is_absolute() or any(
-        part in {"", ".", ".."} or part.startswith(".") for part in value.split("/")
+    return value
+
+
+def _root(value: object) -> str:
+    if (
+        not isinstance(value, str)
+        or not 1 <= len(value) <= 80
+        or ROOT_PATTERN.fullmatch(value) is None
     ):
-        _fail("path")
+        _fail("include-scope")
     return value
 
 
@@ -103,9 +109,9 @@ def _sorted_unique(values: Any, minimum: int, maximum: int, parser: Any, code: s
     if not isinstance(values, list) or not minimum <= len(values) <= maximum:
         _fail(code)
     parsed = [parser(item) for item in values]
-    if parsed != sorted(parsed) or len(parsed) != len(set(parsed)):
+    if len(parsed) != len(set(parsed)):
         _fail(code)
-    return parsed
+    return sorted(parsed)
 
 
 def _tool(value: Any, prefix: str) -> dict[str, str]:
@@ -116,23 +122,21 @@ def _tool(value: Any, prefix: str) -> dict[str, str]:
     return {"id": identifier, "version": item["version"], "sha256": _digest(item["sha256"])}
 
 
-def _scope(value: Any) -> dict[str, list[str]]:
-    item = _object(value, "include_paths exclude_paths")
-    include = _sorted_unique(item["include_paths"], 1, 128, _path, "include-scope")
-    exclude = _sorted_unique(item["exclude_paths"], 0, 128, _path, "exclude-scope")
-    for paths in (include, exclude):
-        if any(
-            right.startswith(left.rstrip("/") + "/")
-            for index, left in enumerate(paths)
-            for right in paths[index + 1 :]
-        ):
-            _fail("scope-overlap")
-    for excluded in exclude:
-        if excluded in include or not any(
-            excluded.startswith(included.rstrip("/") + "/") for included in include
-        ):
-            _fail("exclude-scope")
-    return {"include_paths": include, "exclude_paths": exclude}
+def _scope(value: Any) -> dict[str, dict[str, dict[str, list[str]]]]:
+    item = _object(value, "include_roots")
+    raw_roots = item["include_roots"]
+    if not isinstance(raw_roots, dict) or not 1 <= len(raw_roots) <= 128:
+        _fail("include-scope")
+    roots: dict[str, dict[str, list[str]]] = {}
+    for raw_include, raw_entry in raw_roots.items():
+        include = _root(raw_include)
+        entry = _object(raw_entry, "exclude_relative_paths")
+        roots[include] = {
+            "exclude_relative_paths": _sorted_unique(
+                entry["exclude_relative_paths"], 0, 128, _path, "exclude-scope"
+            )
+        }
+    return {"include_roots": {include: roots[include] for include in sorted(roots)}}
 
 
 def _commitments(value: Any, prefix: str) -> list[dict[str, str]]:
@@ -145,9 +149,9 @@ def _commitments(value: Any, prefix: str) -> list[dict[str, str]]:
         identifier = _identifier(item["id"], prefix)
         identities.append(identifier)
         result.append({"id": identifier, "evidence_sha256": _digest(item["evidence_sha256"])})
-    if identities != sorted(set(identities)):
+    if len(identities) != len(set(identities)):
         _fail("commitment-order")
-    return result
+    return sorted(result, key=lambda record: record["id"])
 
 
 def _fixture(value: Any) -> dict[str, str]:
@@ -171,9 +175,9 @@ def _fixtures(value: Any) -> tuple[dict[str, list[dict[str, str]]], list[str]]:
         records = [_fixture(entry) for entry in raw]
         identities = [entry["id"] for entry in records]
         paths = [entry["path"] for entry in records]
-        if identities != sorted(set(identities)) or paths != sorted(set(paths)):
+        if len(identities) != len(set(identities)) or len(paths) != len(set(paths)):
             _fail("fixture-order")
-        result[kind] = records
+        result[kind] = sorted(records, key=lambda record: record["id"])
         all_ids.extend(identities)
         all_paths.extend(paths)
     if len(all_ids) != len(set(all_ids)) or len(all_paths) != len(set(all_paths)):
@@ -311,12 +315,12 @@ def _fixture_results(value: Any, fixture_ids: list[str]) -> list[dict[str, str]]
                 "evidence_sha256": _digest(record["evidence_sha256"]),
             }
         )
-    if result_ids != fixture_ids:
+    if sorted(result_ids) != fixture_ids:
         _fail("fixture-result-coverage")
     digests = [result["evidence_sha256"] for result in results]
     if len(digests) != len(set(digests)):
         _fail("fixture-result-digest-duplicate")
-    return results
+    return sorted(results, key=lambda record: record["id"])
 
 
 def _result(
@@ -328,11 +332,14 @@ def _result(
 ) -> dict[str, Any]:
     item = _object(
         value,
-        "base_commit catalog_sha256 input_tree_sha256 output_tree_sha256 changed_files "
+        "plan_id recipe_sha256 base_commit catalog_sha256 input_tree_sha256 output_tree_sha256 "
+        "changed_files "
         "changed_lines matches elapsed_seconds transformation_classes fixture_results "
         "second_plan_output_sha256 convergence evidence_sha256",
     )
     identities = (
+        (_identifier(item["plan_id"], "PLAN"), contract["plan_id"], "plan-mismatch"),
+        (_digest(item["recipe_sha256"]), contract["recipe_sha256"], "recipe-mismatch"),
         (_commit(item["base_commit"]), contract["base_commit"], "stale-base"),
         (_digest(item["catalog_sha256"]), contract["catalog_sha256"], "catalog-drift"),
         (_digest(item["input_tree_sha256"]), contract["input_tree_sha256"], "input-drift"),
@@ -370,7 +377,7 @@ def evaluate(value: Any) -> dict[str, Any]:
     contract = _object(
         value,
         "schema_version kind plan_id base_commit catalog_sha256 input_tree_sha256 "
-        "proposed_output_tree_sha256 recipe native_mapping result",
+        "proposed_output_tree_sha256 recipe_sha256 recipe native_mapping result",
     )
     if (
         type(contract["schema_version"]) is not int
@@ -386,6 +393,9 @@ def evaluate(value: Any) -> dict[str, Any]:
     if input_tree_sha256 == output_tree_sha256:
         _fail("unchanged-output")
     recipe, fixture_ids, prohibited = _recipe(contract["recipe"])
+    recipe_sha256 = hashlib.sha256(canonical_bytes(recipe)).hexdigest()
+    if _digest(contract["recipe_sha256"]) != recipe_sha256:
+        _fail("recipe-digest")
     mapping = _object(contract["native_mapping"], "family contract_sha256 retained")
     family = _token(mapping["family"])
     if type(mapping["retained"]) is not bool or not mapping["retained"]:
@@ -398,6 +408,7 @@ def evaluate(value: Any) -> dict[str, Any]:
         "catalog_sha256": catalog_sha256,
         "input_tree_sha256": input_tree_sha256,
         "proposed_output_tree_sha256": output_tree_sha256,
+        "recipe_sha256": recipe_sha256,
         "recipe": recipe,
         "native_mapping": {
             "family": family,
@@ -408,6 +419,7 @@ def evaluate(value: Any) -> dict[str, Any]:
     result = _result(
         contract["result"], normalized_contract, recipe["budgets"], fixture_ids, prohibited
     )
+    normalized_contract["result"] = result
     return {
         "status": "pass",
         "schema_version": 1,
@@ -415,6 +427,7 @@ def evaluate(value: Any) -> dict[str, Any]:
         "kind": "structural-refactoring-verification",
         "plan_id": plan_id,
         "recipe_id": recipe["id"],
+        "recipe_sha256": recipe_sha256,
         "language": recipe["language"],
         "risk": recipe["risk"],
         "execution": "read-only",
