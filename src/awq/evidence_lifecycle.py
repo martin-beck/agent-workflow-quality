@@ -130,12 +130,15 @@ def _lineage_record(
     return item, claimed, observed, identifier, attempt
 
 
-def _lineage(value: Any, source_revision: str, as_of: datetime) -> tuple[list[dict[str, Any]], str]:
+def _lineage(
+    value: Any, source_revision: str, as_of: datetime
+) -> tuple[list[dict[str, Any]], str, set[str]]:
     if not isinstance(value, list) or not 1 <= len(value) <= 256:
         _fail("lineage-bound")
     previous: str | None = None
     attempts: set[str] = set()
     identifiers: set[str] = set()
+    artifacts: set[str] = set()
     last_time: datetime | None = None
     normalized = []
     for raw in value:
@@ -146,14 +149,17 @@ def _lineage(value: Any, source_revision: str, as_of: datetime) -> tuple[list[di
             _fail("lineage-identity-reused")
         identifiers.add(identifier)
         attempts.add(attempt)
+        artifacts.add(item["artifact_sha256"])
         previous, last_time = claimed, observed
         normalized.append(item)
     if previous is None:
         _fail("lineage-bound")
-    return normalized, previous
+    return normalized, previous, artifacts
 
 
-def _publication_record(raw: Any, seen: dict[str, dict[str, Any]]) -> tuple[str, dict[str, Any]]:
+def _publication_record(
+    raw: Any, seen: dict[str, dict[str, Any]], lineage_artifacts: set[str]
+) -> tuple[str, dict[str, Any]]:
     item = _object(
         raw,
         "id artifact_sha256 requirement validation_outcome publication_state "
@@ -162,7 +168,8 @@ def _publication_record(raw: Any, seen: dict[str, dict[str, Any]]) -> tuple[str,
     identifier = _identifier(item["id"], "ARTIFACT")
     if identifier in seen or (seen and identifier <= next(reversed(seen))):
         _fail("publication-identity-or-order")
-    _hash(item["artifact_sha256"])
+    if _hash(item["artifact_sha256"]) not in lineage_artifacts:
+        _fail("publication-artifact-lineage")
     if item["requirement"] not in ("required", "optional"):
         _fail("publication-requirement")
     if (
@@ -173,31 +180,30 @@ def _publication_record(raw: Any, seen: dict[str, dict[str, Any]]) -> tuple[str,
     if type(item["continue_on_error"]) is not bool:
         _fail("publication-continue-on-error")
     prerequisites = item["prerequisites"]
-    if (
-        not isinstance(prerequisites, list)
-        or len(prerequisites) > 16
-        or prerequisites != sorted(set(prerequisites))
-        or any(parent not in seen for parent in prerequisites)
+    if not isinstance(prerequisites, list) or len(prerequisites) > 16:
+        _fail("publication-prerequisites")
+    normalized_prerequisites = [_identifier(parent, "ARTIFACT") for parent in prerequisites]
+    if normalized_prerequisites != sorted(set(normalized_prerequisites)) or any(
+        parent not in seen for parent in normalized_prerequisites
     ):
         _fail("publication-prerequisites")
     if item["requirement"] == "required" and item["continue_on_error"]:
         _fail("required-gate-continue-on-error")
-    if item["publication_state"] == "published" and (
-        item["validation_outcome"] != "pass"
-        or any(seen[parent]["publication_state"] != "published" for parent in prerequisites)
+    if item["publication_state"] == "published" and any(
+        seen[parent]["publication_state"] != "published" for parent in normalized_prerequisites
     ):
         _fail("publication-without-prerequisite")
     return identifier, item
 
 
-def _publications(value: Any) -> tuple[list[dict[str, str]], str, str]:
+def _publications(value: Any, lineage_artifacts: set[str]) -> tuple[list[dict[str, str]], str, str]:
     if not isinstance(value, list) or len(value) > 64:
         _fail("publication-bound")
     seen: dict[str, dict[str, Any]] = {}
     summaries = []
     quality_failed = required_publication_failed = optional_publication_failed = False
     for raw in value:
-        identifier, item = _publication_record(raw, seen)
+        identifier, item = _publication_record(raw, seen, lineage_artifacts)
         if item["requirement"] == "required":
             quality_failed |= item["validation_outcome"] != "pass"
             required_publication_failed |= item["publication_state"] != "published"
@@ -227,9 +233,12 @@ def _publications(value: Any) -> tuple[list[dict[str, str]], str, str]:
 
 
 def _string_list(value: Any, kind: str, validator: Any, maximum: int = 64) -> list[str]:
-    if not isinstance(value, list) or len(value) > maximum or value != sorted(set(value)):
+    if not isinstance(value, list) or len(value) > maximum:
         _fail(kind + "-references")
-    return [validator(item) for item in value]
+    normalized = [validator(item) for item in value]
+    if normalized != sorted(set(normalized)):
+        _fail(kind + "-references")
+    return normalized
 
 
 def _retention_config(policy: Any) -> tuple[dict[str, Any], set[str], set[str]]:
@@ -260,13 +269,17 @@ def _retention_config(policy: Any) -> tuple[dict[str, Any], set[str], set[str]]:
     return config, protected_heads, active_runs
 
 
-def _inventory_record(raw: Any, as_of: datetime) -> tuple[datetime, dict[str, Any], str, str]:
+def _inventory_record(
+    raw: Any, as_of: datetime, lineage_artifacts: set[str]
+) -> tuple[datetime, dict[str, Any], str, str]:
     item = _object(
         raw,
         "id artifact_sha256 artifact_role bytes created_at source_head run_id run_state provenance",
     )
     identifier = _identifier(item["id"], "EVIDENCE")
     artifact = _hash(item["artifact_sha256"])
+    if artifact not in lineage_artifacts:
+        _fail("retention-artifact-lineage")
     if item["artifact_role"] not in ROLES:
         _fail("retention-role")
     if type(item["bytes"]) is not int or not 1 <= item["bytes"] <= 100_000_000_000:
@@ -285,7 +298,7 @@ def _inventory_record(raw: Any, as_of: datetime) -> tuple[datetime, dict[str, An
 
 
 def _retention(
-    policy: Any, inventory: Any, as_of: datetime
+    policy: Any, inventory: Any, as_of: datetime, lineage_artifacts: set[str]
 ) -> tuple[list[dict[str, str]], int, bool]:
     config, protected_heads, active_runs = _retention_config(policy)
     if not isinstance(inventory, list) or len(inventory) > 512:
@@ -295,7 +308,7 @@ def _retention(
     digests: set[str] = set()
     total = 0
     for raw in inventory:
-        created, item, identifier, artifact = _inventory_record(raw, as_of)
+        created, item, identifier, artifact = _inventory_record(raw, as_of, lineage_artifacts)
         if identifier in identifiers or artifact in digests:
             _fail("retention-identity-reused")
         identifiers.add(identifier)
@@ -336,7 +349,8 @@ def _retention(
 def evaluate(value: Any, as_of: str) -> dict[str, Any]:
     item = _object(
         value,
-        "schema_version kind source_revision lineage publications retention_policy inventory",
+        "schema_version kind source_revision lineage_head_sha256 lineage publications "
+        "retention_policy inventory",
     )
     if (
         type(item["schema_version"]) is not int
@@ -346,10 +360,14 @@ def evaluate(value: Any, as_of: str) -> dict[str, Any]:
         _fail("kind-or-version")
     source_revision = _revision(item["source_revision"])
     now = timestamp(as_of)
-    lineage, head = _lineage(item["lineage"], source_revision, now)
-    publications, quality_status, publication_status = _publications(item["publications"])
+    lineage, head, lineage_artifacts = _lineage(item["lineage"], source_revision, now)
+    if _hash(item["lineage_head_sha256"]) != head:
+        _fail("lineage-head")
+    publications, quality_status, publication_status = _publications(
+        item["publications"], lineage_artifacts
+    )
     candidates, retained_bytes, watermark_reached = _retention(
-        item["retention_policy"], item["inventory"], now
+        item["retention_policy"], item["inventory"], now, lineage_artifacts
     )
     outcomes = {
         name: sum(record["outcome"] == name for record in lineage) for name in sorted(OUTCOMES)
