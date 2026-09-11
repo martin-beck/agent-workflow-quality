@@ -129,14 +129,14 @@ jobs:
             --uv "$(command -v uv)" \
             --trust-policy-sha256 0000000000000000000000000000000000000000000000000000000000000000
           uv run awq --root . release-verify \
-            "${release_dir}/agent_workflow_quality-0.29.0.release.json" \
+            "${release_dir}/agent_workflow_quality-0.30.0.release.json" \
             --source --format json
           uv run python scripts/verify_distribution.py \
-            "${release_dir}/agent_workflow_quality-0.29.0.tar.gz" \
-            "${release_dir}/agent_workflow_quality-0.29.0-py3-none-any.whl"
+            "${release_dir}/agent_workflow_quality-0.30.0.tar.gz" \
+            "${release_dir}/agent_workflow_quality-0.30.0-py3-none-any.whl"
           uv venv "${RUNNER_TEMP}/awq-smoke" --python 3.13.15
           uv pip install --python "${RUNNER_TEMP}/awq-smoke/bin/python" \
-            "${release_dir}/agent_workflow_quality-0.29.0-py3-none-any.whl"
+            "${release_dir}/agent_workflow_quality-0.30.0-py3-none-any.whl"
           "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . inspect --format json
           "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . onboarding --format json
           "${RUNNER_TEMP}/awq-smoke/bin/awq" --root . contract-catalog --format json
