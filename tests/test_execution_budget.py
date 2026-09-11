@@ -34,6 +34,15 @@ def receipt() -> dict[str, Any]:
 
 
 class ExecutionBudgetTests(unittest.TestCase):
+    def assert_invalid(self, value: Any, pattern: str | None = None) -> None:
+        context = (
+            self.assertRaisesRegex(ProjectError, pattern)
+            if pattern is not None
+            else self.assertRaises(ProjectError)
+        )
+        with context:
+            execution_budget.evaluate(value)
+
     def test_complete_receipt_is_deterministic_and_content_minimized(self) -> None:
         value = receipt()
         validate(value, "execution-receipt.schema.json")
@@ -79,6 +88,9 @@ class ExecutionBudgetTests(unittest.TestCase):
         value = receipt()
         value["dimensions"][0]["classification"] = "claimed"
         candidates.append(value)
+        value = receipt()
+        value["dimensions"][0]["measurement"]["version"] = "latest"
+        candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError):
                 execution_budget.evaluate(candidate)
@@ -86,6 +98,156 @@ class ExecutionBudgetTests(unittest.TestCase):
         for candidate in [candidates[index] for index in (1, 3, 4)]:
             with self.assertRaises(jsonschema.ValidationError):
                 validate(candidate, "execution-receipt.schema.json")
+
+    def test_hostile_closed_leaf_and_collection_branches_fail(self) -> None:
+        cases: list[tuple[str, dict[str, Any]]] = []
+        value = receipt()
+        value["unknown"] = True
+        cases.append(("fields", value))
+        value = receipt()
+        value["evaluated_step"] = True
+        cases.append(("integer", value))
+        value = receipt()
+        value["source"]["sha256"] = "x" * 64
+        cases.append(("source-digest", value))
+        value = receipt()
+        value["dimensions"][0]["measurement"]["sha256"] = "x" * 64
+        cases.append(("tool", value))
+        value = receipt()
+        value["schema_version"] = 2
+        cases.append(("schema-version", value))
+        value = receipt()
+        value["limitation"] = "stronger claim"
+        cases.append(("limitation", value))
+        value = receipt()
+        value["dimensions"] = "not-a-list"
+        cases.append(("dimensions-incomplete", value))
+        value = receipt()
+        value["dimensions"].reverse()
+        cases.append(("dimensions-order-or-duplicate", value))
+        value = receipt()
+        value["reservations"] = "not-a-list"
+        cases.append(("reservations", value))
+        value = receipt()
+        value["reservations"] = [copy.deepcopy(value["reservations"][0]) for _ in range(257)]
+        cases.append(("reservations", value))
+        value = receipt()
+        value["sandbox"].pop()
+        cases.append(("sandbox-incomplete", value))
+        value = receipt()
+        value["sandbox"].reverse()
+        cases.append(("sandbox-order-or-duplicate", value))
+        for expected, candidate in cases:
+            with self.subTest(expected=expected):
+                self.assert_invalid(candidate, expected)
+
+    def test_hostile_reservation_process_and_sandbox_branches_fail(self) -> None:
+        reservation_cases: list[tuple[str, dict[str, Any]]] = []
+        value = receipt()
+        item = value["reservations"][0]
+        item.update(effect="none", effect_step=None, state="refunded", settled=0, refunded=0)
+        reservation_cases.append(("refund", value))
+        value = receipt()
+        value["evaluated_step"] = 12
+        item = value["reservations"][0]
+        item.update(
+            effect="none",
+            effect_step=None,
+            state="refunded",
+            settled=0,
+            refunded=1,
+            settlement_step=11,
+        )
+        reservation_cases.append(("refund", value))
+        value = receipt()
+        value["evaluated_step"] = 12
+        item = value["reservations"][0]
+        item.update(
+            effect="none",
+            effect_step=None,
+            state="stale",
+            settled=0,
+            refunded=1,
+            settlement_step=10,
+        )
+        reservation_cases.append(("stale-reservation", value))
+        for expected, field, replacement in (
+            ("settlement", "refunded", 1),
+            ("reserve-before-effect", "settlement_step", None),
+            ("settlement", "settlement_step", 11),
+        ):
+            value = receipt()
+            value["reservations"][0][field] = replacement
+            reservation_cases.append((expected, value))
+        value = receipt()
+        value["reservations"][0]["state"] = "unknown"
+        value["reservations"][0]["effect"] = "none"
+        value["reservations"][0]["effect_step"] = None
+        reservation_cases.append(("reservation-state", value))
+        value = receipt()
+        value["reservations"][0]["effect"] = "none"
+        reservation_cases.append(("effect-step", value))
+        value = receipt()
+        value["reservations"][0]["settlement_step"] = 6
+        reservation_cases.append(("settlement-step", value))
+        value = receipt()
+        item = value["reservations"][0]
+        item.update(
+            dimension="tokens",
+            effect="none",
+            effect_step=None,
+            state="reserved",
+            settled=0,
+            settlement_step=None,
+        )
+        reservation_cases.append(("reservation-dimension", value))
+        for expected, candidate in reservation_cases:
+            with self.subTest(expected=expected):
+                self.assert_invalid(candidate, expected)
+
+        process_cases = (
+            ("termination", "deadline_reached", 1),
+            ("descendants", "descendants", "lost"),
+            ("orphan", "orphan_outcome", "lost"),
+        )
+        for expected, field, process_replacement in process_cases:
+            value = receipt()
+            value["process"]["termination"][field] = process_replacement
+            with self.subTest(expected=expected):
+                self.assert_invalid(value, expected)
+        for expected, field, process_replacement in (
+            ("argv-digest", "argv_sha256", "x" * 64),
+            ("environment", "environment", "inherited"),
+            ("process-scope", "process_scope", "shell"),
+        ):
+            value = receipt()
+            value["process"][field] = process_replacement
+            with self.subTest(expected=expected):
+                self.assert_invalid(value, expected)
+        for expected, field, sandbox_replacement in (
+            ("sandbox-boundary", "boundary", "container"),
+            ("unsupported-isolation-claim", "claim", "enforced"),
+            ("sandbox-outcome", "outcome", "unknown"),
+        ):
+            value = receipt()
+            value["sandbox"][1][field] = sandbox_replacement
+            with self.subTest(expected=expected):
+                self.assert_invalid(value, expected)
+
+        value = receipt()
+        value["process"]["termination"].update(
+            deadline_reached=True,
+            term_sent=True,
+            kill_sent=False,
+            descendants="unknown",
+        )
+        self.assertIn("kill-missing", execution_budget.evaluate(value)["findings"])
+        value = receipt()
+        value["process"]["termination"]["term_sent"] = True
+        self.assertIn("term-without-deadline", execution_budget.evaluate(value)["findings"])
+        value = receipt()
+        value["process"]["termination"]["kill_sent"] = True
+        self.assertIn("kill-without-term", execution_budget.evaluate(value)["findings"])
 
     def test_reservation_conservation_and_effect_order_fail_closed(self) -> None:
         cases: list[tuple[str, Any]] = [
@@ -129,6 +291,8 @@ class ExecutionBudgetTests(unittest.TestCase):
         for receipt_id, reservation_id in (
             ("RES-WRONG", "RES-ACTION-001"),
             ("RECEIPT-EXAMPLE-001", "RECEIPT-WRONG"),
+            ("RECEIPT-" + "A" * 101, "RES-ACTION-001"),
+            ("RECEIPT-EXAMPLE-001", "RES-" + "A" * 101),
         ):
             value = receipt()
             value["receipt_id"] = receipt_id
@@ -296,6 +460,33 @@ class ExecutionBudgetTests(unittest.TestCase):
         mismatched_result = {**adapter_result, "id": "ADAPTER-OTHER"}
         with self.assertRaisesRegex(ProjectError, "adapter-result"):
             execution_budget.evaluate_adapter_lifecycle(value, contract, mismatched_result)
+        for replacement in (
+            {**adapter_result, "status": "fail", "findings": [{"code": "failed"}]},
+            {key: observed for key, observed in adapter_result.items() if key != "status"},
+            {**adapter_result, "private_output": "must-not-be-accepted"},
+            {**adapter_result, "evidence": "untrusted"},
+        ):
+            replacement_value = receipt()
+            replacement_value["source"]["sha256"] = hashlib.sha256(
+                canonical_bytes(replacement)
+            ).hexdigest()
+            replacement_value["process"]["argv_sha256"] = hashlib.sha256(
+                canonical_bytes(contract["argv"])
+            ).hexdigest()
+            replacement_value["process"]["deadline_seconds"] = contract["timeout_seconds"]
+            replacement_wall = next(
+                item for item in replacement_value["dimensions"] if item["id"] == "wall"
+            )
+            replacement_wall["used"] = replacement.get("duration_ms", 0)
+            replacement_wall["measurement"]["name"] = contract["tool"]
+            replacement_wall["measurement"]["version"] = contract["version"]
+            with (
+                self.subTest(adapter_result=replacement),
+                self.assertRaisesRegex(ProjectError, "adapter-result"),
+            ):
+                execution_budget.evaluate_adapter_lifecycle(
+                    replacement_value, contract, replacement
+                )
 
     def test_cli_confines_paths_and_rejects_noncanonical_json(self) -> None:
         stream = io.StringIO()

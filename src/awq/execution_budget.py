@@ -64,6 +64,8 @@ def _tool(value: Any) -> dict[str, str]:
         for key in ("name", "version")
     ):
         _fail("tool")
+    if not any(character.isdigit() for character in tool["version"]):
+        _fail("tool-version-floating")
     if not isinstance(tool["sha256"], str) or HASH.fullmatch(tool["sha256"]) is None:
         _fail("tool")
     return {key: str(tool[key]) for key in ("name", "version", "sha256")}
@@ -141,6 +143,7 @@ def _reservation_effect(item: dict[str, Any], evaluated_step: int) -> None:
     if item["effect"] == "external":
         if (
             item["effect_step"] is None
+            or item["settlement_step"] is None
             or item["effect_step"] <= item["created_step"]
             or item["effect_step"] > item["expires_step"]
             or item["effect_step"] > evaluated_step
@@ -165,7 +168,11 @@ def _reservation(
         "id dimension amount state created_step expires_step effect effect_step "
         "settlement_step settled refunded",
     )
-    if not isinstance(item["id"], str) or RESERVATION_ID.fullmatch(item["id"]) is None:
+    if (
+        not isinstance(item["id"], str)
+        or RESERVATION_ID.fullmatch(item["id"]) is None
+        or len(item["id"]) > 100
+    ):
         _fail("reservation-id")
     if (
         item["dimension"] not in dimensions
@@ -369,6 +376,7 @@ def evaluate(value: Any) -> dict[str, Any]:
     if (
         not isinstance(document["receipt_id"], str)
         or RECEIPT_ID.fullmatch(document["receipt_id"]) is None
+        or len(document["receipt_id"]) > 100
     ):
         _fail("receipt-id")
     evaluated_step = _integer(document["evaluated_step"])
@@ -447,10 +455,32 @@ def evaluate_adapter_lifecycle(
         validate_adapter(contract)
     except AdapterError as error:
         raise ProjectError("execution receipt invalid: adapter-contract") from error
+    required_result = {
+        "id",
+        "tool",
+        "version",
+        "status",
+        "evidence",
+        "limitation",
+        "remediation",
+        "duration_ms",
+        "exceptions",
+        "findings",
+    }
+    if not isinstance(adapter_result, dict) or set(adapter_result) not in (
+        required_result,
+        required_result | {"bindings"},
+    ):
+        _fail("adapter-result")
     if (
-        not isinstance(adapter_result, dict)
-        or any(adapter_result.get(name) != contract[name] for name in ("id", "tool", "version"))
-        or type(adapter_result.get("duration_ms")) is not int
+        any(
+            adapter_result[name] != contract[name]
+            for name in ("id", "tool", "version", "evidence", "limitation", "remediation")
+        )
+        or adapter_result["status"] != "pass"
+        or adapter_result["exceptions"] != []
+        or adapter_result["findings"] != []
+        or type(adapter_result["duration_ms"]) is not int
         or not 0 <= adapter_result["duration_ms"] <= MAX_VALUE
     ):
         _fail("adapter-result")
