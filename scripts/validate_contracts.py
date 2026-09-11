@@ -39,6 +39,18 @@ def validate(instance: object, schema_name: str) -> None:
     ).validate(instance)
 
 
+def _validate_structural_refactoring_fixtures() -> None:
+    for language in ("json", "python", "rust"):
+        validate(
+            json.loads(
+                (
+                    ROOT / "fixtures/conforming" / f"structural-refactoring-{language}.json"
+                ).read_bytes()
+            ),
+            "structural-refactoring.schema.json",
+        )
+
+
 def _validate_reliability_fixtures() -> None:
     for name in (
         "templates/reliability-pr.json",
@@ -286,6 +298,7 @@ def main() -> int:
         "fixtures/nonconforming/refactoring/property.json",
     ):
         validate(json.loads((ROOT / name).read_bytes()), "python-refactor.schema.json")
+    _validate_structural_refactoring_fixtures()
     for name in (
         "templates/adversarial-pr.json",
         "templates/adversarial-scheduled.json",

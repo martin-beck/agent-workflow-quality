@@ -23,6 +23,7 @@ from awq import (
     promotion,
     refactor,
     reliability,
+    structural_refactoring,
     test_reports,
     verified_update,
 )
@@ -117,6 +118,9 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("contract")
     item.add_argument("--as-of", required=True)
     _format_argument(item)
+    item = sub.add_parser("structural-refactor-verify")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -149,6 +153,9 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "promotion-evaluate": lambda: promotion.evaluate_file(root, args.evidence, args.as_of),
         "native-map-evaluate": lambda: native_mapping.evaluate_file(root, args.contract),
         "test-report-evaluate": lambda: test_reports.evaluate_file(root, args.contract, args.as_of),
+        "structural-refactor-verify": lambda: structural_refactoring.evaluate_file(
+            root, args.contract
+        ),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,
