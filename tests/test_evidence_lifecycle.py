@@ -40,12 +40,42 @@ def rehash_lineage(value: dict[str, Any]) -> None:
     value["lineage_head_sha256"] = parent
 
 
+def evaluate(value: dict[str, Any]) -> dict[str, Any]:
+    return subject.evaluate(value, AS_OF, subject.GENESIS)
+
+
+def append_contract() -> tuple[dict[str, Any], str]:
+    value = contract()
+    prior = value["lineage_head_sha256"]
+    value["prior_lineage_head_sha256"] = prior
+    record = {
+        "id": "LINEAGE-RECORD-9",
+        "kind": "decision",
+        "parent_sha256": prior,
+        "record_sha256": "",
+        "source_revision": value["source_revision"],
+        "verifier_contract_sha256": "d" * 64,
+        "artifact_sha256": "a" * 64,
+        "evidence_class": "contract-test",
+        "attempt_id": "RUN-100-9",
+        "outcome": "pass",
+        "score": 100,
+        "observed_at": "2026-09-10T00:40:00Z",
+    }
+    record["record_sha256"] = subject.digest(
+        {key: item for key, item in record.items() if key != "record_sha256"}
+    )
+    value["lineage"].append(record)
+    value["lineage_head_sha256"] = record["record_sha256"]
+    return value, prior
+
+
 class EvidenceLifecycleTests(unittest.TestCase):
     def test_complete_contract_is_deterministic_and_non_authorizing(self) -> None:
         value = contract()
         validate(value, "evidence-lifecycle.schema.json")
-        result = subject.evaluate(value, AS_OF)
-        self.assertEqual(result, subject.evaluate(json.loads(canonical_bytes(value)), AS_OF))
+        result = evaluate(value)
+        self.assertEqual(result, evaluate(json.loads(canonical_bytes(value))))
         self.assertEqual("pass", result["status"])
         self.assertEqual("pass", result["quality_status"])
         self.assertEqual("partial", result["publication_status"])
@@ -85,37 +115,37 @@ class EvidenceLifecycleTests(unittest.TestCase):
                 self.subTest(candidate=candidates.index(candidate)),
                 self.assertRaises(ProjectError),
             ):
-                subject.evaluate(candidate, AS_OF)
+                evaluate(candidate)
         hostile = json.loads(
             (ROOT / "fixtures/nonconforming/evidence-lifecycle/broken-parent.json").read_bytes()
         )
         validate(hostile, "evidence-lifecycle.schema.json")
         with self.assertRaises(ProjectError):
-            subject.evaluate(hostile, AS_OF)
+            evaluate(hostile)
 
     def test_validation_outcome_is_distinct_from_score_and_publication(self) -> None:
         value = contract()
         value["lineage"][1]["score"] = -100
         rehash_lineage(value)
-        result = subject.evaluate(value, AS_OF)
+        result = evaluate(value)
         self.assertEqual("pass", result["status"])
         self.assertEqual("partial", result["publication_status"])
         value = contract()
         value["publications"][0]["validation_outcome"] = "fail"
         value["publications"][0]["publication_state"] = "failed"
-        result = subject.evaluate(value, AS_OF)
+        result = evaluate(value)
         self.assertEqual("fail", result["status"])
         self.assertEqual("fail", result["quality_status"])
         self.assertEqual("fail", result["publication_status"])
         value["publications"][0]["publication_state"] = "published"
         value["publications"][1]["publication_state"] = "published"
-        result = subject.evaluate(value, AS_OF)
+        result = evaluate(value)
         self.assertEqual("fail", result["status"])
         self.assertEqual("fail", result["quality_status"])
         self.assertEqual("pass", result["publication_status"])
         value = contract()
         value["publications"][1]["publication_state"] = "unavailable"
-        self.assertEqual("pass", subject.evaluate(value, AS_OF)["status"])
+        self.assertEqual("pass", evaluate(value)["status"])
 
     def test_required_gates_cannot_fail_open_or_publish_without_prerequisites(self) -> None:
         candidates = []
@@ -130,7 +160,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
         candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError):
-                subject.evaluate(candidate, AS_OF)
+                evaluate(candidate)
 
     def test_lineage_anchor_and_cross_lifecycle_artifacts_fail_closed(self) -> None:
         candidates = []
@@ -148,7 +178,66 @@ class EvidenceLifecycleTests(unittest.TestCase):
         candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError):
-                subject.evaluate(candidate, AS_OF)
+                evaluate(candidate)
+
+    def test_trusted_prior_head_rejects_rehashed_history_rewrites(self) -> None:
+        appended, prior = append_contract()
+        validate(appended, "evidence-lifecycle.schema.json")
+        result = subject.evaluate(appended, AS_OF, prior)
+        self.assertEqual("append", result["lineage"]["mode"])
+        self.assertEqual(prior, result["lineage"]["trusted_prior_head_sha256"])
+        self.assertEqual(1, result["lineage"]["appended_records"])
+
+        truncated = contract()
+        truncated["prior_lineage_head_sha256"] = truncated["lineage_head_sha256"]
+        removed_artifact = truncated["lineage"].pop()["artifact_sha256"]
+        truncated["inventory"] = [
+            item for item in truncated["inventory"] if item["artifact_sha256"] != removed_artifact
+        ]
+        rehash_lineage(truncated)
+
+        replaced = contract()
+        replaced["prior_lineage_head_sha256"] = replaced["lineage_head_sha256"]
+        replaced["lineage"][0]["outcome"] = "error"
+        rehash_lineage(replaced)
+
+        reordered = contract()
+        reordered["prior_lineage_head_sha256"] = reordered["lineage_head_sha256"]
+        reordered["lineage"][0], reordered["lineage"][1] = (
+            reordered["lineage"][1],
+            reordered["lineage"][0],
+        )
+        reordered["lineage"][0]["observed_at"], reordered["lineage"][1]["observed_at"] = (
+            reordered["lineage"][1]["observed_at"],
+            reordered["lineage"][0]["observed_at"],
+        )
+        rehash_lineage(reordered)
+
+        for candidate in (truncated, replaced, reordered):
+            with (
+                self.subTest(candidate=candidate["lineage_head_sha256"]),
+                self.assertRaisesRegex(ProjectError, "trusted-prior-head-missing"),
+            ):
+                subject.evaluate(candidate, AS_OF, prior)
+
+        empty_append, prior = append_contract()
+        empty_append["lineage"].pop()
+        rehash_lineage(empty_append)
+        with self.assertRaisesRegex(ProjectError, "lineage-append-empty"):
+            subject.evaluate(empty_append, AS_OF, prior)
+
+    def test_trusted_prior_head_rejects_wrong_or_missing_anchor(self) -> None:
+        value, prior = append_contract()
+        with self.assertRaisesRegex(ProjectError, "trusted-prior-head-mismatch"):
+            subject.evaluate(value, AS_OF, "0" * 64)
+        with self.assertRaisesRegex(ProjectError, "trusted-prior-head-required"):
+            subject.evaluate(value, AS_OF)
+        value["prior_lineage_head_sha256"] = None
+        with self.assertRaisesRegex(ProjectError, "trusted-prior-head-mismatch"):
+            subject.evaluate(value, AS_OF, prior)
+        del value["prior_lineage_head_sha256"]
+        with self.assertRaises(ValidationError):
+            validate(value, "evidence-lifecycle.schema.json")
 
     def test_mixed_reference_types_are_normalized_contract_failures(self) -> None:
         candidates = []
@@ -163,7 +252,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
         candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError):
-                subject.evaluate(candidate, AS_OF)
+                evaluate(candidate)
 
     def test_identifier_component_bound_matches_schema_and_runtime(self) -> None:
         for field, container in (
@@ -182,16 +271,16 @@ class EvidenceLifecycleTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     validate(value, "evidence-lifecycle.schema.json")
                 with self.assertRaises(ProjectError):
-                    subject.evaluate(value, AS_OF)
+                    evaluate(value)
 
     def test_retention_order_bounds_hysteresis_and_all_protections(self) -> None:
-        expected = subject.evaluate(contract(), AS_OF)["retention"]
+        expected = evaluate(contract())["retention"]
         value = contract()
         value["inventory"].reverse()
-        self.assertEqual(expected, subject.evaluate(value, AS_OF)["retention"])
+        self.assertEqual(expected, evaluate(value)["retention"])
         value = contract()
         value["retention_policy"]["maximum_selection_count"] = 1
-        limited = subject.evaluate(value, AS_OF)["retention"]
+        limited = evaluate(value)["retention"]
         selected = [item["id"] for item in limited["candidates"]]
         self.assertEqual(["EVIDENCE-OLD-A"], selected)
         self.assertFalse(limited["low_watermark_reached"])
@@ -199,7 +288,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
         value = contract()
         value["retention_policy"]["high_watermark_bytes"] = 5000
         value["retention_policy"]["low_watermark_bytes"] = 4000
-        self.assertEqual([], subject.evaluate(value, AS_OF)["retention"]["candidates"])
+        self.assertEqual([], evaluate(value)["retention"]["candidates"])
         protected = {
             "EVIDENCE-ACTIVE",
             "EVIDENCE-DIAGNOSTIC",
@@ -229,7 +318,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
         candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError) as caught:
-                subject.evaluate(candidate, AS_OF)
+                evaluate(candidate)
             self.assertNotIn("/home/example", str(caught.exception))
 
     def test_runtime_rejects_hostile_values_beyond_schema_validation(self) -> None:
@@ -299,7 +388,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
         candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError):
-                subject.evaluate(candidate, AS_OF)
+                evaluate(candidate)
 
     def test_cli_reads_only_confined_bounded_contracts(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -317,6 +406,8 @@ class EvidenceLifecycleTests(unittest.TestCase):
                             "contract.json",
                             "--as-of",
                             AS_OF,
+                            "--trusted-prior-head",
+                            "genesis",
                             "--format",
                             "json",
                         ]
@@ -338,6 +429,8 @@ class EvidenceLifecycleTests(unittest.TestCase):
                             "../contract.json",
                             "--as-of",
                             AS_OF,
+                            "--trusted-prior-head",
+                            "genesis",
                         ]
                     ),
                 )

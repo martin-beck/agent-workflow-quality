@@ -36,6 +36,8 @@ LIMITATION = (
     "execution or hosting state. Candidates require owner review and authorize neither deletion "
     "nor upload. Required native and quality gates remain visible and retained."
 )
+GENESIS = "genesis"
+_MISSING = object()
 
 
 def digest(value: object) -> str:
@@ -155,6 +157,30 @@ def _lineage(
     if previous is None:
         _fail("lineage-bound")
     return normalized, previous, artifacts
+
+
+def _trusted_prefix(
+    declared: object,
+    supplied: object,
+    record_digests: list[str],
+) -> tuple[str, str | None, int]:
+    if supplied is _MISSING:
+        _fail("trusted-prior-head-required")
+    if supplied == GENESIS:
+        if declared is not None:
+            _fail("trusted-prior-head-mismatch")
+        return GENESIS, None, len(record_digests)
+    trusted = _hash(supplied)
+    if declared != trusted:
+        _fail("trusted-prior-head-mismatch")
+    try:
+        prefix_end = record_digests.index(trusted) + 1
+    except ValueError:
+        _fail("trusted-prior-head-missing")
+    appended = len(record_digests) - prefix_end
+    if appended < 1:
+        _fail("lineage-append-empty")
+    return "append", trusted, appended
 
 
 def _publication_record(
@@ -346,10 +372,15 @@ def _retention(
     return candidates, remaining, remaining <= config["low_watermark_bytes"]
 
 
-def evaluate(value: Any, as_of: str) -> dict[str, Any]:
+def evaluate(
+    value: Any,
+    as_of: str,
+    trusted_prior_head: object = _MISSING,
+) -> dict[str, Any]:
     item = _object(
         value,
-        "schema_version kind source_revision lineage_head_sha256 lineage publications "
+        "schema_version kind source_revision prior_lineage_head_sha256 "
+        "lineage_head_sha256 lineage publications "
         "retention_policy inventory",
     )
     if (
@@ -363,6 +394,11 @@ def evaluate(value: Any, as_of: str) -> dict[str, Any]:
     lineage, head, lineage_artifacts = _lineage(item["lineage"], source_revision, now)
     if _hash(item["lineage_head_sha256"]) != head:
         _fail("lineage-head")
+    lineage_mode, anchor, appended = _trusted_prefix(
+        item["prior_lineage_head_sha256"],
+        trusted_prior_head,
+        [record["record_sha256"] for record in lineage],
+    )
     publications, quality_status, publication_status = _publications(
         item["publications"], lineage_artifacts
     )
@@ -377,7 +413,14 @@ def evaluate(value: Any, as_of: str) -> dict[str, Any]:
         "schema_version": 1,
         "awq_version": __version__,
         "status": status,
-        "lineage": {"records": len(lineage), "head_sha256": head, "outcomes": outcomes},
+        "lineage": {
+            "records": len(lineage),
+            "head_sha256": head,
+            "mode": lineage_mode,
+            "trusted_prior_head_sha256": anchor,
+            "appended_records": appended,
+            "outcomes": outcomes,
+        },
         "quality_status": quality_status,
         "publication_status": publication_status,
         "publications": publications,
@@ -393,9 +436,14 @@ def evaluate(value: Any, as_of: str) -> dict[str, Any]:
     }
 
 
-def evaluate_file(root: Path, relative: str, as_of: str) -> dict[str, Any]:
+def evaluate_file(
+    root: Path,
+    relative: str,
+    as_of: str,
+    trusted_prior_head: str,
+) -> dict[str, Any]:
     try:
         value = strict_json(read_file(project.confined_path(root, relative), 512_000))
-        return evaluate(value, as_of)
+        return evaluate(value, as_of, trusted_prior_head)
     except Exception as error:
         raise project.ProjectError("evidence lifecycle input is invalid or unavailable") from error

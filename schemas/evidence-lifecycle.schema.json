@@ -34,6 +34,7 @@
       "type": "array"
     },
     "kind": {"const": "evidence-lifecycle"},
+    "prior_lineage_head_sha256": {"oneOf": [{"$ref": "#/$defs/hash"}, {"type": "null"}]},
     "lineage_head_sha256": {"$ref": "#/$defs/hash"},
     "lineage": {
       "items": {
@@ -108,7 +109,7 @@
     "schema_version": {"const": 1},
     "source_revision": {"$ref": "#/$defs/revision"}
   },
-  "required": ["schema_version", "kind", "source_revision", "lineage_head_sha256", "lineage", "publications", "retention_policy", "inventory"],
+  "required": ["schema_version", "kind", "source_revision", "prior_lineage_head_sha256", "lineage_head_sha256", "lineage", "publications", "retention_policy", "inventory"],
   "title": "Immutable evidence lineage, publication outcomes and retention planning",
   "type": "object"
 }

@@ -7,7 +7,8 @@ is offline and read-only:
 ```sh
 awq --root . evidence-lifecycle-evaluate \
   fixtures/conforming/evidence-lifecycle.json \
-  --as-of 2026-09-11T00:00:00Z --format json
+  --as-of 2026-09-11T00:00:00Z \
+  --trusted-prior-head genesis --format json
 ```
 
 The caller-provided time is not authenticated clock evidence. The complete
@@ -22,17 +23,29 @@ machine-readable contract and rejects unknown fields.
 Each observation or decision binds an exact source revision, verifier-contract
 digest, artifact digest, evidence class, attempt identity, outcome, optional
 integer score, and UTC observation time. Its canonical record digest includes
-all those fields and the preceding record digest. The first parent is null, and
-the required document-level `lineage_head_sha256` anchors the expected tail.
-Runtime validation rejects changed records, broken or reordered parents,
-truncated tails, non-monotonic time, a source revision different from the
-document source, and reused record or attempt identities. Every publication and
+all those fields and the preceding record digest. The first parent is null. The
+document declares `prior_lineage_head_sha256` and its current
+`lineage_head_sha256`, while the caller independently supplies
+`--trusted-prior-head`. In append mode, the exact trusted digest must match the
+declaration, occur in the chain, and have at least one successor. Runtime
+validation therefore rejects self-consistent truncation, replacement, or
+reordering of the previously accepted prefix as well as changed records, broken
+parents, non-monotonic time, a source revision different from the document
+source, and reused record or attempt identities. Every publication and
 inventory artifact digest must also identify an artifact present in the lineage.
 
-An outcome is not derived from the score. For example, a high numeric score can
+An outcome is not derived from the score. For example, a high integer score can
 coexist with a failed decision. Digests establish byte identity, not who
-produced the bytes or whether the declared execution happened. Append-only
-lineage is a review contract, not an external transparency service.
+produced the bytes or whether the declared execution happened. The trusted
+prior head must come from an authenticated, previously accepted result and be
+stored outside the candidate document. An attacker who controls both the
+candidate and supplied anchor can rewrite history. `genesis` explicitly
+performs only internal chain validation and makes no append-only comparison.
+AWQ is not an external transparency or timestamping service.
+
+This contract first ships with AWQ v0.33.0. Because the CLI and schema were not
+public in earlier releases, v1 requires `--trusted-prior-head` and the document
+anchor from its first release; there is no legacy unanchored mode.
 
 ## Validation and publication
 
