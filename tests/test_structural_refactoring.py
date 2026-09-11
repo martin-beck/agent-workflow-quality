@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import tempfile
@@ -39,7 +40,63 @@ def replace(value: dict[str, Any], path: tuple[str | int, ...], replacement: obj
     target[path[-1]] = replacement
 
 
+def bind_recipe(value: dict[str, Any]) -> None:
+    normalized, _, _ = subject._recipe(value["recipe"])
+    digest = hashlib.sha256(canonical_bytes(normalized)).hexdigest()
+    value["recipe_sha256"] = digest
+    value["result"]["recipe_sha256"] = digest
+
+
 class StructuralRefactoringTests(unittest.TestCase):
+    def test_recipe_and_result_identity_binding_rejects_transplants(self) -> None:
+        schema = json.loads((ROOT / "schemas/structural-refactoring.schema.json").read_bytes())
+        mutations: tuple[tuple[tuple[str | int, ...], object], ...] = (
+            (("plan_id",), "PLAN-OTHER-STRUCTURAL"),
+            (("result", "plan_id"), "PLAN-OTHER-STRUCTURAL"),
+            (("result", "recipe_sha256"), "f" * 64),
+        )
+        for path, replacement in mutations:
+            value = contract()
+            replace(value, path, replacement)
+            Draft202012Validator(schema).validate(value)
+            with self.subTest(path=path), self.assertRaises(ProjectError):
+                subject.evaluate(value)
+        value = contract()
+        value["recipe"]["tool"]["sha256"] = "0" * 64
+        Draft202012Validator(schema).validate(value)
+        with self.assertRaisesRegex(ProjectError, "recipe-digest"):
+            subject.evaluate(value)
+        bind_recipe(value)
+        value["result"]["recipe_sha256"] = contract()["result"]["recipe_sha256"]
+        Draft202012Validator(schema).validate(value)
+        with self.assertRaisesRegex(ProjectError, "recipe-mismatch"):
+            subject.evaluate(value)
+
+    def test_set_order_is_schema_valid_and_normalized_deterministically(self) -> None:
+        schema = json.loads((ROOT / "schemas/structural-refactoring.schema.json").read_bytes())
+        baseline = subject.evaluate(contract())
+        value = contract()
+        value["recipe"]["behavior_claim"]["evidence_refs"].reverse()
+        value["recipe"]["prohibited_classes"].reverse()
+        value["result"]["fixture_results"].reverse()
+        Draft202012Validator(schema).validate(value)
+        self.assertEqual(baseline, subject.evaluate(value))
+        value = contract()
+        value["recipe"]["scope"]["include_roots"] = {
+            "tests": {"exclude_relative_paths": []},
+            "src": {"exclude_relative_paths": ["generated"]},
+        }
+        bind_recipe(value)
+        reverse = contract()
+        reverse["recipe"]["scope"]["include_roots"] = {
+            "src": {"exclude_relative_paths": ["generated"]},
+            "tests": {"exclude_relative_paths": []},
+        }
+        bind_recipe(reverse)
+        Draft202012Validator(schema).validate(value)
+        Draft202012Validator(schema).validate(reverse)
+        self.assertEqual(subject.evaluate(value), subject.evaluate(reverse))
+
     def test_language_neutral_fixtures_and_python_mapping_are_deterministic(self) -> None:
         schema = json.loads((ROOT / "schemas/structural-refactoring.schema.json").read_bytes())
         Draft202012Validator.check_schema(schema)
@@ -62,6 +119,8 @@ class StructuralRefactoringTests(unittest.TestCase):
     def test_stale_identities_budgets_output_and_convergence_fail_closed(self) -> None:
         mutations: tuple[tuple[tuple[str | int, ...], object], ...] = (
             (("result", "base_commit"), "f" * 40),
+            (("result", "plan_id"), "PLAN-OTHER-STRUCTURAL"),
+            (("result", "recipe_sha256"), "f" * 64),
             (("result", "catalog_sha256"), "f" * 64),
             (("result", "input_tree_sha256"), "f" * 64),
             (("result", "output_tree_sha256"), "f" * 64),
@@ -83,27 +142,34 @@ class StructuralRefactoringTests(unittest.TestCase):
             (("recipe", "verification", "focused_argv", 0), "python -m unittest"),
             (("recipe", "verification", "full_argv", 0, 0), "sh -c"),
             (("recipe", "verification", "full_argv", 0), ["sh", "-c", "echo"]),
-            (("recipe", "scope", "include_paths", 0), "../private"),
-            (("recipe", "scope", "include_paths", 0), "src/.hidden"),
-            (("recipe", "scope", "include_paths", 0), "src/./hidden"),
-            (("recipe", "scope", "include_paths", 0), "src/private marker"),
-            (("recipe", "scope", "exclude_paths", 0), "other/generated"),
+            (("recipe", "scope", "include_roots"), {"../private": {"exclude_relative_paths": []}}),
+            (("recipe", "scope", "include_roots"), {"src/.hidden": {"exclude_relative_paths": []}}),
+            (
+                ("recipe", "scope", "include_roots"),
+                {"src/./hidden": {"exclude_relative_paths": []}},
+            ),
+            (
+                ("recipe", "scope", "include_roots"),
+                {"src/private marker": {"exclude_relative_paths": []}},
+            ),
+            (
+                ("recipe", "scope", "include_roots"),
+                {"src/library": {"exclude_relative_paths": []}},
+            ),
+            (
+                ("recipe", "scope", "include_roots", "src", "exclude_relative_paths", 0),
+                "../generated",
+            ),
             (("recipe", "prohibited_classes"), ["syntax-rewrite"]),
             (("recipe", "application"), "apply"),
             (("native_mapping", "retained"), False),
         )
-        semantic_only = {
-            ("recipe", "scope", "exclude_paths", 0),
-        }
         for path, replacement in mutations:
             value = contract()
             replace(value, path, replacement)
             with self.subTest(path=path):
-                if path in semantic_only:
+                with self.assertRaises(ValidationError):
                     validate(value, "structural-refactoring.schema.json")
-                else:
-                    with self.assertRaises(ValidationError):
-                        validate(value, "structural-refactoring.schema.json")
                 with self.assertRaises(ProjectError):
                     subject.evaluate(value)
         for version in ("1.2-SNAPSHOT", "1.2-main", "1.x"):
@@ -157,10 +223,6 @@ class StructuralRefactoringTests(unittest.TestCase):
                     subject.evaluate(value)
         value = contract()
         value["unknown"] = "not-retained"
-        with self.assertRaises(ProjectError):
-            subject.evaluate(value)
-        value = contract()
-        value["recipe"]["behavior_claim"]["evidence_refs"].reverse()
         with self.assertRaises(ProjectError):
             subject.evaluate(value)
 
@@ -241,26 +303,24 @@ class StructuralRefactoringTests(unittest.TestCase):
         with self.assertRaises(ProjectError):
             subject.evaluate(value)
         value = contract()
-        value["recipe"]["fixtures"]["positive"] = [
-            {
-                "id": "FIXTURE-ZZZ",
-                "path": "fixtures/z.json",
-                "sha256": "1" * 64,
-            },
-            {
-                "id": "FIXTURE-AAA",
-                "path": "fixtures/a.json",
-                "sha256": "2" * 64,
-            },
-        ]
-        with self.assertRaises(ProjectError):
-            subject.evaluate(value)
-        value = contract()
         value["recipe"]["prohibited_classes"] = ["unknown-change"]
         with self.assertRaises(ProjectError):
             subject.evaluate(value)
         value = contract()
         value["recipe"]["prohibited_classes"].append("syntax-rewrite")
+        bind_recipe(value)
+        with self.assertRaises(ProjectError):
+            subject.evaluate(value)
+        value = contract()
+        value["recipe"]["behavior_claim"]["evidence_refs"].append(
+            value["recipe"]["behavior_claim"]["evidence_refs"][0]
+        )
+        with self.assertRaises(ProjectError):
+            subject.evaluate(value)
+        value = contract()
+        value["recipe"]["fixtures"]["positive"].append(
+            dict(value["recipe"]["fixtures"]["positive"][0])
+        )
         with self.assertRaises(ProjectError):
             subject.evaluate(value)
         value = contract()
@@ -272,7 +332,7 @@ class StructuralRefactoringTests(unittest.TestCase):
         with self.assertRaises(ProjectError):
             subject.evaluate(value)
         value = contract()
-        value["recipe"]["scope"]["include_paths"] = ["src", "src/library"]
+        value["recipe"]["scope"]["include_roots"] = {}
         with self.assertRaises(ProjectError):
             subject.evaluate(value)
         value = contract()
