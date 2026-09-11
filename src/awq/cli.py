@@ -27,6 +27,7 @@ from awq import (
     reliability,
     test_reports,
     verified_update,
+    vulnerability_supply,
 )
 from awq.project import ProjectError, confined_root
 from awq.registry import TIERS, RegistryError
@@ -115,6 +116,10 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("native-map-evaluate")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("vulnerability-supply-evaluate")
+    item.add_argument("contract")
+    item.add_argument("--as-of", required=True)
+    _format_argument(item)
     item = sub.add_parser("test-report-evaluate")
     item.add_argument("contract")
     item.add_argument("--as-of", required=True)
@@ -158,6 +163,9 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "check": lambda: commands.check(root, args.tier, args.requirement),
         "promotion-evaluate": lambda: promotion.evaluate_file(root, args.evidence, args.as_of),
         "native-map-evaluate": lambda: native_mapping.evaluate_file(root, args.contract),
+        "vulnerability-supply-evaluate": lambda: vulnerability_supply.evaluate_file(
+            root, args.contract, args.as_of
+        ),
         "test-report-evaluate": lambda: test_reports.evaluate_file(root, args.contract, args.as_of),
         "execution-receipt-evaluate": lambda: execution_budget.evaluate_file(root, args.receipt),
         "evidence-lifecycle-evaluate": lambda: evidence_lifecycle.evaluate_file(
