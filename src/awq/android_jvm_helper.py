@@ -21,6 +21,11 @@ import xml.etree.ElementTree as ElementTree
 from pathlib import Path, PurePosixPath
 from typing import Any
 
+try:
+    from awq import test_reports
+except ModuleNotFoundError:  # Standalone installer layout.
+    import awq_test_reports as test_reports  # type: ignore[import-not-found,no-redef]
+
 SCHEMA_VERSION = 1
 HELPER_VERSION = "1.0.0"
 JAVA_VERSION = "17.0.20.1"
@@ -689,35 +694,18 @@ def _observation(
 
 
 def _suite_counts(path: Path) -> tuple[int, int, int, int]:
-    raw = path.read_bytes()
-    if len(raw) > MAX_REPORT_BYTES:
+    if path.stat().st_size > MAX_REPORT_BYTES:
         raise AndroidJvmError("connected-test report is oversized")
     try:
-        text = raw.decode("utf-8")
-    except UnicodeError as error:
-        raise AndroidJvmError("connected-test report is not UTF-8") from error
-    upper = text.upper()
-    if "<!DOCTYPE" in upper or "<!ENTITY" in upper:
-        raise AndroidJvmError("connected-test report contains forbidden markup")
-    try:
-        document = ElementTree.fromstring(text)  # noqa: S314 - forbidden markup rejected.
-    except ElementTree.ParseError as error:
-        raise AndroidJvmError("connected-test report is malformed") from error
-    suites = [document] if document.tag == "testsuite" else list(document.findall("./testsuite"))
-    if document.tag not in {"testsuite", "testsuites"} or not suites:
-        raise AndroidJvmError("connected-test report contains no suites")
-    totals = [0, 0, 0, 0]
-    for suite in suites:
-        values: list[int] = []
-        for name in ("tests", "failures", "errors", "skipped"):
-            raw_value = suite.attrib.get(name, "0")
-            if not re.fullmatch(r"[0-9]+", raw_value):
-                raise AndroidJvmError("connected-test report contains an invalid count")
-            values.append(int(raw_value))
-        if values[3] > values[0]:
-            raise AndroidJvmError("connected-test skipped count exceeds total tests")
-        totals = [left + right for left, right in zip(totals, values, strict=True)]
-    return tuple(totals)  # type: ignore[return-value]
+        counts = test_reports.parse_junit_report(path)
+    except test_reports.TestReportError as error:
+        raise AndroidJvmError(str(error)) from error
+    return (
+        counts["discovered"],
+        counts["failures"],
+        counts["errors"],
+        counts["skipped"],
+    )
 
 
 def _report_module(root: Path, report: Path) -> str:
@@ -741,7 +729,6 @@ def _connected(root: Path, config: dict[str, Any], digest: str) -> list[dict[str
         raise AndroidJvmError("connected-test report count is outside its bound")
     modules: set[str] = set()
     report_records: list[dict[str, str]] = []
-    tests = failures = errors = skipped = 0
     for report in reports:
         if report.is_symlink() or not report.is_file():
             raise AndroidJvmError("connected-test report is not a regular file")
@@ -749,23 +736,26 @@ def _connected(root: Path, config: dict[str, Any], digest: str) -> list[dict[str
             relative = report.resolve(strict=True).relative_to(root).as_posix()
         except (OSError, ValueError) as error:
             raise AndroidJvmError("connected-test report escapes the repository") from error
-        report_records.append({"path": relative, "sha256": _sha256(report)})
-        modules.add(_report_module(root, report))
-        counts = _suite_counts(report)
-        tests += counts[0]
-        failures += counts[1]
-        errors += counts[2]
-        skipped += counts[3]
-    report_digest = hashlib.sha256(_canonical_bytes(report_records)).hexdigest()
+        module = _report_module(root, report)
+        report_records.append({"module": module, "path": relative, "sha256": _sha256(report)})
+        modules.add(module)
+    try:
+        summary = test_reports.summarize_declared_reports(root, report_records)
+    except test_reports.TestReportError as error:
+        raise AndroidJvmError(str(error)) from error
+    legacy_records = [{"path": item["path"], "sha256": item["sha256"]} for item in report_records]
+    report_digest = hashlib.sha256(_canonical_bytes(legacy_records)).hexdigest()
     _, observation_digest = _observation(root, device, report_digest)
     if not set(device["required_modules"]) <= modules:
         raise AndroidJvmError("required connected-test module evidence is missing")
-    executed = tests - skipped
+    totals = summary["totals"]
+    tests = totals["discovered"]
+    executed = totals["executed"]
     if (
         tests < device["minimum_tests"]
         or executed < device["minimum_executed"]
-        or failures
-        or errors
+        or totals["failures"]
+        or totals["errors"]
     ):
         raise AndroidJvmError("connected-test evidence does not meet the reviewed floor")
     return [
@@ -876,6 +866,7 @@ def _verify_installation() -> None:
             "java_archive_sha256",
             "java_version",
             "schema_version",
+            "test_reports_sha256",
         },
         "installation manifest",
     )
@@ -887,6 +878,7 @@ def _verify_installation() -> None:
         "java_archive_sha256": JAVA_ARCHIVE_SHA256,
         "java_version": JAVA_VERSION,
         "schema_version": 1,
+        "test_reports_sha256": _sha256(Path(test_reports.__file__).resolve()),
     }
     if manifest != expected:
         raise AndroidJvmError("installation manifest differs from the reviewed toolchain")

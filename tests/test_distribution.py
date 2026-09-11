@@ -31,6 +31,7 @@ from awq.release import (
     RELIABILITY_SCHEMA_ASSETS,
     REQUIRED_SCHEMAS,
     SBOM_SCHEMA_ASSETS,
+    TEST_REPORT_SCHEMA_ASSETS,
 )
 from scripts.verify_distribution import DistributionError, inspect_archive, main
 from tests.support import packaged_schema_bytes
@@ -113,6 +114,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -147,6 +149,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -190,6 +193,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -227,6 +231,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -272,6 +277,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -304,6 +310,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/adversarial-campaign.schema.json", b"{}\n"),
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
+                ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -335,6 +342,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | RELIABILITY_SCHEMA_ASSETS
             | ADVERSARIAL_SCHEMA_ASSETS
             | PYTHON_REFACTOR_SCHEMA_ASSETS
+            | TEST_REPORT_SCHEMA_ASSETS
         ):
             members = [
                 (f"awq/schemas/{name}", packaged_schema_bytes(name))
@@ -399,7 +407,7 @@ class DistributionVerificationTests(unittest.TestCase):
             self.assertEqual([], inspect_archive(archive, require_onboarding_assets=False))
             self.assertEqual(3, len(inspect_archive(archive)))
 
-    def test_pre_catalog_v029_archives_retain_their_original_asset_contract(self) -> None:
+    def test_public_v029_archives_retain_their_original_asset_contract(self) -> None:
         schemas = frozenset(
             {
                 "adapter-catalog.schema.json",
@@ -437,12 +445,18 @@ class DistributionVerificationTests(unittest.TestCase):
         ):
             self.assertEqual(
                 [],
-                inspect_archive(archive, require_contract_catalog_assets=False),
+                inspect_archive(
+                    archive,
+                    require_contract_catalog_assets=False,
+                    require_test_report_assets=False,
+                ),
             )
             self.assertEqual(
                 [
                     f"{archive.name}: required packaged schema is missing: "
                     "contract-catalog.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
+                    "test-report-evidence.schema.json",
                     f"{archive.name}: required packaged data is missing: contract_catalog.json",
                 ],
                 inspect_archive(archive),

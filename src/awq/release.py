@@ -46,6 +46,7 @@ PYTHON_REFACTOR_SCHEMA_ASSETS = {"python-refactor.schema.json"}
 ADVERSARIAL_SCHEMA_ASSETS = {"adversarial-campaign.schema.json"}
 RELIABILITY_SCHEMA_ASSETS = {"reliability-budget.schema.json"}
 ONBOARDING_SCHEMA_ASSETS = {"onboarding.schema.json"}
+TEST_REPORT_SCHEMA_ASSETS = {"test-report-evidence.schema.json"}
 ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
 CONTRACT_CATALOG_DATA_ASSETS = {"contract_catalog.json"}
@@ -61,6 +62,7 @@ REQUIRED_SCHEMAS |= (
     | RELIABILITY_SCHEMA_ASSETS
     | ONBOARDING_SCHEMA_ASSETS
     | CONTRACT_CATALOG_SCHEMA_ASSETS
+    | TEST_REPORT_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -236,6 +238,12 @@ def _zip_members(path: Path, epoch: int | None) -> Iterator[ArchiveMember]:
             yield member.filename, archive.read(member), metadata
 
 
+def _excluding_when_disabled(
+    required: frozenset[str], assets: set[str], *, enabled: bool
+) -> frozenset[str]:
+    return required if enabled else required - assets
+
+
 def _required_schemas(
     require_sbom_assets: bool,
     require_provenance_assets: bool,
@@ -248,6 +256,7 @@ def _required_schemas(
     require_reliability_assets: bool,
     require_onboarding_assets: bool,
     require_contract_catalog_assets: bool,
+    require_test_report_assets: bool,
 ) -> frozenset[str]:
     required_schemas = (
         REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
@@ -270,10 +279,15 @@ def _required_schemas(
         required_schemas = required_schemas - RELIABILITY_SCHEMA_ASSETS
     if not require_onboarding_assets:
         required_schemas = required_schemas - ONBOARDING_SCHEMA_ASSETS
-    return (
-        required_schemas
-        if require_contract_catalog_assets
-        else required_schemas - CONTRACT_CATALOG_SCHEMA_ASSETS
+    required_schemas = _excluding_when_disabled(
+        required_schemas,
+        CONTRACT_CATALOG_SCHEMA_ASSETS,
+        enabled=require_contract_catalog_assets,
+    )
+    return _excluding_when_disabled(
+        required_schemas,
+        TEST_REPORT_SCHEMA_ASSETS,
+        enabled=require_test_report_assets,
     )
 
 
@@ -292,6 +306,7 @@ def inspect_archive(
     require_reliability_assets: bool = True,
     require_onboarding_assets: bool = True,
     require_contract_catalog_assets: bool = True,
+    require_test_report_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -306,6 +321,7 @@ def inspect_archive(
         require_reliability_assets,
         require_onboarding_assets,
         require_contract_catalog_assets,
+        require_test_report_assets,
     )
     required_data = (
         REQUIRED_DATA
@@ -799,6 +815,8 @@ def _verify_artifact(
                 >= (0, 23, 0),
                 require_contract_catalog_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 30, 0),
+                require_test_report_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 31, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

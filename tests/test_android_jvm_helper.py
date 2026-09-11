@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest import mock
 
 from awq import android_jvm_helper as helper
+from awq import test_reports
 
 
 def canonical(value: object) -> bytes:
@@ -66,6 +67,9 @@ class AndroidJvmHelperTests(unittest.TestCase):
             "java_archive_sha256": helper.JAVA_ARCHIVE_SHA256,
             "java_version": helper.JAVA_VERSION,
             "schema_version": 1,
+            "test_reports_sha256": hashlib.sha256(
+                Path(test_reports.__file__).read_bytes()
+            ).hexdigest(),
         }
         (self.prefix / "manifest.json").write_bytes(canonical(manifest))
 
@@ -222,7 +226,9 @@ class AndroidJvmHelperTests(unittest.TestCase):
         report = self.project / "app/build/outputs/androidTest-results/device/result.xml"
         report.parent.mkdir(parents=True)
         report.write_text(
-            '<testsuite tests="3" failures="0" errors="0" skipped="1"/>',
+            '<testsuite name="device" tests="3" failures="0" errors="0" skipped="1">'
+            '<testcase name="one"/><testcase name="two"/>'
+            '<testcase name="three"><skipped/></testcase></testsuite>',
             encoding="utf-8",
         )
         records = [
@@ -582,9 +588,13 @@ class AndroidJvmHelperTests(unittest.TestCase):
             (b"\xff", "not UTF-8"),
             (b"<!ENTITY x><testsuite/>", "forbidden"),
             (b"<broken", "malformed"),
-            (b"<x/>", "no suites"),
-            (b'<testsuite tests="x"/>', "invalid count"),
-            (b'<testsuite tests="1" skipped="2"/>', "exceeds"),
+            (b"<x/>", "root is unsupported"),
+            (b'<testsuite name="x" tests="x"/>', "empty suite"),
+            (
+                b'<testsuite name="x" tests="1" failures="0" errors="0" skipped="2">'
+                b'<testcase name="x"><skipped/></testcase></testsuite>',
+                "inconsistent",
+            ),
         ]
         for content, message in cases:
             report.write_bytes(content)
