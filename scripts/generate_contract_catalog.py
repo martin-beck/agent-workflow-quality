@@ -303,9 +303,21 @@ def build_catalog() -> dict[str, Any]:
     return value
 
 
+def _contract_semantic_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: "<release-version>" if key == "awq_version" else _contract_semantic_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_contract_semantic_value(item) for item in value]
+    return value
+
+
 def _semantic(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_bytes())
-    document_sha256 = hashlib.sha256(canonical_bytes(value)).hexdigest()
+    semantic_value = _contract_semantic_value(value)
+    document_sha256 = hashlib.sha256(canonical_bytes(semantic_value)).hexdigest()
     if path.name.endswith(".schema.json"):
         properties = value.get("properties", {})
         return {
@@ -319,11 +331,12 @@ def _semantic(path: Path) -> dict[str, Any]:
             "all_of": len(value.get("allOf", [])),
             "canonical_document_sha256": document_sha256,
         }
+    # Release identity changes on every package publication but does not change
+    # the registry contract. Exact bytes remain independently frozen by sha256.
     return {
         "kind": "structured-registry",
         "schema_version": value.get("schema_version"),
         "keys": sorted(value),
-        "canonical_document_sha256": document_sha256,
     }
 
 
@@ -488,7 +501,9 @@ def render(catalog: dict[str, Any]) -> str:
             "`contracts/contract-baseline-v1.json`. Byte changes require an explicit reviewed "
             "baseline classification. Any change to root properties, required fields, type, "
             "composition, or closure is incompatible and requires a new versioned contract "
-            "identifier and path.",
+            "identifier and path. Structured-registry content may evolve only through an explicit "
+            "compatible classification; changing its schema version or root keys requires a new "
+            "versioned contract.",
             "",
         ]
     )

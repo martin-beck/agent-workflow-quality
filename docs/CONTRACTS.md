@@ -47,4 +47,4 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 
 ## Compatibility policy
 
-Published bytes and a conservative semantic summary are frozen in `contracts/contract-baseline-v1.json`. Byte changes require an explicit reviewed baseline classification. Any change to root properties, required fields, type, composition, or closure is incompatible and requires a new versioned contract identifier and path.
+Published bytes and a conservative semantic summary are frozen in `contracts/contract-baseline-v1.json`. Byte changes require an explicit reviewed baseline classification. Any change to root properties, required fields, type, composition, or closure is incompatible and requires a new versioned contract identifier and path. Structured-registry content may evolve only through an explicit compatible classification; changing its schema version or root keys requires a new versioned contract.
