@@ -75,6 +75,13 @@ def _validate_formal_evidence_fixtures() -> None:
         validate(json.loads((ROOT / name).read_bytes()), "formal-evidence.schema.json")
 
 
+def _validate_formal_receipt_fixture() -> None:
+    validate(
+        json.loads((ROOT / "templates/formal-execution-receipt.json").read_bytes()),
+        "formal-execution-receipt.schema.json",
+    )
+
+
 def _validate_terminology_fixtures() -> None:
     for name in (
         "templates/terminology.json",
@@ -136,6 +143,7 @@ def _validate_execution_receipt_fixtures() -> None:
 
 def main() -> int:
     contract_catalog, _ = load_contract_catalog()
+    _validate_formal_receipt_fixture()
     _validate_test_report_contract()
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())

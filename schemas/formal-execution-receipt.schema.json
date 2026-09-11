@@ -1,0 +1,360 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/formal-execution-receipt.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bounds": {
+      "additionalProperties": {
+        "maximum": 1000000,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "maxProperties": 32,
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]{0,63}$"
+      },
+      "type": "object"
+    },
+    "correspondence": {
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "const": "bounded-trace-correspondence"
+        },
+        "implementation_source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "observation_definition_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "operation_map": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "implementation": {
+                "pattern": "^OP-[0-9]{4}$",
+                "type": "string"
+              },
+              "model": {
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+                "type": "string"
+              }
+            },
+            "required": ["implementation", "model"],
+            "type": "object"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array"
+        },
+        "state_map": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "implementation": {
+                "pattern": "^STATE-[0-9]{4}$",
+                "type": "string"
+              },
+              "model": {
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+                "type": "string"
+              }
+            },
+            "required": ["implementation", "model"],
+            "type": "object"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array"
+        },
+        "trace": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "implementation_operation": {
+                "pattern": "^OP-[0-9]{4}$",
+                "type": "string"
+              },
+              "implementation_state": {
+                "pattern": "^STATE-[0-9]{4}$",
+                "type": "string"
+              },
+              "model_operation": {
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+                "type": "string"
+              },
+              "model_state": {
+                "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+                "type": "string"
+              },
+              "observation_sha256": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "sequence": {
+                "maximum": 255,
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "implementation_operation",
+              "implementation_state",
+              "model_operation",
+              "model_state",
+              "observation_sha256",
+              "sequence"
+            ],
+            "type": "object"
+          },
+          "maxItems": 256,
+          "minItems": 1,
+          "type": "array"
+        },
+        "trace_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "classification",
+        "implementation_source_sha256",
+        "observation_definition_sha256",
+        "operation_map",
+        "state_map",
+        "trace",
+        "trace_sha256"
+      ],
+      "type": "object"
+    },
+    "kind": {
+      "const": "formal-execution-receipt"
+    },
+    "limitations": {
+      "const": [
+        "Execution is evaluated only within the declared finite bounds.",
+        "Counterexample sensitivity is established only for the declared negative model.",
+        "Implementation trace correspondence is caller-declared and is not a refinement proof.",
+        "Consumer-native gates remain authoritative and are not replaced by this receipt."
+      ]
+    },
+    "model": {
+      "additionalProperties": false,
+      "properties": {
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^MODEL-[A-Z0-9]+(?:-[A-Z0-9]+)*$",
+          "type": "string"
+        },
+        "language": {
+          "enum": ["alloy", "rust-kani", "rust-loom", "tla-plus"]
+        },
+        "operations": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "source_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "states": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_-]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "config_sha256",
+        "id",
+        "language",
+        "operations",
+        "source_sha256",
+        "states"
+      ],
+      "type": "object"
+    },
+    "non_claims": {
+      "const": [
+        "implementation-refinement",
+        "liveness-proof",
+        "unbounded-proof",
+        "universal-equivalence"
+      ]
+    },
+    "receipt_id": {
+      "pattern": "^FORMAL-RECEIPT-[A-Z0-9]{4,32}$",
+      "type": "string"
+    },
+    "result": {
+      "additionalProperties": false,
+      "properties": {
+        "counterexample_sha256": {
+          "oneOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "explored_states": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "explored_transitions": {
+          "maximum": 1000000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outcome": {
+          "enum": ["counterexample", "exhausted", "incomplete", "tool-error", "verified"]
+        },
+        "result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "status": {
+          "enum": ["fail", "pass"]
+        }
+      },
+      "required": [
+        "counterexample_sha256",
+        "explored_states",
+        "explored_transitions",
+        "outcome",
+        "result_sha256",
+        "status"
+      ],
+      "type": "object"
+    },
+    "run": {
+      "additionalProperties": false,
+      "properties": {
+        "argv_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "attempt": {
+          "maximum": 1000,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "id": {
+          "pattern": "^RUN-[A-Z0-9]{4,32}$",
+          "type": "string"
+        }
+      },
+      "required": ["argv_sha256", "attempt", "id"],
+      "type": "object"
+    },
+    "schema_version": {
+      "const": 2
+    },
+    "sensitivity": {
+      "additionalProperties": false,
+      "properties": {
+        "config_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "counterexample_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "expected_outcome": {
+          "const": "counterexample"
+        },
+        "model_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "observed_outcome": {
+          "const": "counterexample"
+        }
+      },
+      "required": [
+        "config_sha256",
+        "counterexample_sha256",
+        "expected_outcome",
+        "model_sha256",
+        "observed_outcome"
+      ],
+      "type": "object"
+    },
+    "source": {
+      "additionalProperties": false,
+      "properties": {
+        "commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "tree": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        }
+      },
+      "required": ["commit", "tree"],
+      "type": "object"
+    },
+    "tool": {
+      "additionalProperties": false,
+      "properties": {
+        "adapter_id": {
+          "pattern": "^ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*$",
+          "type": "string"
+        },
+        "executable_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "name": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}$",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}$",
+          "type": "string"
+        }
+      },
+      "required": ["adapter_id", "executable_sha256", "name", "version"],
+      "type": "object"
+    }
+  },
+  "required": [
+    "bounds",
+    "correspondence",
+    "kind",
+    "limitations",
+    "model",
+    "non_claims",
+    "receipt_id",
+    "result",
+    "run",
+    "schema_version",
+    "sensitivity",
+    "source",
+    "tool"
+  ],
+  "title": "AWQ bounded formal execution receipt v2",
+  "type": "object"
+}
