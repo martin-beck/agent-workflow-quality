@@ -66,6 +66,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_unknown_bounds_and_kind_fail_before_exploration",
         "docs/FORMAL_ASSURANCE.md",
     ),
+    "assurance-plan": (
+        "assurance_plan",
+        "AssurancePlanTests",
+        "test_representative_inventories_are_closed_deterministic_and_nonexecuting",
+        "test_orphans_duplicates_ownership_shell_reports_and_cycles_fail_closed",
+        "docs/ASSURANCE_PLANS.md",
+    ),
     "consumer-equivalence": (
         "promotion",
         "PromotionTests",

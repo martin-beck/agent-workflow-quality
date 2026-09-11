@@ -117,6 +117,21 @@ run, attempt and collection provenance.
 unavailable budgets, preserve reserve-before-effect accounting, and report process cleanup and
 sandbox observations without claiming portable containment.
 
+## Consumer assurance plans
+
+The [consumer assurance-plan contract](docs/ASSURANCE_PLANS.md) inventories languages, build
+systems, runtime surfaces and quality domains without replacing their repository-owned gates.
+Validation checks complete ownership, bounded argument arrays, dependency ordering, report
+contracts, unsupported rationales and exact evidence identities, but never executes a declared
+command:
+
+```sh
+awq --root . assurance-plan-check quality/assurance-plan.json --format json
+awq --root . assurance-plan-diff base-plan.json head-plan.json --format json
+```
+
+Declarations without observed identity-bound evidence remain `declared`, never `pass`.
+
 ## Bounded formal and refactoring assurance
 
 See [the formal assurance contract](docs/FORMAL_ASSURANCE.md) for the executable finite-state model,

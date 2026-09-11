@@ -274,6 +274,26 @@ class ContractCatalogTests(unittest.TestCase):
             path.write_text(json.dumps(changed), encoding="utf-8")
             self.assertNotEqual(initial, generator._semantic(path))
 
+    def test_new_contracts_require_complete_explicit_initial_classification(self) -> None:
+        catalog = self.document()
+        baseline = generator.build_baseline(catalog)
+        added = baseline["entries"].pop()
+        evolved = generator.evolve_baseline(
+            catalog,
+            baseline,
+            [added["id"]],
+            [],
+            "Initial reviewed assurance contract registration.",
+        )
+        self.assertEqual(
+            "Initial reviewed assurance contract registration.",
+            evolved["entries"][-1]["history"][0]["reason"],
+        )
+        baseline = generator.build_baseline(catalog)
+        baseline["entries"].pop()
+        with self.assertRaises(ValueError):
+            generator.evolve_baseline(catalog, baseline, [], [], "Reviewed but incomplete.")
+
     def test_nested_schema_release_identity_is_not_contract_drift(self) -> None:
         first: dict[str, Any] = {"oneOf": [{"const": {"awq_version": "0.29.0", "kind": "stable"}}]}
         with tempfile.TemporaryDirectory() as directory:

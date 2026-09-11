@@ -53,6 +53,12 @@ hostile executable fixtures, a fixed offline test argv, implementation mapping, 
 exact compatibility baseline. Catalog presence is never semantic evidence by itself; the mapped
 implementation test remains the evidence authority.
 
+`awq.assurance_plan` validates a consumer-owned repository-domain inventory, bounded native gate
+declarations and optional AR-0034 evidence identities. It performs no subprocess execution. Its
+content-minimized evaluation distinguishes declarations from observed results, retains optional
+native mappings, rejects stale or revision-mismatched evidence and classifies plan removals as
+weakening for review.
+
 The adapter runner is an execution boundary, not a process sandbox. It does not initiate network
 access or forward credentials, but a configured third-party executable remains trusted project
 tooling and could use ambient host capabilities. Contracts and their argv therefore require normal

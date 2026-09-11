@@ -13,7 +13,7 @@ from typing import Any
 import jsonschema
 from referencing import Registry, Resource
 
-from awq import lifecycle_model, sbom
+from awq import assurance_plan, lifecycle_model, sbom
 from awq.commands import evidence
 from awq.contracts import load_contract_catalog
 from awq.release import BUILD_CONSTRAINTS_SHA256
@@ -118,6 +118,13 @@ def _validate_test_report_contract() -> None:
         },
         "test-report-evidence.schema.json",
     )
+
+
+def _validate_assurance_plan_fixtures() -> None:
+    for path in sorted((ROOT / "fixtures/conforming/assurance-plan").glob("*.json")):
+        value = json.loads(path.read_bytes())
+        validate(value, "assurance-plan.schema.json")
+        assurance_plan.validate(value)
 
 
 def _validate_execution_receipt_fixtures() -> None:
@@ -253,6 +260,7 @@ def main() -> int:
         validate(json.loads((ROOT / name).read_bytes()), "consumer-equivalence.schema.json")
     _validate_native_mapping_fixtures()
     _validate_execution_receipt_fixtures()
+    _validate_assurance_plan_fixtures()
     for name in (
         "fixtures/conforming/assurance/model.json",
         "fixtures/conforming/assurance/refactor.json",
