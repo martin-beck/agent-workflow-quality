@@ -237,6 +237,12 @@ class OnboardingTests(unittest.TestCase):
             self.assertFalse(subject.package_diagnostic()["assets_complete"])
 
     def test_upgrade_same_downgrade_legacy_and_changed_policy_are_explicit(self) -> None:
+        template = migration()
+        reviewed_upgrade = json.loads(
+            (ROOT / "fixtures/conforming/onboarding/upgrade.json").read_bytes()
+        )
+        self.assertEqual(reviewed_upgrade, template)
+        self.assertEqual(("0.30.0", "0.31.0"), (template["from_version"], template["to_version"]))
         for folder, name, status in (
             ("conforming", "upgrade", "pass"),
             ("conforming", "same", "pass"),
