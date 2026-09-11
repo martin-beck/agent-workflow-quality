@@ -457,12 +457,15 @@ class DistributionVerificationTests(unittest.TestCase):
                     archive,
                     require_contract_catalog_assets=False,
                     require_test_report_assets=False,
+                    require_execution_assets=False,
                 ),
             )
             self.assertEqual(
                 [
                     f"{archive.name}: required packaged schema is missing: "
                     "contract-catalog.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
+                    "execution-receipt.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
                     "test-report-evidence.schema.json",
                     f"{archive.name}: required packaged data is missing: contract_catalog.json",
