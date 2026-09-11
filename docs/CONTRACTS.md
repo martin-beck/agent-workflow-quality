@@ -20,6 +20,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-CONTROL-SOURCE-REGISTRY-V1` | 1 | `json-schema` | `schemas/control-source-registry.schema.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
 | `AWQ-CONTRACT-CONTROL-SOURCES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/control_sources.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
 | `AWQ-CONTRACT-EVIDENCE-IDENTITY-V1` | 1 | `json-schema` | `schemas/evidence-identity.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
+| `AWQ-CONTRACT-EVIDENCE-LIFECYCLE-V1` | 1 | `json-schema` | `schemas/evidence-lifecycle.schema.json` | `awq.tests.evidence_lifecycle.EvidenceLifecycleTests` | [docs/EVIDENCE_LIFECYCLE.md](EVIDENCE_LIFECYCLE.md) |
 | `AWQ-CONTRACT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/evidence.schema.json` | `awq.tests.commands_cli.CommandTests` | [docs/QUALITY.md](QUALITY.md) |
 | `AWQ-CONTRACT-EXCEPTION-V1` | 1 | `json-schema` | `schemas/exception.schema.json` | `awq.tests.governance.ExceptionLifecycleTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |
 | `AWQ-CONTRACT-FORMAL-ADAPTER-CONTRACT-V1` | 1 | `json-schema` | `schemas/formal-adapter-contract.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_ADAPTERS.md](FORMAL_ADAPTERS.md) |

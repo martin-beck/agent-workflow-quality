@@ -22,10 +22,12 @@ machine-readable contract and rejects unknown fields.
 Each observation or decision binds an exact source revision, verifier-contract
 digest, artifact digest, evidence class, attempt identity, outcome, optional
 integer score, and UTC observation time. Its canonical record digest includes
-all those fields and the preceding record digest. The first parent is null.
+all those fields and the preceding record digest. The first parent is null, and
+the required document-level `lineage_head_sha256` anchors the expected tail.
 Runtime validation rejects changed records, broken or reordered parents,
-non-monotonic time, a source revision different from the document source, and
-reused record or attempt identities.
+truncated tails, non-monotonic time, a source revision different from the
+document source, and reused record or attempt identities. Every publication and
+inventory artifact digest must also identify an artifact present in the lineage.
 
 An outcome is not derived from the score. For example, a high numeric score can
 coexist with a failed decision. Digests establish byte identity, not who
@@ -38,7 +40,9 @@ Publication records keep `validation_outcome` separate from
 `publication_state`. A validated optional artifact can therefore report a
 failed or unavailable upload without rewriting validation as failure. Required
 artifacts affect the overall result and must be published after their ordered
-prerequisites. A required record with `continue_on_error: true` is rejected;
+prerequisites. Publication may truthfully succeed for evidence whose validation
+failed; quality remains failed while publication remains successful. A required
+record with `continue_on_error: true` is rejected;
 required quality gates cannot be hidden by workflow fail-open behavior.
 
 Optional upload failure produces partial publication status while preserving

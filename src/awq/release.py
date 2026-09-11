@@ -252,34 +252,25 @@ def _required_schemas(
     require_evidence_lifecycle_assets: bool,
     require_contract_catalog_assets: bool,
 ) -> frozenset[str]:
-    required_schemas = (
-        REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
+    requirements = (
+        (require_sbom_assets, SBOM_SCHEMA_ASSETS),
+        (require_provenance_assets, PROVENANCE_SCHEMA_ASSETS),
+        (require_promotion_assets, PROMOTION_SCHEMA_ASSETS),
+        (require_formal_assets, FORMAL_SCHEMA_ASSETS),
+        (require_lifecycle_assets, LIFECYCLE_SCHEMA_ASSETS),
+        (require_refinement_assets, REFINEMENT_SCHEMA_ASSETS),
+        (require_python_refactor_assets, PYTHON_REFACTOR_SCHEMA_ASSETS),
+        (require_adversarial_assets, ADVERSARIAL_SCHEMA_ASSETS),
+        (require_reliability_assets, RELIABILITY_SCHEMA_ASSETS),
+        (require_onboarding_assets, ONBOARDING_SCHEMA_ASSETS),
+        (require_evidence_lifecycle_assets, EVIDENCE_LIFECYCLE_SCHEMA_ASSETS),
+        (require_contract_catalog_assets, CONTRACT_CATALOG_SCHEMA_ASSETS),
     )
-    if not require_provenance_assets:
-        required_schemas = required_schemas - PROVENANCE_SCHEMA_ASSETS
-    if not require_promotion_assets:
-        required_schemas = required_schemas - PROMOTION_SCHEMA_ASSETS
-    if not require_formal_assets:
-        required_schemas = required_schemas - FORMAL_SCHEMA_ASSETS
-    if not require_lifecycle_assets:
-        required_schemas = required_schemas - LIFECYCLE_SCHEMA_ASSETS
-    if not require_refinement_assets:
-        required_schemas = required_schemas - REFINEMENT_SCHEMA_ASSETS
-    if not require_python_refactor_assets:
-        required_schemas = required_schemas - PYTHON_REFACTOR_SCHEMA_ASSETS
-    if not require_adversarial_assets:
-        required_schemas = required_schemas - ADVERSARIAL_SCHEMA_ASSETS
-    if not require_reliability_assets:
-        required_schemas = required_schemas - RELIABILITY_SCHEMA_ASSETS
-    if not require_onboarding_assets:
-        required_schemas = required_schemas - ONBOARDING_SCHEMA_ASSETS
-    if not require_evidence_lifecycle_assets:
-        required_schemas = required_schemas - EVIDENCE_LIFECYCLE_SCHEMA_ASSETS
-    return (
-        required_schemas
-        if require_contract_catalog_assets
-        else required_schemas - CONTRACT_CATALOG_SCHEMA_ASSETS
-    )
+    excluded: set[str] = set()
+    for required, assets in requirements:
+        if not required:
+            excluded.update(assets)
+    return REQUIRED_SCHEMAS - excluded
 
 
 def inspect_archive(

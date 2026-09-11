@@ -21,7 +21,7 @@
           "artifact_sha256": {"$ref": "#/$defs/hash"},
           "bytes": {"maximum": 100000000000, "minimum": 1, "type": "integer"},
           "created_at": {"$ref": "#/$defs/timestamp"},
-          "id": {"maxLength": 100, "pattern": "^EVIDENCE-[A-Z0-9]+(?:-[A-Z0-9]+){0,8}$", "type": "string"},
+          "id": {"maxLength": 100, "pattern": "^EVIDENCE-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
           "provenance": {"enum": ["complete", "partial", "unknown"]},
           "run_id": {"oneOf": [{"$ref": "#/$defs/run"}, {"type": "null"}]},
           "run_state": {"enum": ["active", "completed", "cancelled", "unknown"]},
@@ -34,6 +34,7 @@
       "type": "array"
     },
     "kind": {"const": "evidence-lifecycle"},
+    "lineage_head_sha256": {"$ref": "#/$defs/hash"},
     "lineage": {
       "items": {
         "additionalProperties": false,
@@ -41,7 +42,7 @@
           "artifact_sha256": {"$ref": "#/$defs/hash"},
           "attempt_id": {"$ref": "#/$defs/run"},
           "evidence_class": {"enum": ["mechanical", "contract-test", "property-or-fuzz", "bounded-model", "environmental"]},
-          "id": {"maxLength": 100, "pattern": "^LINEAGE-[A-Z0-9]+(?:-[A-Z0-9]+){0,8}$", "type": "string"},
+          "id": {"maxLength": 100, "pattern": "^LINEAGE-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
           "kind": {"enum": ["observation", "decision"]},
           "observed_at": {"$ref": "#/$defs/timestamp"},
           "outcome": {"enum": ["pass", "fail", "error", "cancelled", "unavailable"]},
@@ -64,9 +65,9 @@
         "properties": {
           "artifact_sha256": {"$ref": "#/$defs/hash"},
           "continue_on_error": {"type": "boolean"},
-          "id": {"maxLength": 100, "pattern": "^ARTIFACT-[A-Z0-9]+(?:-[A-Z0-9]+){0,8}$", "type": "string"},
+          "id": {"maxLength": 100, "pattern": "^ARTIFACT-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
           "prerequisites": {
-            "items": {"maxLength": 100, "pattern": "^ARTIFACT-[A-Z0-9]+(?:-[A-Z0-9]+){0,8}$", "type": "string"},
+            "items": {"maxLength": 100, "pattern": "^ARTIFACT-[A-Z0-9]+(?:-[A-Z0-9]+){0,7}$", "type": "string"},
             "maxItems": 16,
             "type": "array",
             "uniqueItems": true
@@ -107,7 +108,7 @@
     "schema_version": {"const": 1},
     "source_revision": {"$ref": "#/$defs/revision"}
   },
-  "required": ["schema_version", "kind", "source_revision", "lineage", "publications", "retention_policy", "inventory"],
+  "required": ["schema_version", "kind", "source_revision", "lineage_head_sha256", "lineage", "publications", "retention_policy", "inventory"],
   "title": "Immutable evidence lineage, publication outcomes and retention planning",
   "type": "object"
 }

@@ -92,6 +92,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_cli_json_success_failure_and_error",
         "docs/QUALITY.md",
     ),
+    "evidence-lifecycle": (
+        "evidence_lifecycle",
+        "EvidenceLifecycleTests",
+        "test_complete_contract_is_deterministic_and_non_authorizing",
+        "test_lineage_anchor_and_cross_lifecycle_artifacts_fail_closed",
+        "docs/EVIDENCE_LIFECYCLE.md",
+    ),
     "exception": (
         "governance",
         "ExceptionLifecycleTests",
@@ -350,6 +357,22 @@ def build_baseline(catalog: dict[str, Any]) -> dict[str, Any]:
     return {"schema_version": 1, "entries": entries}
 
 
+def _compatible_semantics(previous: object, current: object) -> bool:
+    if previous == current:
+        return True
+    if not isinstance(previous, dict) or not isinstance(current, dict):
+        return False
+    if (
+        previous.get("kind") != "structured-registry"
+        or current.get("kind") != "structured-registry"
+    ):
+        return False
+    ignored = {"canonical_document_sha256"}
+    return {key: value for key, value in previous.items() if key not in ignored} == {
+        key: value for key, value in current.items() if key not in ignored
+    }
+
+
 def verify_baseline(catalog: dict[str, Any], baseline: object) -> None:  # noqa: C901
     """Reject missing, stale, malformed, duplicate or semantically changed baselines."""
     if (
@@ -389,7 +412,7 @@ def verify_baseline(catalog: dict[str, Any], baseline: object) -> None:  # noqa:
             seen_hashes.add(record["sha256"])
             if index == 0:
                 initial_semantic = record["semantic"]
-            elif record["semantic"] != initial_semantic:
+            elif not _compatible_semantics(initial_semantic, record["semantic"]):
                 raise ValueError(f"{identifier} compatible history changes semantics")
         actual[identifier] = item
     if list(actual) != sorted(actual) or set(actual) != set(expected):
@@ -527,9 +550,9 @@ def main() -> int:  # noqa: C901
                 selected_id = item["id"]
                 candidate = current[selected_id]["history"][-1]
                 latest = item["history"][-1]
-                if (
-                    latest["semantic"] != candidate["semantic"]
-                    or latest["semantic_sha256"] != candidate["semantic_sha256"]
+                if not _compatible_semantics(latest["semantic"], candidate["semantic"]) or (
+                    latest["semantic_sha256"] != candidate["semantic_sha256"]
+                    and latest["semantic"] == candidate["semantic"]
                 ):
                     raise SystemExit(
                         f"{selected_id} is semantically incompatible; add a new versioned "

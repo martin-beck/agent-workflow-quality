@@ -13,6 +13,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+from jsonschema import ValidationError
+
 from awq import evidence_lifecycle as subject
 from awq.cli import main
 from awq.project import ProjectError
@@ -27,6 +29,17 @@ def contract() -> dict[str, Any]:
     return dict(json.loads((ROOT / "fixtures/conforming/evidence-lifecycle.json").read_bytes()))
 
 
+def rehash_lineage(value: dict[str, Any]) -> None:
+    parent = None
+    for record in value["lineage"]:
+        record["parent_sha256"] = parent
+        record["record_sha256"] = subject.digest(
+            {key: item for key, item in record.items() if key != "record_sha256"}
+        )
+        parent = record["record_sha256"]
+    value["lineage_head_sha256"] = parent
+
+
 class EvidenceLifecycleTests(unittest.TestCase):
     def test_complete_contract_is_deterministic_and_non_authorizing(self) -> None:
         value = contract()
@@ -36,7 +49,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
         self.assertEqual("pass", result["status"])
         self.assertEqual("pass", result["quality_status"])
         self.assertEqual("partial", result["publication_status"])
-        self.assertEqual(2, result["lineage"]["records"])
+        self.assertEqual(8, result["lineage"]["records"])
         self.assertEqual(1, result["lineage"]["outcomes"]["fail"])
         self.assertEqual(
             ["EVIDENCE-OLD-A", "EVIDENCE-OLD-B"],
@@ -83,10 +96,7 @@ class EvidenceLifecycleTests(unittest.TestCase):
     def test_validation_outcome_is_distinct_from_score_and_publication(self) -> None:
         value = contract()
         value["lineage"][1]["score"] = -100
-        record = value["lineage"][1]
-        record["record_sha256"] = subject.digest(
-            {key: item for key, item in record.items() if key != "record_sha256"}
-        )
+        rehash_lineage(value)
         result = subject.evaluate(value, AS_OF)
         self.assertEqual("pass", result["status"])
         self.assertEqual("partial", result["publication_status"])
@@ -96,6 +106,13 @@ class EvidenceLifecycleTests(unittest.TestCase):
         result = subject.evaluate(value, AS_OF)
         self.assertEqual("fail", result["status"])
         self.assertEqual("fail", result["quality_status"])
+        self.assertEqual("fail", result["publication_status"])
+        value["publications"][0]["publication_state"] = "published"
+        value["publications"][1]["publication_state"] = "published"
+        result = subject.evaluate(value, AS_OF)
+        self.assertEqual("fail", result["status"])
+        self.assertEqual("fail", result["quality_status"])
+        self.assertEqual("pass", result["publication_status"])
         value = contract()
         value["publications"][1]["publication_state"] = "unavailable"
         self.assertEqual("pass", subject.evaluate(value, AS_OF)["status"])
@@ -106,9 +123,6 @@ class EvidenceLifecycleTests(unittest.TestCase):
         value["publications"][0]["continue_on_error"] = True
         candidates.append(value)
         value = contract()
-        value["publications"][0]["validation_outcome"] = "fail"
-        candidates.append(value)
-        value = contract()
         value["publications"][1]["prerequisites"] = ["ARTIFACT-MISSING"]
         candidates.append(value)
         value = contract()
@@ -117,6 +131,58 @@ class EvidenceLifecycleTests(unittest.TestCase):
         for candidate in candidates:
             with self.assertRaises(ProjectError):
                 subject.evaluate(candidate, AS_OF)
+
+    def test_lineage_anchor_and_cross_lifecycle_artifacts_fail_closed(self) -> None:
+        candidates = []
+        value = contract()
+        value["lineage"].pop()
+        candidates.append(value)
+        value = contract()
+        value["lineage_head_sha256"] = "0" * 64
+        candidates.append(value)
+        value = contract()
+        value["publications"][0]["artifact_sha256"] = "0" * 64
+        candidates.append(value)
+        value = contract()
+        value["inventory"][0]["artifact_sha256"] = "0" * 64
+        candidates.append(value)
+        for candidate in candidates:
+            with self.assertRaises(ProjectError):
+                subject.evaluate(candidate, AS_OF)
+
+    def test_mixed_reference_types_are_normalized_contract_failures(self) -> None:
+        candidates = []
+        value = contract()
+        value["publications"][1]["prerequisites"] = ["ARTIFACT-GATE", 1]
+        candidates.append(value)
+        value = contract()
+        value["retention_policy"]["protected_references"]["open_pr_heads"] = [
+            "b" * 40,
+            1,
+        ]
+        candidates.append(value)
+        for candidate in candidates:
+            with self.assertRaises(ProjectError):
+                subject.evaluate(candidate, AS_OF)
+
+    def test_identifier_component_bound_matches_schema_and_runtime(self) -> None:
+        for field, container in (
+            ("id", "lineage"),
+            ("id", "publications"),
+            ("id", "inventory"),
+        ):
+            value = contract()
+            prefix = {
+                "lineage": "LINEAGE",
+                "publications": "ARTIFACT",
+                "inventory": "EVIDENCE",
+            }[container]
+            value[container][0][field] = prefix + "-A-B-C-D-E-F-G-H-I"
+            with self.subTest(container=container):
+                with self.assertRaises(ValidationError):
+                    validate(value, "evidence-lifecycle.schema.json")
+                with self.assertRaises(ProjectError):
+                    subject.evaluate(value, AS_OF)
 
     def test_retention_order_bounds_hysteresis_and_all_protections(self) -> None:
         expected = subject.evaluate(contract(), AS_OF)["retention"]
@@ -203,9 +269,6 @@ class EvidenceLifecycleTests(unittest.TestCase):
         candidates.append(value)
         value = contract()
         value["publications"][0]["continue_on_error"] = 1
-        candidates.append(value)
-        value = contract()
-        value["publications"][0]["validation_outcome"] = "fail"
         candidates.append(value)
         value = contract()
         value["publications"] *= 65
