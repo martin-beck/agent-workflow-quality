@@ -30,6 +30,10 @@ def receipt() -> dict[str, Any]:
     return dict(json.loads((ROOT / "templates/formal-execution-receipt.json").read_bytes()))
 
 
+def expectation() -> dict[str, Any]:
+    return dict(json.loads((ROOT / "templates/formal-execution-expectation.json").read_bytes()))
+
+
 def bind_trace(value: dict[str, Any]) -> dict[str, Any]:
     value["correspondence"]["trace_sha256"] = hashlib.sha256(
         canonical_bytes(value["correspondence"]["trace"])
@@ -41,8 +45,8 @@ class FormalExecutionReceiptTests(unittest.TestCase):
     def test_exact_receipt_schema_runtime_and_content_minimized_cli(self) -> None:
         value = receipt()
         validate(value, "formal-execution-receipt.schema.json")
-        result = formal_receipts.evaluate(value)
-        self.assertEqual(result, formal_receipts.evaluate(copy.deepcopy(value)))
+        result = formal_receipts.evaluate(value, expectation())
+        self.assertEqual(result, formal_receipts.evaluate(copy.deepcopy(value), expectation()))
         self.assertEqual("pass", result["status"])
         self.assertEqual("exhausted", result["outcome"])
         self.assertEqual("bounded-trace-correspondence", result["correspondence"]["classification"])
@@ -59,6 +63,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                     str(ROOT),
                     "formal-receipt-evaluate",
                     "templates/formal-execution-receipt.json",
+                    "templates/formal-execution-expectation.json",
                     "--format",
                     "json",
                 ]
@@ -93,22 +98,90 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 target = target[key]
             target[path[-1]] = replacement
             with self.subTest(path=path), self.assertRaises(ProjectError):
-                formal_receipts.evaluate(value)
+                formal_receipts.evaluate(value, expectation())
 
         with self.assertRaises(ProjectError):
             formal_receipts.evaluate_file(
-                ROOT, "fixtures/nonconforming/formal-receipt/proof-inflation.json"
+                ROOT,
+                "fixtures/nonconforming/formal-receipt/proof-inflation.json",
+                "templates/formal-execution-expectation.json",
             )
+
+    def test_trusted_expectation_rejects_valid_identity_substitutions(self) -> None:
+        changes: list[tuple[list[str], Any]] = [
+            (["source", "commit"], "9" * 40),
+            (["source", "tree"], "8" * 40),
+            (["model", "source_sha256"], "9" * 64),
+            (["model", "config_sha256"], "8" * 64),
+            (["tool", "executable_sha256"], "7" * 64),
+            (["tool", "version"], "1.8.1"),
+            (["run", "id"], "RUN-OTHER"),
+            (["run", "attempt"], 2),
+            (["run", "argv_sha256"], "6" * 64),
+            (["bounds", "max_steps"], 17),
+            (["result", "outcome"], "verified"),
+        ]
+        for path, replacement in changes:
+            value = receipt()
+            target: Any = value
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = replacement
+            if path[0] == "result":
+                value["result"]["status"] = "pass"
+            with (
+                self.subTest(path=path),
+                self.assertRaisesRegex(ProjectError, "trusted-identity-mismatch"),
+            ):
+                formal_receipts.evaluate(value, expectation())
+
+    def test_sensitivity_execution_mutation_and_result_bindings_fail_closed(self) -> None:
+        for field, replacement in (
+            ("tool_sha256", "0" * 64),
+            ("run_sha256", "0" * 64),
+            ("bounds_sha256", "0" * 64),
+            ("mutation_sha256", "0" * 63),
+            ("result_sha256", "0" * 63),
+            ("mutation_id", "MUTATION-" + "A" * 101),
+        ):
+            value = receipt()
+            value["sensitivity"][field] = replacement
+            with self.subTest(field=field), self.assertRaises(ProjectError):
+                formal_receipts.evaluate(value, expectation())
+
+    def test_floating_versions_identifier_bounds_and_collection_edges_fail(self) -> None:
+        for field, replacement in (
+            (["tool", "version"], "latest"),
+            (["model", "id"], "MODEL-" + "A" * 101),
+            (["tool", "adapter_id"], "ADAPTER-" + "A" * 101),
+            (["model", "operations"], []),
+            (["model", "states"], ["z", "a"]),
+            (["bounds"], {}),
+            (["bounds"], {"z": 1, "a": 1}),
+            (["correspondence", "classification"], "proof"),
+            (["correspondence", "trace"], []),
+        ):
+            value = receipt()
+            target: Any = value
+            for key in field[:-1]:
+                target = target[key]
+            target[field[-1]] = replacement
+            with self.subTest(field=field), self.assertRaises(ProjectError):
+                formal_receipts.evaluate(value, expectation())
 
     def test_counterexample_and_incomplete_outcome_semantics(self) -> None:
         counterexample = receipt()
         counterexample["result"].update(
             status="fail", outcome="counterexample", counterexample_sha256="8" * 64
         )
-        self.assertEqual("fail", formal_receipts.evaluate(counterexample)["status"])
+        expected = expectation()
+        expected["expected_outcome"] = "counterexample"
+        self.assertEqual("fail", formal_receipts.evaluate(counterexample, expected)["status"])
         incomplete = receipt()
         incomplete["result"].update(status="fail", outcome="incomplete")
-        self.assertEqual("incomplete", formal_receipts.evaluate(incomplete)["outcome"])
+        expected = expectation()
+        expected["expected_outcome"] = "incomplete"
+        self.assertEqual("incomplete", formal_receipts.evaluate(incomplete, expected)["outcome"])
         for outcome, digest in (
             ("counterexample", None),
             ("incomplete", "8" * 64),
@@ -121,7 +194,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 counterexample_sha256=digest,
             )
             with self.subTest(outcome=outcome), self.assertRaises(ProjectError):
-                formal_receipts.evaluate(value)
+                formal_receipts.evaluate(value, expectation())
 
     def test_incomplete_duplicate_and_reordered_mappings_fail(self) -> None:
         for field in ("operation_map", "state_map"):
@@ -143,7 +216,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 else:
                     value["correspondence"][field][1]["model"] = "unknown"
                 with self.subTest(field=field, mode=mode), self.assertRaises(ProjectError):
-                    formal_receipts.evaluate(value)
+                    formal_receipts.evaluate(value, expectation())
 
     def test_trace_order_mapping_and_digest_are_bound(self) -> None:
         cases = []
@@ -161,7 +234,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
         cases.append(value)
         for value in cases:
             with self.subTest(value=value), self.assertRaises(ProjectError):
-                formal_receipts.evaluate(value)
+                formal_receipts.evaluate(value, expectation())
 
     def test_schema_and_runtime_reject_closed_leaf_shapes(self) -> None:
         cases = []
@@ -186,7 +259,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 with self.assertRaises(jsonschema.ValidationError):
                     validate(value, "formal-execution-receipt.schema.json")
                 with self.assertRaises(ProjectError) as caught:
-                    formal_receipts.evaluate(value)
+                    formal_receipts.evaluate(value, expectation())
                 self.assertNotIn("PRIVATE-OUTPUT", str(caught.exception))
 
     def test_canonical_bounded_confined_file_contract(self) -> None:
@@ -194,7 +267,12 @@ class FormalExecutionReceiptTests(unittest.TestCase):
             root = Path(directory)
             path = root / "receipt.json"
             path.write_bytes(canonical_bytes(receipt()))
-            self.assertEqual("pass", formal_receipts.evaluate_file(root, "receipt.json")["status"])
+            expected_path = root / "expected.json"
+            expected_path.write_bytes(canonical_bytes(expectation()))
+            self.assertEqual(
+                "pass",
+                formal_receipts.evaluate_file(root, "receipt.json", "expected.json")["status"],
+            )
             for relative in (
                 "../receipt.json",
                 "/private/receipt.json",
@@ -204,11 +282,11 @@ class FormalExecutionReceiptTests(unittest.TestCase):
                 "missing.json",
             ):
                 with self.subTest(relative=relative), self.assertRaises(ProjectError):
-                    formal_receipts.evaluate_file(root, relative)
+                    formal_receipts.evaluate_file(root, relative, "expected.json")
             link = root / "link.json"
             link.symlink_to(path)
             with self.assertRaises(ProjectError):
-                formal_receipts.evaluate_file(root, "link.json")
+                formal_receipts.evaluate_file(root, "link.json", "expected.json")
             for raw in (
                 canonical_bytes(receipt()).rstrip(),
                 b'{"kind":"formal-execution-receipt","kind":"proof"}\n',
@@ -217,7 +295,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
             ):
                 path.write_bytes(raw)
                 with self.assertRaises(ProjectError):
-                    formal_receipts.evaluate_file(root, "receipt.json")
+                    formal_receipts.evaluate_file(root, "receipt.json", "expected.json")
 
 
 if __name__ == "__main__":

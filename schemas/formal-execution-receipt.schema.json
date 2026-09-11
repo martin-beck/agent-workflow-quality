@@ -149,6 +149,7 @@
           "type": "string"
         },
         "id": {
+          "maxLength": 100,
           "pattern": "^MODEL-[A-Z0-9]+(?:-[A-Z0-9]+)*$",
           "type": "string"
         },
@@ -273,6 +274,10 @@
     "sensitivity": {
       "additionalProperties": false,
       "properties": {
+        "bounds_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
         "config_sha256": {
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
@@ -288,16 +293,43 @@
           "pattern": "^[0-9a-f]{64}$",
           "type": "string"
         },
+        "mutation_id": {
+          "maxLength": 100,
+          "pattern": "^MUTATION-[A-Z0-9]+(?:-[A-Z0-9]+)*$",
+          "type": "string"
+        },
+        "mutation_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
         "observed_outcome": {
           "const": "counterexample"
+        },
+        "result_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "run_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "tool_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
         }
       },
       "required": [
+        "bounds_sha256",
         "config_sha256",
         "counterexample_sha256",
         "expected_outcome",
         "model_sha256",
-        "observed_outcome"
+        "mutation_id",
+        "mutation_sha256",
+        "observed_outcome",
+        "result_sha256",
+        "run_sha256",
+        "tool_sha256"
       ],
       "type": "object"
     },
@@ -320,6 +352,7 @@
       "additionalProperties": false,
       "properties": {
         "adapter_id": {
+          "maxLength": 100,
           "pattern": "^ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*$",
           "type": "string"
         },
@@ -332,7 +365,7 @@
           "type": "string"
         },
         "version": {
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}$",
+          "pattern": "^(?=.*[0-9])[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}$",
           "type": "string"
         }
       },

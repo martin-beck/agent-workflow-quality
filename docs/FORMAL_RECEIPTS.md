@@ -17,15 +17,19 @@ The normalized result binds a result digest, explored state/transition counts, a
 - `counterexample` with fail status and an exact counterexample digest;
 - `incomplete` or `tool-error` with fail status and no counterexample digest.
 
-A pass is evidence only for the exact model, configuration, tool, run, and finite bounds. It is not
-an unbounded proof.
+A separately supplied trusted expectation repeats the exact source, model, configuration, tool,
+run, argv, bounds, and expected outcome. Evaluation fails unless every normalized identity matches;
+the receipt cannot establish its own expected identity. Tool versions must contain a numeric
+component, and all identifiers and echoed evidence remain bounded. A pass is evidence only for the
+trusted exact identity and is not an unbounded proof.
 
 ## Counterexample sensitivity
 
-Every receipt includes a separately digested negative model and configuration whose expected and
-observed outcomes are both `counterexample`. The negative model must differ from the primary model.
-This demonstrates sensitivity to one reviewed defect only; it does not establish complete mutation
-coverage or tool correctness.
+Every receipt includes a separately digested negative model, configuration, reviewed mutation and
+negative result whose expected and observed outcomes are both `counterexample`. Exact commitments
+bind the sensitivity run to the primary tool, run/argv and finite bounds. The negative model must
+differ from the primary model. This demonstrates sensitivity to one reviewed defect only; it does
+not establish complete mutation coverage or tool correctness.
 
 ## Implementation trace correspondence
 
@@ -44,7 +48,9 @@ Use the stricter model-specific [refinement map](REFINEMENT.md) where its fixed 
 Validate the synthetic example with:
 
 ~~~sh
-awq --root . formal-receipt-evaluate templates/formal-execution-receipt.json --format json
+awq --root . formal-receipt-evaluate \
+  templates/formal-execution-receipt.json \
+  templates/formal-execution-expectation.json --format json
 ~~~
 
 The [schema](../schemas/formal-execution-receipt.schema.json) and zero-dependency runtime validator

@@ -53,6 +53,13 @@ def _token(value: Any, pattern: str, label: str) -> str:
     return value
 
 
+def _identifier(value: Any, pattern: str, label: str) -> str:
+    token = _token(value, pattern, label)
+    if len(token) > 100:
+        _fail(label)
+    return token
+
+
 def _digest(value: Any, label: str) -> str:
     return _token(value, HASH, label)
 
@@ -88,7 +95,7 @@ def _model(value: Any) -> dict[str, Any]:
     )
     language = _token(model["language"], r"(?:alloy|rust-kani|rust-loom|tla-plus)", "language")
     return {
-        "id": _token(model["id"], r"MODEL-[A-Z0-9]+(?:-[A-Z0-9]+)*", "model-id"),
+        "id": _identifier(model["id"], r"MODEL-[A-Z0-9]+(?:-[A-Z0-9]+)*", "model-id"),
         "language": language,
         "source_sha256": _digest(model["source_sha256"], "model-source-digest"),
         "config_sha256": _digest(model["config_sha256"], "model-config-digest"),
@@ -99,10 +106,15 @@ def _model(value: Any) -> dict[str, Any]:
 
 def _tool(value: Any) -> dict[str, Any]:
     tool = _object(value, ("adapter_id", "name", "version", "executable_sha256"), "tool")
+    version = _token(tool["version"], r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}", "tool-version")
+    if not any(character.isdigit() for character in version):
+        _fail("tool-version-floating")
     return {
-        "adapter_id": _token(tool["adapter_id"], r"ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*", "adapter-id"),
+        "adapter_id": _identifier(
+            tool["adapter_id"], r"ADAPTER-[A-Z0-9]+(?:-[A-Z0-9]+)*", "adapter-id"
+        ),
         "name": _token(tool["name"], r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}", "tool-name"),
-        "version": _token(tool["version"], r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}", "tool-version"),
+        "version": version,
         "executable_sha256": _digest(tool["executable_sha256"], "tool-digest"),
     }
 
@@ -168,14 +180,26 @@ def _result(value: Any) -> dict[str, Any]:
     }
 
 
-def _sensitivity(value: Any, model: dict[str, Any]) -> dict[str, str]:
+def _sensitivity(
+    value: Any,
+    model: dict[str, Any],
+    tool: dict[str, Any],
+    run: dict[str, Any],
+    bounds: dict[str, int],
+) -> dict[str, str]:
     sensitivity = _object(
         value,
         (
             "model_sha256",
             "config_sha256",
+            "mutation_id",
+            "mutation_sha256",
+            "tool_sha256",
+            "run_sha256",
+            "bounds_sha256",
             "expected_outcome",
             "observed_outcome",
+            "result_sha256",
             "counterexample_sha256",
         ),
         "sensitivity",
@@ -187,11 +211,28 @@ def _sensitivity(value: Any, model: dict[str, Any]) -> dict[str, str]:
         _fail("sensitivity-expectation")
     if sensitivity["observed_outcome"] != "counterexample":
         _fail("sensitivity-outcome")
+    for field, expected in (
+        ("tool_sha256", hashlib.sha256(canonical_bytes(tool)).hexdigest()),
+        ("run_sha256", hashlib.sha256(canonical_bytes(run)).hexdigest()),
+        ("bounds_sha256", hashlib.sha256(canonical_bytes(bounds)).hexdigest()),
+    ):
+        if _digest(sensitivity[field], "sensitivity-" + field) != expected:
+            _fail("sensitivity-execution-binding")
     return {
         "model_sha256": model_digest,
         "config_sha256": _digest(sensitivity["config_sha256"], "sensitivity-config-digest"),
+        "mutation_id": _identifier(
+            sensitivity["mutation_id"],
+            r"MUTATION-[A-Z0-9]+(?:-[A-Z0-9]+)*",
+            "sensitivity-mutation-id",
+        ),
+        "mutation_sha256": _digest(sensitivity["mutation_sha256"], "sensitivity-mutation-digest"),
+        "tool_sha256": sensitivity["tool_sha256"],
+        "run_sha256": sensitivity["run_sha256"],
+        "bounds_sha256": sensitivity["bounds_sha256"],
         "expected_outcome": "counterexample",
         "observed_outcome": "counterexample",
+        "result_sha256": _digest(sensitivity["result_sha256"], "sensitivity-result-digest"),
         "counterexample_sha256": _digest(
             sensitivity["counterexample_sha256"], "sensitivity-counterexample-digest"
         ),
@@ -275,7 +316,27 @@ def _correspondence(value: Any, model: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def evaluate(value: Any) -> dict[str, Any]:
+def _expectation(value: Any) -> dict[str, Any]:
+    expected = _object(
+        value,
+        ("source", "model", "tool", "run", "bounds", "expected_outcome"),
+        "expectation",
+    )
+    return {
+        "source": _source(expected["source"]),
+        "model": _model(expected["model"]),
+        "tool": _tool(expected["tool"]),
+        "run": _run(expected["run"]),
+        "bounds": _bounds(expected["bounds"]),
+        "expected_outcome": _token(
+            expected["expected_outcome"],
+            r"(?:counterexample|exhausted|incomplete|tool-error|verified)",
+            "expected-outcome",
+        ),
+    }
+
+
+def evaluate(value: Any, expected_value: Any) -> dict[str, Any]:
     """Validate a closed receipt and return only bounded identity commitments."""
     receipt = _object(
         value,
@@ -307,7 +368,18 @@ def evaluate(value: Any) -> dict[str, Any]:
     run = _run(receipt["run"])
     bounds = _bounds(receipt["bounds"])
     result = _result(receipt["result"])
-    sensitivity = _sensitivity(receipt["sensitivity"], model)
+    expected = _expectation(expected_value)
+    observed_identity = {
+        "source": source,
+        "model": model,
+        "tool": tool,
+        "run": run,
+        "bounds": bounds,
+        "expected_outcome": result["outcome"],
+    }
+    if observed_identity != expected:
+        _fail("trusted-identity-mismatch")
+    sensitivity = _sensitivity(receipt["sensitivity"], model, tool, run, bounds)
     correspondence = _correspondence(receipt["correspondence"], model)
     if receipt["non_claims"] != list(NON_CLAIMS):
         _fail("proof-inflation")
@@ -337,21 +409,31 @@ def evaluate(value: Any) -> dict[str, Any]:
     }
 
 
-def evaluate_file(root: Path, relative: str) -> dict[str, Any]:
-    """Read one canonical bounded receipt confined below the selected root."""
+def _relative_json(value: Any) -> str:
     if (
-        not isinstance(relative, str)
-        or len(relative) > 200
-        or re.fullmatch(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_.-]+)*[.]json", relative) is None
-        or any(part in (".", "..") for part in relative.split("/"))
-        or root.is_symlink()
+        not isinstance(value, str)
+        or len(value) > 200
+        or re.fullmatch(r"[A-Za-z0-9_-]+(?:/[A-Za-z0-9_.-]+)*[.]json", value) is None
+        or any(part in (".", "..") for part in value.split("/"))
     ):
         _fail("path")
+    return value
+
+
+def evaluate_file(root: Path, relative: str, expected_relative: str) -> dict[str, Any]:
+    """Read one receipt plus its trusted expectation below the selected root."""
+    receipt_path = _relative_json(relative)
+    expectation_path = _relative_json(expected_relative)
+    if root.is_symlink():
+        _fail("path")
     try:
-        raw = read_file(root.resolve(strict=True) / relative, MAX_BYTES)
+        resolved_root = root.resolve(strict=True)
+        raw = read_file(resolved_root / receipt_path, MAX_BYTES)
+        expected_raw = read_file(resolved_root / expectation_path, MAX_BYTES)
         value = strict_json(raw)
+        expected = strict_json(expected_raw)
     except (OSError, ValueError, ReleaseError) as error:
         raise ProjectError(
             "formal execution receipt invalid: unreadable-or-noncanonical"
         ) from error
-    return evaluate(value)
+    return evaluate(value, expected)
