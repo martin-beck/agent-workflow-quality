@@ -107,7 +107,16 @@ def _model(value: Any) -> dict[str, Any]:
 def _tool(value: Any) -> dict[str, Any]:
     tool = _object(value, ("adapter_id", "name", "version", "executable_sha256"), "tool")
     version = _token(tool["version"], r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}", "tool-version")
-    if not any(character.isdigit() for character in version):
+    segments = re.split(r"[._+-]", version.casefold())
+    floating = re.compile(
+        r"(?:dev|head|latest|main|master|nightly|release|snapshot|tip|trunk|x)[0-9]*"
+    )
+    if (
+        not version[0].isdigit()
+        or any(not segment for segment in segments)
+        or any(floating.fullmatch(segment) is not None for segment in segments)
+        or version.count("+") > 1
+    ):
         _fail("tool-version-floating")
     return {
         "adapter_id": _identifier(
@@ -319,20 +328,40 @@ def _correspondence(value: Any, model: dict[str, Any]) -> dict[str, Any]:
 def _expectation(value: Any) -> dict[str, Any]:
     expected = _object(
         value,
-        ("source", "model", "tool", "run", "bounds", "expected_outcome"),
+        (
+            "schema_version",
+            "kind",
+            "source",
+            "model",
+            "tool",
+            "run",
+            "bounds",
+            "expected_outcome",
+            "sensitivity",
+        ),
         "expectation",
     )
+    if _integer(expected["schema_version"], 1, 1, "expectation-schema-version") != 1:
+        _fail("expectation-schema-version")
+    if expected["kind"] != "formal-execution-expectation":
+        _fail("expectation-kind")
+    source = _source(expected["source"])
+    model = _model(expected["model"])
+    tool = _tool(expected["tool"])
+    run = _run(expected["run"])
+    bounds = _bounds(expected["bounds"])
     return {
-        "source": _source(expected["source"]),
-        "model": _model(expected["model"]),
-        "tool": _tool(expected["tool"]),
-        "run": _run(expected["run"]),
-        "bounds": _bounds(expected["bounds"]),
+        "source": source,
+        "model": model,
+        "tool": tool,
+        "run": run,
+        "bounds": bounds,
         "expected_outcome": _token(
             expected["expected_outcome"],
             r"(?:counterexample|exhausted|incomplete|tool-error|verified)",
             "expected-outcome",
         ),
+        "sensitivity": _sensitivity(expected["sensitivity"], model, tool, run, bounds),
     }
 
 
@@ -377,9 +406,12 @@ def evaluate(value: Any, expected_value: Any) -> dict[str, Any]:
         "bounds": bounds,
         "expected_outcome": result["outcome"],
     }
-    if observed_identity != expected:
+    expected_identity = {key: value for key, value in expected.items() if key != "sensitivity"}
+    if observed_identity != expected_identity:
         _fail("trusted-identity-mismatch")
     sensitivity = _sensitivity(receipt["sensitivity"], model, tool, run, bounds)
+    if sensitivity != expected["sensitivity"]:
+        _fail("trusted-identity-mismatch")
     correspondence = _correspondence(receipt["correspondence"], model)
     if receipt["non_claims"] != list(NON_CLAIMS):
         _fail("proof-inflation")

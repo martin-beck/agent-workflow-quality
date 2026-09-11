@@ -164,6 +164,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_wrong_identities_bounds_outcomes_and_proof_inflation_fail_closed",
         "docs/FORMAL_RECEIPTS.md",
     ),
+    "formal-execution-expectation": (
+        "formal_receipts",
+        "FormalExecutionReceiptTests",
+        "test_exact_receipt_schema_runtime_and_content_minimized_cli",
+        "test_trusted_expectation_binds_complete_sensitivity",
+        "docs/FORMAL_RECEIPTS.md",
+    ),
     "hosting-observation": (
         "governance",
         "HostingObservationTests",
@@ -306,6 +313,7 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
     ),
 }
 VERSIONS = {
+    "formal-execution-expectation": 1,
     "formal-execution-receipt": 2,
     "project-policy": 3,
     "lock": 2,

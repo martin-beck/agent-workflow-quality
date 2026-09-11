@@ -45,6 +45,7 @@ class FormalExecutionReceiptTests(unittest.TestCase):
     def test_exact_receipt_schema_runtime_and_content_minimized_cli(self) -> None:
         value = receipt()
         validate(value, "formal-execution-receipt.schema.json")
+        validate(expectation(), "formal-execution-expectation.schema.json")
         result = formal_receipts.evaluate(value, expectation())
         self.assertEqual(result, formal_receipts.evaluate(copy.deepcopy(value), expectation()))
         self.assertEqual("pass", result["status"])
@@ -149,9 +150,38 @@ class FormalExecutionReceiptTests(unittest.TestCase):
             with self.subTest(field=field), self.assertRaises(ProjectError):
                 formal_receipts.evaluate(value, expectation())
 
+        for version in ("latest2", "2026-main1", "1.0-SNAPSHOT2"):
+            value = receipt()
+            value["tool"]["version"] = version
+            with (
+                self.subTest(schema_version=version),
+                self.assertRaises(jsonschema.ValidationError),
+            ):
+                validate(value, "formal-execution-receipt.schema.json")
+
+    def test_trusted_expectation_binds_complete_sensitivity(self) -> None:
+        for field, replacement in (
+            ("model_sha256", "7" * 64),
+            ("config_sha256", "6" * 64),
+            ("mutation_id", "MUTATION-OTHER"),
+            ("mutation_sha256", "5" * 64),
+            ("result_sha256", "4" * 64),
+            ("counterexample_sha256", "3" * 64),
+        ):
+            value = receipt()
+            value["sensitivity"][field] = replacement
+            with (
+                self.subTest(field=field),
+                self.assertRaisesRegex(ProjectError, "trusted-identity-mismatch"),
+            ):
+                formal_receipts.evaluate(value, expectation())
+
     def test_floating_versions_identifier_bounds_and_collection_edges_fail(self) -> None:
         for field, replacement in (
             (["tool", "version"], "latest"),
+            (["tool", "version"], "latest2"),
+            (["tool", "version"], "2026-main1"),
+            (["tool", "version"], "1.0-SNAPSHOT2"),
             (["model", "id"], "MODEL-" + "A" * 101),
             (["tool", "adapter_id"], "ADAPTER-" + "A" * 101),
             (["model", "operations"], []),

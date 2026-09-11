@@ -1,0 +1,19 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/formal-execution-expectation.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "bounds": {"$ref": "formal-execution-receipt.schema.json#/properties/bounds"},
+    "expected_outcome": {"enum": ["counterexample", "exhausted", "incomplete", "tool-error", "verified"]},
+    "kind": {"const": "formal-execution-expectation"},
+    "model": {"$ref": "formal-execution-receipt.schema.json#/properties/model"},
+    "run": {"$ref": "formal-execution-receipt.schema.json#/properties/run"},
+    "schema_version": {"const": 1},
+    "sensitivity": {"$ref": "formal-execution-receipt.schema.json#/properties/sensitivity"},
+    "source": {"$ref": "formal-execution-receipt.schema.json#/properties/source"},
+    "tool": {"$ref": "formal-execution-receipt.schema.json#/properties/tool"}
+  },
+  "required": ["bounds", "expected_outcome", "kind", "model", "run", "schema_version", "sensitivity", "source", "tool"],
+  "title": "Trusted formal execution expectation v1",
+  "type": "object"
+}

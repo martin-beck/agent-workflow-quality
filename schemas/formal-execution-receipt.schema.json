@@ -365,7 +365,8 @@
           "type": "string"
         },
         "version": {
-          "pattern": "^(?=.*[0-9])[A-Za-z0-9][A-Za-z0-9_.+-]{0,99}$",
+          "maxLength": 100,
+          "pattern": "^(?!.*[+].*[+])(?!.*(?:^|[._+-])(?:[dD][eE][vV]|[hH][eE][aA][dD]|[lL][aA][tT][eE][sS][tT]|[mM][aA][iI][nN]|[mM][aA][sS][tT][eE][rR]|[nN][iI][gG][hH][tT][lL][yY]|[rR][eE][lL][eE][aA][sS][eE]|[sS][nN][aA][pP][sS][hH][oO][tT]|[tT][iI][pP]|[tT][rR][uU][nN][kK]|[xX])[0-9]*(?:$|[._+-]))[0-9][A-Za-z0-9]*(?:[._+-][A-Za-z0-9]+)*$",
           "type": "string"
         }
       },

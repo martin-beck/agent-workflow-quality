@@ -17,10 +17,11 @@ The normalized result binds a result digest, explored state/transition counts, a
 - `counterexample` with fail status and an exact counterexample digest;
 - `incomplete` or `tool-error` with fail status and no counterexample digest.
 
-A separately supplied trusted expectation repeats the exact source, model, configuration, tool,
-run, argv, bounds, and expected outcome. Evaluation fails unless every normalized identity matches;
+A separately supplied, [versioned trusted expectation](../schemas/formal-execution-expectation.schema.json)
+repeats the exact source, model, configuration, tool, run, argv, bounds, expected outcome, and the
+complete negative sensitivity identity and evidence commitments. Evaluation fails unless every normalized identity matches;
 the receipt cannot establish its own expected identity. Tool versions must contain a numeric
-component, and all identifiers and echoed evidence remain bounded. A pass is evidence only for the
+component and reject ref-like labels even when digits are appended; all identifiers and echoed evidence remain bounded. A pass is evidence only for the
 trusted exact identity and is not an unbounded proof.
 
 ## Counterexample sensitivity
@@ -53,7 +54,8 @@ awq --root . formal-receipt-evaluate \
   templates/formal-execution-expectation.json --format json
 ~~~
 
-The [schema](../schemas/formal-execution-receipt.schema.json) and zero-dependency runtime validator
+The [receipt schema](../schemas/formal-execution-receipt.schema.json),
+[expectation schema](../schemas/formal-execution-expectation.schema.json), and zero-dependency runtime validator
 reject unknown fields, duplicate JSON keys, noncanonical or oversized files, unsafe paths, wrong
 identities, invalid bounds/outcome combinations, missing or reordered maps, trace mismatches,
 unsuccessful negative-model observations, changed limitations, and stronger proof claims.
