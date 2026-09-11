@@ -242,7 +242,7 @@ class OnboardingTests(unittest.TestCase):
             (ROOT / "fixtures/conforming/onboarding/upgrade.json").read_bytes()
         )
         self.assertEqual(reviewed_upgrade, template)
-        self.assertEqual(("0.30.0", "0.31.0"), (template["from_version"], template["to_version"]))
+        self.assertEqual(("0.31.0", "0.32.0"), (template["from_version"], template["to_version"]))
         for folder, name, status in (
             ("conforming", "upgrade", "pass"),
             ("conforming", "same", "pass"),
@@ -266,9 +266,9 @@ class OnboardingTests(unittest.TestCase):
             self.assertEqual(before, canonical_bytes(value))
             self.assertEqual(result, subject.migration(copy.deepcopy(value)))
         for from_version, to_version in (
-            ("0.14.0", "0.31.0"),
-            ("0.31.0", "0.14.0"),
-            ("0.31.0", "1.0.0"),
+            ("0.14.0", "0.32.0"),
+            ("0.32.0", "0.14.0"),
+            ("0.32.0", "1.0.0"),
         ):
             self.assertIn(
                 "unsupported-version-family",
@@ -283,13 +283,13 @@ class OnboardingTests(unittest.TestCase):
             ("schema_version", True),
             ("schema_version", 2),
             ("from_version", "main"),
-            ("to_version", "00.31.0"),
-            ("to_version", "0.31.0rc1"),
+            ("to_version", "00.32.0"),
+            ("to_version", "0.32.0rc1"),
             ("policy_schema", True),
             ("lock_schema", 0),
             ("current_policy_sha256", "../PRIVATE"),
             ("source_commit", "main"),
-            ("tag_object", "v0.31.0"),
+            ("tag_object", "v0.32.0"),
         ]
         for field, value in changes:
             with self.subTest(field=field), self.assertRaises(ProjectError):
@@ -353,7 +353,7 @@ class OnboardingTests(unittest.TestCase):
             ("a" * 40, 0),
             ("a" * 39, 1),
             ("main", 1),
-            ("v0.31.0", 1),
+            ("v0.32.0", 1),
             ("PRIVATE; exit 0", 1),
         ):
             result = subprocess.run(

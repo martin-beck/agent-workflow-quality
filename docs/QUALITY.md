@@ -34,6 +34,11 @@ the canonical reviewed source and scope set, match its evidence and platform cla
 at the declared evaluation time. Producer, tool and run identities remain source-specific. V1
 remains legacy digest-only comparison evidence and is never promoted to v2 correlation quality.
 
+Execution receipts use bounded multidimensional budgets and reserve-before-effect lifecycle records.
+They fail closed on incomplete dimensions, over-settlement, stale active reservations, missing
+process cleanup and unsupported isolation claims. Their finite model is not an enforcement,
+containment, billing or implementation-refinement proof.
+
 Standards mappings are review evidence, not certification evidence. Each one names a pinned source
 edition and known control, relationship strength, rationale, evidence class, limitation, and
 reviewer. Schema and runtime tests reject unknown fields, floating or stale editions, removed

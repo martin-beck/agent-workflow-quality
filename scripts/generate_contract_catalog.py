@@ -94,6 +94,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_cli_json_success_failure_and_error",
         "docs/QUALITY.md",
     ),
+    "execution-receipt": (
+        "execution_budget",
+        "ExecutionBudgetTests",
+        "test_complete_receipt_is_deterministic_and_content_minimized",
+        "test_reservation_conservation_and_effect_order_fail_closed",
+        "docs/EXECUTION_RECEIPTS.md",
+    ),
     "exception": (
         "governance",
         "ExceptionLifecycleTests",

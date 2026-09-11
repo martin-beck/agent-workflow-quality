@@ -21,6 +21,7 @@ from awq.release import (
     ADVERSARIAL_SCHEMA_ASSETS,
     CONTRACT_CATALOG_DATA_ASSETS,
     CONTRACT_CATALOG_SCHEMA_ASSETS,
+    EXECUTION_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -115,6 +116,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
+                ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -150,6 +152,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
+                ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -194,6 +197,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
+                ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -232,6 +236,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
+                ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -278,6 +283,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
+                ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -311,6 +317,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/reliability-budget.schema.json", b"{}\n"),
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
+                ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -343,6 +350,7 @@ class DistributionVerificationTests(unittest.TestCase):
             | ADVERSARIAL_SCHEMA_ASSETS
             | PYTHON_REFACTOR_SCHEMA_ASSETS
             | TEST_REPORT_SCHEMA_ASSETS
+            | EXECUTION_SCHEMA_ASSETS
         ):
             members = [
                 (f"awq/schemas/{name}", packaged_schema_bytes(name))
@@ -449,6 +457,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     archive,
                     require_contract_catalog_assets=False,
                     require_test_report_assets=False,
+                    require_execution_assets=False,
                 ),
             )
             self.assertEqual(
@@ -456,8 +465,38 @@ class DistributionVerificationTests(unittest.TestCase):
                     f"{archive.name}: required packaged schema is missing: "
                     "contract-catalog.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
+                    "execution-receipt.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
                     "test-report-evidence.schema.json",
                     f"{archive.name}: required packaged data is missing: contract_catalog.json",
+                ],
+                inspect_archive(archive),
+            )
+
+    def test_execution_schema_is_required_and_historical_contract_is_preserved(self) -> None:
+        members = [
+            (f"awq/schemas/{name}", packaged_schema_bytes(name))
+            for name in sorted(REQUIRED_SCHEMAS)
+            if name not in EXECUTION_SCHEMA_ASSETS
+        ]
+        members.extend(
+            (f"awq/data/{name}", b"{}\n")
+            for name in (
+                "adapter_catalog.json",
+                "compatibility.json",
+                "agent_recipes.json",
+                "contract_catalog.json",
+            )
+        )
+        for archive in (
+            self.wheel("pre-execution-receipt.whl", members),
+            self.tarball("pre-execution-receipt.tar.gz", members),
+        ):
+            self.assertEqual([], inspect_archive(archive, require_execution_assets=False))
+            self.assertEqual(
+                [
+                    f"{archive.name}: required packaged schema is missing: "
+                    "execution-receipt.schema.json"
                 ],
                 inspect_archive(archive),
             )
