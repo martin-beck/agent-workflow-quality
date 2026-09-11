@@ -21,6 +21,10 @@ MAX_BYTES = 256_000
 MAX_VALUE = 10**15
 HASH = re.compile(r"[0-9a-f]{64}", re.ASCII)
 TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,63}", re.ASCII)
+FLOATING_VERSION = re.compile(
+    r"(?:dev|head|latest|main|master|nightly|release|snapshot|tip|trunk|x)[0-9]*",
+    re.ASCII | re.IGNORECASE,
+)
 RECEIPT_ID = re.compile(r"RECEIPT-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
 RESERVATION_ID = re.compile(r"RES-[A-Z0-9]+(?:-[A-Z0-9]+)*", re.ASCII)
 DIMENSIONS = {
@@ -64,7 +68,14 @@ def _tool(value: Any) -> dict[str, str]:
         for key in ("name", "version")
     ):
         _fail("tool")
-    if not any(character.isdigit() for character in tool["version"]):
+    version = tool["version"]
+    segments = re.split(r"[._+-]", version)
+    if (
+        not version[0].isdigit()
+        or any(not segment for segment in segments)
+        or any(FLOATING_VERSION.fullmatch(segment) is not None for segment in segments)
+        or version.count("+") > 1
+    ):
         _fail("tool-version-floating")
     if not isinstance(tool["sha256"], str) or HASH.fullmatch(tool["sha256"]) is None:
         _fail("tool")
@@ -175,7 +186,8 @@ def _reservation(
     ):
         _fail("reservation-id")
     if (
-        item["dimension"] not in dimensions
+        not isinstance(item["dimension"], str)
+        or item["dimension"] not in dimensions
         or dimensions[item["dimension"]]["classification"] == "unavailable"
     ):
         _fail("reservation-dimension")
@@ -371,7 +383,7 @@ def evaluate(value: Any) -> dict[str, Any]:
         "schema_version receipt_id source evaluated_step dimensions reservations process "
         "sandbox limitation",
     )
-    if document["schema_version"] != 1:
+    if type(document["schema_version"]) is not int or document["schema_version"] != 1:
         _fail("schema-version")
     if (
         not isinstance(document["receipt_id"], str)
@@ -445,6 +457,26 @@ def evaluate(value: Any) -> dict[str, Any]:
     }
 
 
+def _validate_adapter_bindings(contract: dict[str, Any], adapter_result: dict[str, Any]) -> None:
+    from awq.adapters import AdapterError, _validated_bindings
+
+    bindings = adapter_result.get("bindings")
+    if bindings is None:
+        if contract.get("result_protocol") == "awq-bindings-v1":
+            _fail("adapter-result")
+        return
+    if contract.get("result_protocol") != "awq-bindings-v1":
+        _fail("adapter-result")
+    try:
+        validated_bindings = _validated_bindings(
+            canonical_bytes({"bindings": bindings, "schema_version": 1, "status": "pass"})
+        )
+    except (AdapterError, TypeError, ValueError) as error:
+        raise ProjectError("execution receipt invalid: adapter-result") from error
+    if validated_bindings != bindings:
+        _fail("adapter-result")
+
+
 def evaluate_adapter_lifecycle(
     value: Any, contract: dict[str, Any], adapter_result: dict[str, Any]
 ) -> dict[str, Any]:
@@ -484,6 +516,7 @@ def evaluate_adapter_lifecycle(
         or not 0 <= adapter_result["duration_ms"] <= MAX_VALUE
     ):
         _fail("adapter-result")
+    _validate_adapter_bindings(contract, adapter_result)
     if not isinstance(value, dict):
         _fail("fields")
     document = dict(value)

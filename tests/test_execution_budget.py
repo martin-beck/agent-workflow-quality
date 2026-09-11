@@ -88,9 +88,10 @@ class ExecutionBudgetTests(unittest.TestCase):
         value = receipt()
         value["dimensions"][0]["classification"] = "claimed"
         candidates.append(value)
-        value = receipt()
-        value["dimensions"][0]["measurement"]["version"] = "latest"
-        candidates.append(value)
+        for version in ("latest", "latest2", "2026-main2", "1.0-SNAPSHOT2"):
+            value = receipt()
+            value["dimensions"][0]["measurement"]["version"] = version
+            candidates.append(value)
         for candidate in candidates:
             with self.assertRaises(ProjectError):
                 execution_budget.evaluate(candidate)
@@ -115,6 +116,9 @@ class ExecutionBudgetTests(unittest.TestCase):
         cases.append(("tool", value))
         value = receipt()
         value["schema_version"] = 2
+        cases.append(("schema-version", value))
+        value = receipt()
+        value["schema_version"] = True
         cases.append(("schema-version", value))
         value = receipt()
         value["limitation"] = "stronger claim"
@@ -200,6 +204,9 @@ class ExecutionBudgetTests(unittest.TestCase):
             settled=0,
             settlement_step=None,
         )
+        reservation_cases.append(("reservation-dimension", value))
+        value = receipt()
+        value["reservations"][0]["dimension"] = []
         reservation_cases.append(("reservation-dimension", value))
         for expected, candidate in reservation_cases:
             with self.subTest(expected=expected):
@@ -445,6 +452,46 @@ class ExecutionBudgetTests(unittest.TestCase):
         result = execution_budget.evaluate_adapter_lifecycle(value, contract, adapter_result)
         self.assertEqual("pass", result["status"])
         self.assertEqual("awq-adapter-result-v1", result["source"]["kind"])
+        binding = {"kind": "coverage-policy", "id": "policy", "sha256": "0" * 64}
+        binding_contract = {**contract, "result_protocol": "awq-bindings-v1"}
+        binding_result = {**adapter_result, "bindings": [binding]}
+        binding_value = receipt()
+        binding_value["source"]["sha256"] = hashlib.sha256(
+            canonical_bytes(binding_result)
+        ).hexdigest()
+        binding_value["process"]["argv_sha256"] = hashlib.sha256(
+            canonical_bytes(binding_contract["argv"])
+        ).hexdigest()
+        binding_value["process"]["deadline_seconds"] = binding_contract["timeout_seconds"]
+        binding_wall = next(item for item in binding_value["dimensions"] if item["id"] == "wall")
+        binding_wall["used"] = binding_result["duration_ms"]
+        binding_wall["measurement"]["name"] = binding_contract["tool"]
+        binding_wall["measurement"]["version"] = binding_contract["version"]
+        self.assertEqual(
+            "pass",
+            execution_budget.evaluate_adapter_lifecycle(
+                binding_value, binding_contract, binding_result
+            )["status"],
+        )
+        for invalid_contract, invalid_result in (
+            (contract, binding_result),
+            (binding_contract, adapter_result),
+            (
+                binding_contract,
+                {
+                    **adapter_result,
+                    "bindings": [{**binding, "kind": "private-output"}],
+                },
+            ),
+        ):
+            invalid_value = copy.deepcopy(binding_value)
+            invalid_value["source"]["sha256"] = hashlib.sha256(
+                canonical_bytes(invalid_result)
+            ).hexdigest()
+            with self.assertRaisesRegex(ProjectError, "adapter-result"):
+                execution_budget.evaluate_adapter_lifecycle(
+                    invalid_value, invalid_contract, invalid_result
+                )
         value["source"]["sha256"] = "0" * 64
         with self.assertRaisesRegex(ProjectError, "adapter-result-binding"):
             execution_budget.evaluate_adapter_lifecycle(value, contract, adapter_result)
