@@ -242,7 +242,7 @@ class OnboardingTests(unittest.TestCase):
             (ROOT / "fixtures/conforming/onboarding/upgrade.json").read_bytes()
         )
         self.assertEqual(reviewed_upgrade, template)
-        self.assertEqual(("0.33.0", "0.34.0"), (template["from_version"], template["to_version"]))
+        self.assertEqual(("0.34.0", "0.35.0"), (template["from_version"], template["to_version"]))
         for folder, name, status in (
             ("conforming", "upgrade", "pass"),
             ("conforming", "same", "pass"),
