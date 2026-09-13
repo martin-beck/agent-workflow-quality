@@ -47,7 +47,7 @@ class PythonCatalogTests(unittest.TestCase):
         }
 
     def test_catalog_runtime_schema_digest_order_and_cli(self) -> None:
-        validate(self.document, "adapter-catalog.schema.json")
+        validate(self.document, "adapter-catalog-v2.schema.json")
         self.assertEqual(hashlib.sha256(canonical_bytes(self.document)).hexdigest(), self.digest)
         self.assertIn("python", self.families)
         self.assertEqual(sorted(self.families), list(self.families))
@@ -113,7 +113,7 @@ class PythonCatalogTests(unittest.TestCase):
             with self.subTest(case=case), self.assertRaises(adapters.AdapterError):
                 adapters._validate_adapter_catalog(case)
             with self.subTest(schema_case=case), self.assertRaises(jsonschema.ValidationError):
-                validate(case, "adapter-catalog.schema.json")
+                validate(case, "adapter-catalog-v2.schema.json")
 
         reversed_contracts = deepcopy(self.document)
         reversed_contracts["families"][0]["contracts"].reverse()

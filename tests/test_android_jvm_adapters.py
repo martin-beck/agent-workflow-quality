@@ -205,7 +205,7 @@ class AndroidJvmAdapterTests(unittest.TestCase):
         return completed.returncode == 0
 
     def test_catalog_is_exact_and_schema_valid(self) -> None:
-        validate({"schema_version": 1, "families": [self.family]}, "adapter-catalog.schema.json")
+        validate({"schema_version": 1, "families": [self.family]}, "adapter-catalog-v2.schema.json")
         self.assertEqual(EXPECTED_IDS, list(self.contracts))
         for contract in self.contracts.values():
             self.assertEqual("awq-android-jvm-check", contract["tool"])

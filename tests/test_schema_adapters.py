@@ -95,7 +95,7 @@ class SchemaAdapterExecutionTests(unittest.TestCase):
         return completed.returncode == 0
 
     def test_catalog_schema_order_mapping_and_offline_boundary(self) -> None:
-        validate({"schema_version": 1, "families": [self.family]}, "adapter-catalog.schema.json")
+        validate({"schema_version": 1, "families": [self.family]}, "adapter-catalog-v2.schema.json")
         self.assertEqual(EXPECTED_IDS, list(self.contracts))
         mapping = self.contracts["ADAPTER-SCHEMA-JSONSCHEMA-INSTANCE"]
         self.assertEqual("quality/schemas/project.schema.json", mapping["argv"][2])
