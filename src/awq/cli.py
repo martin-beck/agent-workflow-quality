@@ -16,6 +16,7 @@ from typing import Any
 from awq import (
     adversarial,
     assurance,
+    assurance_plan,
     commands,
     contracts,
     evidence_lifecycle,
@@ -109,6 +110,13 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("assurance-check")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("assurance-plan-check")
+    item.add_argument("contract")
+    _format_argument(item)
+    item = sub.add_parser("assurance-plan-diff")
+    item.add_argument("base")
+    item.add_argument("head")
+    _format_argument(item)
     item = sub.add_parser("promotion-evaluate")
     item.add_argument("evidence")
     item.add_argument("--as-of", required=True)
@@ -158,6 +166,8 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "adversarial-check": lambda: adversarial.run_file(root, args.contract, args.scratch),
         "adversarial-replay": lambda: adversarial.replay_file(root, args.contract, args.scratch),
         "assurance-check": lambda: assurance.evaluate_file(root, args.contract),
+        "assurance-plan-check": lambda: assurance_plan.evaluate_file(root, args.contract),
+        "assurance-plan-diff": lambda: assurance_plan.diff_files(root, args.base, args.head),
         "init": lambda: commands.initialize(root, args.profiles, args.dry_run),
         "plan": lambda: commands.plan(root, args.changed, args.base),
         "check": lambda: commands.check(root, args.tier, args.requirement),
