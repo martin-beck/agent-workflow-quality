@@ -453,13 +453,15 @@ def _compatible_semantics(previous: object, current: object) -> bool:
         return True
     if not isinstance(previous, dict) or not isinstance(current, dict):
         return False
-    if previous.get("kind") != "structured-registry" or current.get("kind") != "structured-registry":
+    if (
+        previous.get("kind") != "structured-registry"
+        or current.get("kind") != "structured-registry"
+    ):
         return False
     ignored = {"canonical_document_sha256"}
-    return (
-        {key: value for key, value in previous.items() if key not in ignored}
-        == {key: value for key, value in current.items() if key not in ignored}
-    )
+    return {key: value for key, value in previous.items() if key not in ignored} == {
+        key: value for key, value in current.items() if key not in ignored
+    }
 
 
 def evolve_baseline(
