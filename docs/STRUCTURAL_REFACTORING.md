@@ -41,7 +41,8 @@ four-method execution contract.
 
 ## Release ordering
 
-The schema, fixtures, runtime verifier, and documentation are staged without a
-release-version claim. Contract-catalog and distribution integration wait for
-the dependency-ordered release after the active v0.32 work; earlier releases
-must not claim this asset.
+The schema, fixtures, runtime verifier, and documentation are registered in the
+public contract catalog and covered by the catalog compatibility baseline. This
+capability is integrated on current main, but remains absent from earlier
+release artifacts; a future version-coupled release must regenerate and verify
+its distribution assets before making a release claim.

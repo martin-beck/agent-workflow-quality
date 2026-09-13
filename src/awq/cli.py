@@ -145,6 +145,7 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("contract")
     item.add_argument("--as-of", required=True)
     item.add_argument("--trusted-prior-head", required=True)
+    _format_argument(item)
     item = sub.add_parser("structural-refactor-verify")
     item.add_argument("contract")
     _format_argument(item)
