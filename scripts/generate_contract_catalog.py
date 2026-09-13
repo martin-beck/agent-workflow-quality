@@ -101,6 +101,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_reservation_conservation_and_effect_order_fail_closed",
         "docs/EXECUTION_RECEIPTS.md",
     ),
+    "evidence-lifecycle": (
+        "evidence_lifecycle",
+        "EvidenceLifecycleTests",
+        "test_complete_contract_is_deterministic_and_non_authorizing",
+        "test_lineage_anchor_and_cross_lifecycle_artifacts_fail_closed",
+        "docs/EVIDENCE_LIFECYCLE.md",
+    ),
     "exception": (
         "governance",
         "ExceptionLifecycleTests",
@@ -438,6 +445,21 @@ def verify_baseline(catalog: dict[str, Any], baseline: object) -> None:  # noqa:
         for field in ("sha256", "semantic", "semantic_sha256"):
             if latest[field] != expected_latest[field]:
                 raise ValueError(f"{identifier} contract bytes or semantics changed in place")
+
+
+def _compatible_semantics(previous: object, current: object) -> bool:
+    """Permit only structured-registry metadata hash changes as compatible."""
+    if previous == current:
+        return True
+    if not isinstance(previous, dict) or not isinstance(current, dict):
+        return False
+    if previous.get("kind") != "structured-registry" or current.get("kind") != "structured-registry":
+        return False
+    ignored = {"canonical_document_sha256"}
+    return (
+        {key: value for key, value in previous.items() if key not in ignored}
+        == {key: value for key, value in current.items() if key not in ignored}
+    )
 
 
 def evolve_baseline(

@@ -22,6 +22,7 @@ from awq.release import (
     CONTRACT_CATALOG_DATA_ASSETS,
     CONTRACT_CATALOG_SCHEMA_ASSETS,
     EXECUTION_SCHEMA_ASSETS,
+    EVIDENCE_LIFECYCLE_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
     ONBOARDING_SCHEMA_ASSETS,
@@ -117,6 +118,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -153,6 +155,7 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/onboarding.schema.json", b"{}\n"),
                 ("awq/schemas/test-report-evidence.schema.json", b"{}\n"),
                 ("awq/schemas/execution-receipt.schema.json", b"{}\n"),
+                ("awq/schemas/evidence-lifecycle.schema.json", b"{}\n"),
                 ("awq/data/compatibility.json", b"{}\n"),
                 ("awq/data/agent_recipes.json", b"{}\n"),
                 (
@@ -458,12 +461,15 @@ class DistributionVerificationTests(unittest.TestCase):
                     require_contract_catalog_assets=False,
                     require_test_report_assets=False,
                     require_execution_assets=False,
+                    require_evidence_lifecycle_assets=False,
                 ),
             )
             self.assertEqual(
                 [
                     f"{archive.name}: required packaged schema is missing: "
                     "contract-catalog.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
+                    "evidence-lifecycle.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
                     "execution-receipt.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
