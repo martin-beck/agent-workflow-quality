@@ -29,6 +29,11 @@ command output, environment values, prompts, transcripts, credentials and machin
 findings are deterministic for a fixed tree, contract, tool and host; elapsed duration is observational
 and intentionally variable.
 
+Formal execution receipts additionally require an exact negative-model counterexample observation,
+complete ordered one-to-one operation/state maps, an ordered digest-bound implementation trace, and
+fixed non-claims. These checks establish only bounded caller-declared correspondence; they do not
+authenticate execution, prove refinement, or replace a native formal-tool gate.
+
 Native mapping v2 correlation is accepted only when both independently collected observations bind
 the canonical reviewed source and scope set, match its evidence and platform classes, and are fresh
 at the declared evaluation time. Producer, tool and run identities remain source-specific. V1

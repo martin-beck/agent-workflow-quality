@@ -21,6 +21,7 @@ from awq import (
     contracts,
     evidence_lifecycle,
     execution_budget,
+    formal_receipts,
     native_mapping,
     onboarding,
     promotion,
@@ -110,6 +111,10 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("assurance-check")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("formal-receipt-evaluate")
+    item.add_argument("receipt")
+    item.add_argument("expected")
+    _format_argument(item)
     item = sub.add_parser("assurance-plan-check")
     item.add_argument("contract")
     _format_argument(item)
@@ -166,6 +171,9 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "adversarial-check": lambda: adversarial.run_file(root, args.contract, args.scratch),
         "adversarial-replay": lambda: adversarial.replay_file(root, args.contract, args.scratch),
         "assurance-check": lambda: assurance.evaluate_file(root, args.contract),
+        "formal-receipt-evaluate": lambda: formal_receipts.evaluate_file(
+            root, args.receipt, args.expected
+        ),
         "assurance-plan-check": lambda: assurance_plan.evaluate_file(root, args.contract),
         "assurance-plan-diff": lambda: assurance_plan.diff_files(root, args.base, args.head),
         "init": lambda: commands.initialize(root, args.profiles, args.dry_run),

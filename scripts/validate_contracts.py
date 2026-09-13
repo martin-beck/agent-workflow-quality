@@ -13,7 +13,7 @@ from typing import Any
 import jsonschema
 from referencing import Registry, Resource
 
-from awq import assurance_plan, lifecycle_model, sbom
+from awq import assurance_plan, formal_receipts, lifecycle_model, sbom
 from awq.commands import evidence
 from awq.contracts import load_contract_catalog
 from awq.release import BUILD_CONSTRAINTS_SHA256
@@ -73,6 +73,14 @@ def _validate_onboarding_fixtures() -> None:
 def _validate_formal_evidence_fixtures() -> None:
     for name in ("templates/formal-evidence.json",):
         validate(json.loads((ROOT / name).read_bytes()), "formal-evidence.schema.json")
+
+
+def _validate_formal_receipt_fixture() -> None:
+    receipt = json.loads((ROOT / "templates/formal-execution-receipt.json").read_bytes())
+    expected = json.loads((ROOT / "templates/formal-execution-expectation.json").read_bytes())
+    validate(receipt, "formal-execution-receipt.schema.json")
+    validate(expected, "formal-execution-expectation.schema.json")
+    formal_receipts.evaluate(receipt, expected)
 
 
 def _validate_terminology_fixtures() -> None:
@@ -136,6 +144,7 @@ def _validate_execution_receipt_fixtures() -> None:
 
 def main() -> int:
     contract_catalog, _ = load_contract_catalog()
+    _validate_formal_receipt_fixture()
     _validate_test_report_contract()
     requirements = json.loads(files("awq.data").joinpath("requirements.json").read_text())
     profiles = json.loads(files("awq.data").joinpath("profiles.json").read_text())

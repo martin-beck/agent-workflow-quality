@@ -67,3 +67,8 @@ code review; family ARs select offline-capable invocations.
 Project-specific Android, Rust, benchmark, UI, platform and formal semantics stay downstream. AWQ
 may classify and invoke a declared local gate, but never claims the gate proves more than the project
 declares. Agent Workflow Coordinator and `handoffctl` are deliberately outside this repository.
+
+Formal execution receipt v2 is a shared data-only boundary for exact source, model, configuration,
+tool, run, finite-bound, outcome, counterexample-sensitivity and implementation-trace commitments.
+Tool-specific acquisition and execution remain separate adapters; receipt validation never runs a
+tool or promotes bounded correspondence into an implementation-refinement claim.
