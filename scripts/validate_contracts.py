@@ -13,7 +13,7 @@ from typing import Any
 import jsonschema
 from referencing import Registry, Resource
 
-from awq import assurance_plan, lifecycle_model, sbom
+from awq import assurance_plan, formal_receipts, lifecycle_model, sbom
 from awq.commands import evidence
 from awq.contracts import load_contract_catalog
 from awq.release import BUILD_CONSTRAINTS_SHA256
@@ -76,10 +76,11 @@ def _validate_formal_evidence_fixtures() -> None:
 
 
 def _validate_formal_receipt_fixture() -> None:
-    validate(
-        json.loads((ROOT / "templates/formal-execution-receipt.json").read_bytes()),
-        "formal-execution-receipt.schema.json",
-    )
+    receipt = json.loads((ROOT / "templates/formal-execution-receipt.json").read_bytes())
+    expected = json.loads((ROOT / "templates/formal-execution-expectation.json").read_bytes())
+    validate(receipt, "formal-execution-receipt.schema.json")
+    validate(expected, "formal-execution-expectation.schema.json")
+    formal_receipts.evaluate(receipt, expected)
 
 
 def _validate_terminology_fixtures() -> None:

@@ -40,6 +40,10 @@ NATIVE_MAPPING_SCHEMA_ASSETS = {
     "native-gate-mapping.schema.json",
 }
 FORMAL_SCHEMA_ASSETS = {"assurance-contract.schema.json"}
+FORMAL_RECEIPT_SCHEMA_ASSETS = {
+    "formal-execution-expectation.schema.json",
+    "formal-execution-receipt.schema.json",
+}
 LIFECYCLE_SCHEMA_ASSETS = {"lifecycle-model.schema.json"}
 REFINEMENT_SCHEMA_ASSETS = {"refinement-map.schema.json"}
 PYTHON_REFACTOR_SCHEMA_ASSETS = {"python-refactor.schema.json"}
@@ -57,6 +61,7 @@ REQUIRED_SCHEMAS |= (
     | PROMOTION_SCHEMA_ASSETS
     | NATIVE_MAPPING_SCHEMA_ASSETS
     | FORMAL_SCHEMA_ASSETS
+    | FORMAL_RECEIPT_SCHEMA_ASSETS
     | LIFECYCLE_SCHEMA_ASSETS
     | REFINEMENT_SCHEMA_ASSETS
     | PYTHON_REFACTOR_SCHEMA_ASSETS
@@ -253,6 +258,7 @@ def _required_schemas(
     require_provenance_assets: bool,
     require_promotion_assets: bool,
     require_formal_assets: bool,
+    require_formal_receipt_assets: bool,
     require_lifecycle_assets: bool,
     require_refinement_assets: bool,
     require_python_refactor_assets: bool,
@@ -269,6 +275,7 @@ def _required_schemas(
         (require_provenance_assets, PROVENANCE_SCHEMA_ASSETS),
         (require_promotion_assets, PROMOTION_SCHEMA_ASSETS),
         (require_formal_assets, FORMAL_SCHEMA_ASSETS),
+        (require_formal_receipt_assets, FORMAL_RECEIPT_SCHEMA_ASSETS),
         (require_lifecycle_assets, LIFECYCLE_SCHEMA_ASSETS),
         (require_refinement_assets, REFINEMENT_SCHEMA_ASSETS),
         (require_python_refactor_assets, PYTHON_REFACTOR_SCHEMA_ASSETS),
@@ -292,6 +299,7 @@ def inspect_archive(
     require_provenance_assets: bool = True,
     require_promotion_assets: bool = True,
     require_formal_assets: bool = True,
+    require_formal_receipt_assets: bool = True,
     require_lifecycle_assets: bool = True,
     require_refinement_assets: bool = True,
     require_python_refactor_assets: bool = True,
@@ -309,6 +317,7 @@ def inspect_archive(
         require_provenance_assets,
         require_promotion_assets,
         require_formal_assets,
+        require_formal_receipt_assets,
         require_lifecycle_assets,
         require_refinement_assets,
         require_python_refactor_assets,
@@ -798,6 +807,8 @@ def _verify_artifact(
                 require_promotion_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 16, 0),
                 require_formal_assets=tuple(int(part) for part in version.split(".")) >= (0, 17, 0),
+                require_formal_receipt_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 34, 0),
                 require_lifecycle_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 18, 0),
                 require_refinement_assets=tuple(int(part) for part in version.split("."))

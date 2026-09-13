@@ -109,6 +109,8 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/evidence-identity.schema.json", b"{}\n"),
                 ("awq/schemas/native-gate-mapping.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/formal-execution-expectation.schema.json", b"{}\n"),
+                ("awq/schemas/formal-execution-receipt.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
@@ -146,6 +148,8 @@ class DistributionVerificationTests(unittest.TestCase):
                 ("awq/schemas/evidence-identity.schema.json", b"{}\n"),
                 ("awq/schemas/native-gate-mapping.schema.json", b"{}\n"),
                 ("awq/schemas/assurance-contract.schema.json", b"{}\n"),
+                ("awq/schemas/formal-execution-expectation.schema.json", b"{}\n"),
+                ("awq/schemas/formal-execution-receipt.schema.json", b"{}\n"),
                 ("awq/schemas/lifecycle-model.schema.json", b"{}\n"),
                 ("awq/schemas/refinement-map.schema.json", b"{}\n"),
                 ("awq/schemas/python-refactor.schema.json", b"{}\n"),
@@ -423,7 +427,6 @@ class DistributionVerificationTests(unittest.TestCase):
                 "adapter-catalog.schema.json",
                 "adapter-contract.schema.json",
                 "adapter-result.schema.json",
-                "adversarial-campaign.schema.json",
                 "assurance-contract.schema.json",
                 "consumer-equivalence.schema.json",
                 "evidence-identity.schema.json",
@@ -441,10 +444,7 @@ class DistributionVerificationTests(unittest.TestCase):
             }
         )
         data = frozenset({"adapter_catalog.json", "agent_recipes.json", "compatibility.json"})
-        self.assertEqual(
-            {"contract-catalog.schema.json"},
-            CONTRACT_CATALOG_SCHEMA_ASSETS,
-        )
+        self.assertEqual({"contract-catalog.schema.json"}, CONTRACT_CATALOG_SCHEMA_ASSETS)
         self.assertEqual({"contract_catalog.json"}, CONTRACT_CATALOG_DATA_ASSETS)
         members = [
             (f"awq/schemas/{name}", packaged_schema_bytes(name)) for name in sorted(schemas)
@@ -457,6 +457,8 @@ class DistributionVerificationTests(unittest.TestCase):
                 [],
                 inspect_archive(
                     archive,
+                    require_formal_receipt_assets=False,
+                    require_adversarial_assets=False,
                     require_contract_catalog_assets=False,
                     require_test_report_assets=False,
                     require_execution_assets=False,
@@ -466,11 +468,17 @@ class DistributionVerificationTests(unittest.TestCase):
             self.assertEqual(
                 [
                     f"{archive.name}: required packaged schema is missing: "
+                    "adversarial-campaign.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
                     "contract-catalog.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
                     "evidence-lifecycle.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
                     "execution-receipt.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
+                    "formal-execution-expectation.schema.json",
+                    f"{archive.name}: required packaged schema is missing: "
+                    "formal-execution-receipt.schema.json",
                     f"{archive.name}: required packaged schema is missing: "
                     "test-report-evidence.schema.json",
                     f"{archive.name}: required packaged data is missing: contract_catalog.json",
