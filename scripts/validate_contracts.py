@@ -316,7 +316,7 @@ def main() -> int:
     _validate_reliability_fixtures()
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
-    validate(adapter_catalog, "adapter-catalog.schema.json")
+    validate(adapter_catalog, "adapter-catalog-v2.schema.json")
     validate(
         {"schema_version": 1, "contracts": list(contract_catalog.values())},
         "contract-catalog.schema.json",
@@ -324,7 +324,7 @@ def main() -> int:
     formal_adapter = next(
         family for family in adapter_catalog["families"] if family["id"] == "formal-model"
     )
-    validate(formal_adapter["contracts"][0], "formal-adapter-contract.schema.json")
+    validate(formal_adapter["contracts"][0], "formal-adapter-contract-v2.schema.json")
     validate(android_jvm, "android-jvm-policy.schema.json")
     validate(
         json.loads((ROOT / "fixtures/conforming/vulnerability-supply.json").read_bytes()),

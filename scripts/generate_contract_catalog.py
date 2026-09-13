@@ -24,6 +24,13 @@ RELEASE_VERSION = re.compile(r"^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-
 
 # module, class, positive case, hostile case, documentation
 FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
+    "adapter-catalog-v2": (
+        "adapters",
+        "AdapterContractTests",
+        "test_runtime_and_schema_accept_the_same_contract",
+        "test_invalid_contract_dimensions_fail_closed",
+        "docs/ADAPTERS.md",
+    ),
     "adapter-catalog": (
         "adapters",
         "AdapterContractTests",
@@ -32,6 +39,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "docs/ADAPTERS.md",
     ),
     "adapter-contract": (
+        "adapters",
+        "AdapterContractTests",
+        "test_runtime_and_schema_accept_the_same_contract",
+        "test_invalid_contract_dimensions_fail_closed",
+        "docs/ADAPTERS.md",
+    ),
+    "adapter-contract-v2": (
         "adapters",
         "AdapterContractTests",
         "test_runtime_and_schema_accept_the_same_contract",
@@ -123,6 +137,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "docs/GOVERNANCE.md",
     ),
     "formal-adapter-contract": (
+        "formal_adapters",
+        "FormalAdapterExecutionTests",
+        "test_catalog_profile_schema_and_fixed_native_success",
+        "test_unsupported_or_dynamic_model_contracts_fail_closed",
+        "docs/FORMAL_ADAPTERS.md",
+    ),
+    "formal-adapter-contract-v2": (
         "formal_adapters",
         "FormalAdapterExecutionTests",
         "test_catalog_profile_schema_and_fixed_native_success",

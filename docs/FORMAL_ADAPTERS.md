@@ -19,10 +19,10 @@ digest-checking launcher, probes it, and atomically publishes a new prefix. Runt
 Java, the launcher, or TLA+ Tools. The launcher requires a separately provisioned `java` on
 `PATH` and returns exactly `TLC 1.8.0` for `tlc --version`.
 
-The catalog command is fixed:
+The catalog command is fixed and carries the shared host admission contract:
 
 ~~~text
-tlc -workers 1 -depth 1000 -config formal/Model.cfg formal/Model.tla
+tlc -workers 1 -depth 1000 -J-Xmx512m -config formal/Model.cfg formal/Model.tla
 ~~~
 
 `schemas/formal-adapter-contract.schema.json` and zero-dependency runtime validation require:
@@ -32,6 +32,15 @@ tlc -workers 1 -depth 1000 -config formal/Model.cfg formal/Model.tla
 - 1 through 16 workers and a depth from 1 through 1,000,000;
 - exactly one confined `.cfg` path followed by one confined `.tla` path;
 - a finite deadline and `bounded-model` evidence classification.
+- the mandatory `shared-tla-admission-v1` boundary, a one-job queue, bounded cancellation
+  and restart counts, a 1024 MiB per-job memory ceiling, zero swap, and a 512 MiB JVM heap.
+
+The admission object is a declarative handoff contract for the downstream state repository. AWQ
+does not implement or bypass that boundary: consumers must route every state-repository TLC
+invocation through their shared admission helper, persist queued/cancelled/restarted outcomes, and
+apply the declared cgroup memory and swap limits. Missing, widened, or locally substituted
+admission metadata fails closed during contract validation. Queue capacity, cancellation deadline,
+and restart count are intentionally finite; a rejected or cancelled job cannot be silently retried.
 
 The checked-in configuration remains responsible for finite constants and named invariants. Review
 those bounds together with the command bounds; the adapter cannot infer missing state-space limits

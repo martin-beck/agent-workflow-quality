@@ -21,7 +21,7 @@ from typing import Any
 
 from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes
 
-ADAPTER_OPTIONAL_KEYS = {"input_mode", "result_protocol"}
+ADAPTER_OPTIONAL_KEYS = {"input_mode", "result_protocol", "admission"}
 ADAPTER_KEYS = {
     "id",
     "tool",
@@ -77,6 +77,15 @@ MAX_ARGUMENTS = 100
 MAX_ARGUMENT_LENGTH = 1000
 TLC_SUCCESS_LINE = b"Model checking completed. No error has been found."
 TLC_FAILURE_LINE = re.compile(rb"Error: Invariant [^\r\n]{1,200} is violated\.")
+ADMISSION_KEYS = {
+    "boundary",
+    "queue_limit",
+    "cancel_timeout_seconds",
+    "restart_limit",
+    "memory_max_mib",
+    "swap_max_mib",
+    "jvm_heap_mib",
+}
 
 
 class AdapterError(ValueError):
@@ -190,6 +199,7 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
     """Reject ambiguous or dynamically constructed TLC invocations."""
     argv = value["argv"]
     paths = value["config_paths"]
+    admission = value.get("admission")
     if (
         value["tool"] != "tlc"
         or value.get("input_mode", "explicit") != "explicit"
@@ -198,7 +208,7 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
         or len(paths) != 2
         or not paths[0].endswith(".cfg")
         or not paths[1].endswith(".tla")
-        or len(argv) != 8
+        or len(argv) != 9
         or argv[1] != "-workers"
         or not argv[2].isascii()
         or not argv[2].isdigit()
@@ -207,8 +217,25 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
         or not argv[4].isascii()
         or not argv[4].isdigit()
         or not 1 <= int(argv[4]) <= 1_000_000
-        or argv[5] != "-config"
-        or argv[6:] != paths
+        or argv[5] != "-J-Xmx512m"
+        or argv[6] != "-config"
+        or argv[7:] != paths
+        or not isinstance(admission, dict)
+        or set(admission) != ADMISSION_KEYS
+        or admission["boundary"] != "shared-tla-admission-v1"
+        or not isinstance(admission["queue_limit"], int)
+        or not 1 <= admission["queue_limit"] <= 16
+        or not isinstance(admission["cancel_timeout_seconds"], int)
+        or not 1 <= admission["cancel_timeout_seconds"] <= 300
+        or not isinstance(admission["restart_limit"], int)
+        or not 0 <= admission["restart_limit"] <= 3
+        or not isinstance(admission["memory_max_mib"], int)
+        or not 256 <= admission["memory_max_mib"] <= 16384
+        or not isinstance(admission["swap_max_mib"], int)
+        or admission["swap_max_mib"] != 0
+        or not isinstance(admission["jvm_heap_mib"], int)
+        or admission["jvm_heap_mib"] != 512
+        or admission["jvm_heap_mib"] >= admission["memory_max_mib"]
     ):
         raise AdapterError("formal adapter model or bounded TLC invocation is unsupported")
 

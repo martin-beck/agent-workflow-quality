@@ -124,8 +124,8 @@ class FormalAdapterExecutionTests(unittest.TestCase):
 
     def test_catalog_profile_schema_and_fixed_native_success(self) -> None:
         self.assertEqual("ADAPTER-FORMAL-MODEL-TLC", self.contract["id"])
-        validate(self.contract, "adapter-contract.schema.json")
-        validate(self.contract, "formal-adapter-contract.schema.json")
+        validate(self.contract, "adapter-contract-v2.schema.json")
+        validate(self.contract, "formal-adapter-contract-v2.schema.json")
         repository, tool_dir = self.fixture()
         self.assertTrue(self.native(repository, tool_dir))
         result = self.adapter_run(repository, tool_dir)
@@ -198,23 +198,43 @@ class FormalAdapterExecutionTests(unittest.TestCase):
             (0, "sh"),
             (2, "all"),
             (4, "0"),
-            (6, "formal/Model.tla"),
             (7, "formal/Model.pcal"),
+            (8, "formal/Model.pcal"),
         ):
             candidate = deepcopy(self.contract)
             candidate["argv"][index] = replacement
             if index == 0:
                 candidate["tool"] = replacement
                 candidate["version_argv"][0] = replacement
-            if index in (6, 7):
-                candidate["config_paths"][index - 6] = replacement
+            if index in (7, 8):
+                candidate["config_paths"][index - 7] = replacement
             cases.append(candidate)
         for candidate in cases:
             with self.subTest(argv=candidate["argv"]):
                 with self.assertRaises(adapters.AdapterError):
                     adapters.validate_adapter(candidate)
                 with self.assertRaises(jsonschema.ValidationError):
-                    validate(candidate, "formal-adapter-contract.schema.json")
+                    validate(candidate, "formal-adapter-contract-v2.schema.json")
+
+    def test_admission_boundary_bounds_queue_restart_and_memory(self) -> None:
+        candidate = deepcopy(self.contract)
+        validate(candidate, "formal-adapter-contract-v2.schema.json")
+        for field, value in (
+            ("boundary", "local"),
+            ("queue_limit", 0),
+            ("cancel_timeout_seconds", 301),
+            ("restart_limit", 4),
+            ("memory_max_mib", 255),
+            ("swap_max_mib", 1),
+            ("jvm_heap_mib", 1024),
+        ):
+            with self.subTest(field=field):
+                broken = deepcopy(candidate)
+                broken["admission"][field] = value
+                with self.assertRaises(adapters.AdapterError):
+                    adapters.validate_adapter(broken)
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(broken, "formal-adapter-contract-v2.schema.json")
 
 
 if __name__ == "__main__":
