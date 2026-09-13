@@ -318,6 +318,10 @@ def main() -> int:
     )
     validate(formal_adapter["contracts"][0], "formal-adapter-contract.schema.json")
     validate(android_jvm, "android-jvm-policy.schema.json")
+    validate(
+        json.loads((ROOT / "fixtures/conforming/vulnerability-supply.json").read_bytes()),
+        "vulnerability-supply.schema.json",
+    )
     validate(sources, "control-source-registry.schema.json")
     validate(mappings, "standards-mapping-registry.schema.json")
     validate(exception, "exception.schema.json")

@@ -262,6 +262,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_remaining_path_time_structure_and_order_guards",
         "docs/TEST_REPORTS.md",
     ),
+    "vulnerability-supply": (
+        "vulnerability_supply",
+        "VulnerabilitySupplyTests",
+        "test_rust_jvm_and_auxiliary_workspaces_are_exact_and_deterministic",
+        "test_closed_shapes_types_paths_and_bounds_match_schema",
+        "docs/VULNERABILITY_SUPPLY.md",
+    ),
 }
 VERSIONS = {"project-policy": 3, "lock": 2, "release-manifest": 3}
 REGISTRIES = {
