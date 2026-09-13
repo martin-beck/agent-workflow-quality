@@ -117,6 +117,11 @@ def _safe_relative(value: object) -> bool:
     )
 
 
+def _bounded_integer(value: object, lower: int, upper: int) -> bool:
+    """Accept only real bounded integers; JSON booleans are not integers here."""
+    return isinstance(value, int) and not isinstance(value, bool) and lower <= value <= upper
+
+
 def _validate_identity(value: dict[str, Any]) -> None:
     identifier = value["id"]
     tool = value["tool"]
@@ -227,17 +232,13 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
         or admission["boundary"] != "shared-tla-admission-v1"
         or admission["launcher"] != "awq-tla-admit"
         or not _safe_relative(admission["queue_state"])
-        or not isinstance(admission["queue_limit"], int)
-        or not 1 <= admission["queue_limit"] <= 16
-        or not isinstance(admission["cancel_timeout_seconds"], int)
-        or not 1 <= admission["cancel_timeout_seconds"] <= 300
-        or not isinstance(admission["restart_limit"], int)
-        or not 0 <= admission["restart_limit"] <= 3
-        or not isinstance(admission["memory_max_mib"], int)
-        or not 256 <= admission["memory_max_mib"] <= 16384
-        or not isinstance(admission["swap_max_mib"], int)
+        or not _bounded_integer(admission["queue_limit"], 1, 16)
+        or not _bounded_integer(admission["cancel_timeout_seconds"], 1, 300)
+        or not _bounded_integer(admission["restart_limit"], 0, 3)
+        or not _bounded_integer(admission["memory_max_mib"], 256, 16384)
+        or not _bounded_integer(admission["swap_max_mib"], 0, 0)
         or admission["swap_max_mib"] != 0
-        or not isinstance(admission["jvm_heap_mib"], int)
+        or not _bounded_integer(admission["jvm_heap_mib"], 512, 512)
         or admission["jvm_heap_mib"] != 512
         or admission["jvm_heap_mib"] >= admission["memory_max_mib"]
     ):

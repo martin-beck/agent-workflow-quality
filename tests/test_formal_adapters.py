@@ -244,6 +244,21 @@ class FormalAdapterExecutionTests(unittest.TestCase):
                     adapters.validate_adapter(broken)
                 with self.assertRaises(jsonschema.ValidationError):
                     validate(broken, "formal-adapter-contract-v2.schema.json")
+        for field in (
+            "queue_limit",
+            "cancel_timeout_seconds",
+            "restart_limit",
+            "memory_max_mib",
+            "swap_max_mib",
+            "jvm_heap_mib",
+        ):
+            with self.subTest(boolean_field=field):
+                broken = deepcopy(candidate)
+                broken["admission"][field] = True
+                with self.assertRaises(adapters.AdapterError):
+                    adapters.validate_adapter(broken)
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(broken, "formal-adapter-contract-v2.schema.json")
 
     def test_tlc_cannot_bypass_required_admission_launcher(self) -> None:
         repository, tool_dir = self.fixture()

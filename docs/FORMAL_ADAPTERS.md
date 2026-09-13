@@ -25,7 +25,7 @@ The catalog command is fixed and carries the shared host admission contract:
 tlc -workers 1 -depth 1000 -J-Xmx512m -config formal/Model.cfg formal/Model.tla
 ~~~
 
-`schemas/formal-adapter-contract.schema.json` and zero-dependency runtime validation require:
+`schemas/formal-adapter-contract-v2.schema.json` and zero-dependency runtime validation require:
 
 - the stable adapter and tool identifiers;
 - direct execution without a shell, response file, placeholder, or constructed argument;
