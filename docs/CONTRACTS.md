@@ -47,6 +47,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-STANDARDS-MAPPING-REGISTRY-V1` | 1 | `json-schema` | `schemas/standards-mapping-registry.schema.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
 | `AWQ-CONTRACT-TERMINOLOGY-REGISTRY-V1` | 1 | `json-schema` | `schemas/terminology-registry.schema.json` | `awq.tests.terminology.TerminologyTests` | [docs/TERMINOLOGY.md](TERMINOLOGY.md) |
 | `AWQ-CONTRACT-TEST-REPORT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/test-report-evidence.schema.json` | `awq.tests.test_reports.TestReportEvidenceTests` | [docs/TEST_REPORTS.md](TEST_REPORTS.md) |
+| `AWQ-CONTRACT-VULNERABILITY-SUPPLY-V1` | 1 | `json-schema` | `schemas/vulnerability-supply.schema.json` | `awq.tests.vulnerability_supply.VulnerabilitySupplyTests` | [docs/VULNERABILITY_SUPPLY.md](VULNERABILITY_SUPPLY.md) |
 
 ## Compatibility policy
 
