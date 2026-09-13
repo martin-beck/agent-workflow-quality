@@ -86,6 +86,12 @@ See [bounded reliability observations](RELIABILITY.md) for representative synthe
 repositories, integer timing ceilings, repeat determinism, declared extension
 observations and metadata-only retention guidance. Native gates remain required.
 
+## Evidence lineage and hosting lifecycle
+
+See [evidence lifecycle](EVIDENCE_LIFECYCLE.md) for immutable observation and decision chains,
+truthful required and optional publication outcomes, and deterministic protected-reference
+retention candidates. Evaluation is read-only: AWQ never uploads or deletes artifacts.
+
 ## Agent onboarding and compatibility
 
 See [the onboarding guide](ONBOARDING.md) for bounded package diagnostics, explicit

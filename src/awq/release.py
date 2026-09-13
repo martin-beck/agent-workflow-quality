@@ -51,6 +51,7 @@ ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
 CONTRACT_CATALOG_DATA_ASSETS = {"contract_catalog.json"}
 EXECUTION_SCHEMA_ASSETS = {"execution-receipt.schema.json"}
+EVIDENCE_LIFECYCLE_SCHEMA_ASSETS = {"evidence-lifecycle.schema.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
@@ -65,6 +66,7 @@ REQUIRED_SCHEMAS |= (
     | CONTRACT_CATALOG_SCHEMA_ASSETS
     | TEST_REPORT_SCHEMA_ASSETS
     | EXECUTION_SCHEMA_ASSETS
+    | EVIDENCE_LIFECYCLE_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -260,6 +262,7 @@ def _required_schemas(
     require_contract_catalog_assets: bool,
     require_test_report_assets: bool,
     require_execution_assets: bool,
+    require_evidence_lifecycle_assets: bool,
 ) -> frozenset[str]:
     optional_assets = (
         (require_sbom_assets, SBOM_SCHEMA_ASSETS),
@@ -275,6 +278,7 @@ def _required_schemas(
         (require_contract_catalog_assets, CONTRACT_CATALOG_SCHEMA_ASSETS),
         (require_test_report_assets, TEST_REPORT_SCHEMA_ASSETS),
         (require_execution_assets, EXECUTION_SCHEMA_ASSETS),
+        (require_evidence_lifecycle_assets, EVIDENCE_LIFECYCLE_SCHEMA_ASSETS),
     )
     excluded = set().union(*(assets for required, assets in optional_assets if not required))
     return REQUIRED_SCHEMAS - excluded
@@ -297,6 +301,7 @@ def inspect_archive(
     require_contract_catalog_assets: bool = True,
     require_test_report_assets: bool = True,
     require_execution_assets: bool = True,
+    require_evidence_lifecycle_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -313,6 +318,7 @@ def inspect_archive(
         require_contract_catalog_assets,
         require_test_report_assets,
         require_execution_assets,
+        require_evidence_lifecycle_assets,
     )
     required_data = (
         REQUIRED_DATA
@@ -810,6 +816,8 @@ def _verify_artifact(
                 >= (0, 31, 0),
                 require_execution_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 32, 0),
+                require_evidence_lifecycle_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 33, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

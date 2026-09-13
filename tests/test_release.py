@@ -25,6 +25,7 @@ from awq.release import (
     BUILD_CONSTRAINTS_PATH,
     BUILD_CONSTRAINTS_SHA256,
     CONTRACT_CATALOG_SCHEMA_ASSETS,
+    EVIDENCE_LIFECYCLE_SCHEMA_ASSETS,
     EXECUTION_SCHEMA_ASSETS,
     FORMAL_SCHEMA_ASSETS,
     LIFECYCLE_SCHEMA_ASSETS,
@@ -522,7 +523,8 @@ class ReleaseVerificationTests(unittest.TestCase):
             - ONBOARDING_SCHEMA_ASSETS
             - CONTRACT_CATALOG_SCHEMA_ASSETS
             - TEST_REPORT_SCHEMA_ASSETS
-            - EXECUTION_SCHEMA_ASSETS,
+            - EXECUTION_SCHEMA_ASSETS
+            - EVIDENCE_LIFECYCLE_SCHEMA_ASSETS,
         ):
             value = self.manifest_value(
                 include_contract_catalog=False,
@@ -536,7 +538,9 @@ class ReleaseVerificationTests(unittest.TestCase):
         artifacts = value["artifacts"]
         assert isinstance(artifacts, list)
         for artifact in artifacts:
-            findings = inspect_archive(self.root / artifact["name"])
+            findings = inspect_archive(
+                self.root / artifact["name"], require_evidence_lifecycle_assets=False
+            )
             self.assertEqual(14, len(findings))
             for name in (
                 SBOM_SCHEMA_ASSETS
