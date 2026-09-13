@@ -87,7 +87,7 @@ class SignedRelease:
         self.manifest_path = self.bundle / "unset"
         self.manifest: dict[str, Any] = {}
         self.tag_object = ""
-        self.build("0.32.1", self.policy, 0)
+        self.build("0.33.1", self.policy, 0)
 
     def close(self) -> None:
         self.temporary.cleanup()
@@ -138,7 +138,7 @@ class SignedRelease:
             path = self.source / name
             path.write_text(
                 path.read_text().replace(
-                    'version = "' + (self.version or "0.32.0") + '"',
+                    'version = "' + (self.version or "0.33.0") + '"',
                     'version = "' + version + '"',
                     1,
                 )
