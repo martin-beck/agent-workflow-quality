@@ -114,7 +114,7 @@ An external [reference](https://example.invalid/not-contacted) remains observati
 
     def test_catalog_schema_order_and_offline_boundary(self) -> None:
         document = {"schema_version": 1, "families": [self.family]}
-        validate(document, "adapter-catalog.schema.json")
+        validate(document, "adapter-catalog-v2.schema.json")
         self.assertEqual(EXPECTED_IDS, list(self.contracts))
         links = self.contracts["ADAPTER-DOCUMENTATION-RUMDL-LINKS"]
         self.assertIn("MD051,MD057", links["argv"])

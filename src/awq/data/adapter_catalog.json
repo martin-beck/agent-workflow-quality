@@ -485,6 +485,7 @@
             "1",
             "-depth",
             "1000",
+            "-J-Xmx512m",
             "-config",
             "formal/Model.cfg",
             "formal/Model.tla"
@@ -502,7 +503,18 @@
             "formal/Model.cfg",
             "formal/Model.tla"
           ],
-          "input_mode": "explicit"
+          "input_mode": "explicit",
+          "admission": {
+            "boundary": "shared-tla-admission-v1",
+            "queue_limit": 1,
+            "cancel_timeout_seconds": 30,
+            "restart_limit": 1,
+            "memory_max_mib": 1024,
+            "swap_max_mib": 0,
+            "jvm_heap_mib": 512,
+            "launcher": "awq-tla-admit",
+            "queue_state": "formal/admission-state.json"
+          }
         }
       ]
     },

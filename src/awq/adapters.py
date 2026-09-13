@@ -21,7 +21,7 @@ from typing import Any
 
 from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes
 
-ADAPTER_OPTIONAL_KEYS = {"input_mode", "result_protocol"}
+ADAPTER_OPTIONAL_KEYS = {"input_mode", "result_protocol", "admission"}
 ADAPTER_KEYS = {
     "id",
     "tool",
@@ -77,6 +77,17 @@ MAX_ARGUMENTS = 100
 MAX_ARGUMENT_LENGTH = 1000
 TLC_SUCCESS_LINE = b"Model checking completed. No error has been found."
 TLC_FAILURE_LINE = re.compile(rb"Error: Invariant [^\r\n]{1,200} is violated\.")
+ADMISSION_KEYS = {
+    "launcher",
+    "boundary",
+    "queue_limit",
+    "cancel_timeout_seconds",
+    "restart_limit",
+    "memory_max_mib",
+    "swap_max_mib",
+    "jvm_heap_mib",
+    "queue_state",
+}
 
 
 class AdapterError(ValueError):
@@ -104,6 +115,11 @@ def _safe_relative(value: object) -> bool:
         and ".." not in candidate.parts
         and value == candidate.as_posix()
     )
+
+
+def _bounded_integer(value: object, lower: int, upper: int) -> bool:
+    """Accept only real bounded integers; JSON booleans are not integers here."""
+    return isinstance(value, int) and not isinstance(value, bool) and lower <= value <= upper
 
 
 def _validate_identity(value: dict[str, Any]) -> None:
@@ -190,6 +206,7 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
     """Reject ambiguous or dynamically constructed TLC invocations."""
     argv = value["argv"]
     paths = value["config_paths"]
+    admission = value.get("admission")
     if (
         value["tool"] != "tlc"
         or value.get("input_mode", "explicit") != "explicit"
@@ -198,7 +215,7 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
         or len(paths) != 2
         or not paths[0].endswith(".cfg")
         or not paths[1].endswith(".tla")
-        or len(argv) != 8
+        or len(argv) != 9
         or argv[1] != "-workers"
         or not argv[2].isascii()
         or not argv[2].isdigit()
@@ -207,8 +224,23 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
         or not argv[4].isascii()
         or not argv[4].isdigit()
         or not 1 <= int(argv[4]) <= 1_000_000
-        or argv[5] != "-config"
-        or argv[6:] != paths
+        or argv[5] != "-J-Xmx512m"
+        or argv[6] != "-config"
+        or argv[7:] != paths
+        or not isinstance(admission, dict)
+        or set(admission) != ADMISSION_KEYS
+        or admission["boundary"] != "shared-tla-admission-v1"
+        or admission["launcher"] != "awq-tla-admit"
+        or not _safe_relative(admission["queue_state"])
+        or not _bounded_integer(admission["queue_limit"], 1, 16)
+        or not _bounded_integer(admission["cancel_timeout_seconds"], 1, 300)
+        or not _bounded_integer(admission["restart_limit"], 0, 3)
+        or not _bounded_integer(admission["memory_max_mib"], 256, 16384)
+        or not _bounded_integer(admission["swap_max_mib"], 0, 0)
+        or admission["swap_max_mib"] != 0
+        or not _bounded_integer(admission["jvm_heap_mib"], 512, 512)
+        or admission["jvm_heap_mib"] != 512
+        or admission["jvm_heap_mib"] >= admission["memory_max_mib"]
     ):
         raise AdapterError("formal adapter model or bounded TLC invocation is unsupported")
 
@@ -662,7 +694,7 @@ def _execution_result(
     started: float,
 ) -> dict[str, Any]:
     if contract["id"] == "ADAPTER-FORMAL-MODEL-TLC":
-        return _tlc_execution_result(root, executable, contract, environment, started)
+        return _tlc_execution_result(root, contract, environment, started)
     if contract.get("result_protocol") == "awq-bindings-v1":
         failure, bindings = _execution_with_bindings(
             root, executable, contract, environment, inputs
@@ -680,13 +712,36 @@ def _execution_result(
 
 def _tlc_execution_result(
     root: Path,
-    executable: str,
     contract: dict[str, Any],
     environment: dict[str, str],
     started: float,
 ) -> dict[str, Any]:
     """Normalize bounded TLC completion without exposing model-checker output."""
-    argv = [executable, *contract["argv"][1:]]
+    admission = contract["admission"]
+    launcher = shutil.which(admission["launcher"], path=os.environ.get("PATH"))
+    if launcher is None:
+        admission_failure = _finding(
+            "adapter-admission-unavailable", "", "shared formal admission launcher is unavailable"
+        )
+        return _result(contract, started, "fail", admission_failure)
+    argv = [
+        launcher,
+        "--queue-limit",
+        str(admission["queue_limit"]),
+        "--cancel-timeout-seconds",
+        str(admission["cancel_timeout_seconds"]),
+        "--restart-limit",
+        str(admission["restart_limit"]),
+        "--memory-max-mib",
+        str(admission["memory_max_mib"]),
+        "--swap-max-mib",
+        str(admission["swap_max_mib"]),
+        "--jvm-heap-mib",
+        str(admission["jvm_heap_mib"]),
+        "--queue-state",
+        admission["queue_state"],
+        *contract["argv"][1:],
+    ]
     failure: list[dict[str, str]] | None
     try:
         returncode, output, timed_out, overflow = _bounded_execution(

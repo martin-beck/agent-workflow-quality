@@ -7,7 +7,9 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | --- | ---: | --- | --- | --- | --- |
 | `AWQ-CONTRACT-ADAPTER-CATALOG-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/adapter_catalog.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-CATALOG-V1` | 1 | `json-schema` | `schemas/adapter-catalog.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
+| `AWQ-CONTRACT-ADAPTER-CATALOG-V2-V1` | 1 | `json-schema` | `schemas/adapter-catalog-v2.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-CONTRACT-V1` | 1 | `json-schema` | `schemas/adapter-contract.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
+| `AWQ-CONTRACT-ADAPTER-CONTRACT-V2-V1` | 1 | `json-schema` | `schemas/adapter-contract-v2.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-RESULT-V1` | 1 | `json-schema` | `schemas/adapter-result.schema.json` | `awq.tests.adapters.AdapterRunnerTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADVERSARIAL-CAMPAIGN-V1` | 1 | `json-schema` | `schemas/adversarial-campaign.schema.json` | `awq.tests.adversarial.AdversarialTests` | [docs/ADVERSARIAL.md](ADVERSARIAL.md) |
 | `AWQ-CONTRACT-AGENT-RECIPES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/agent_recipes.json` | `awq.tests.onboarding.OnboardingTests` | [docs/ONBOARDING.md](ONBOARDING.md) |
@@ -26,6 +28,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-EXCEPTION-V1` | 1 | `json-schema` | `schemas/exception.schema.json` | `awq.tests.governance.ExceptionLifecycleTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |
 | `AWQ-CONTRACT-EXECUTION-RECEIPT-V1` | 1 | `json-schema` | `schemas/execution-receipt.schema.json` | `awq.tests.execution_budget.ExecutionBudgetTests` | [docs/EXECUTION_RECEIPTS.md](EXECUTION_RECEIPTS.md) |
 | `AWQ-CONTRACT-FORMAL-ADAPTER-CONTRACT-V1` | 1 | `json-schema` | `schemas/formal-adapter-contract.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_ADAPTERS.md](FORMAL_ADAPTERS.md) |
+| `AWQ-CONTRACT-FORMAL-ADAPTER-CONTRACT-V2-V1` | 1 | `json-schema` | `schemas/formal-adapter-contract-v2.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_ADAPTERS.md](FORMAL_ADAPTERS.md) |
 | `AWQ-CONTRACT-FORMAL-EVIDENCE-V1` | 1 | `json-schema` | `schemas/formal-evidence.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_EVIDENCE.md](FORMAL_EVIDENCE.md) |
 | `AWQ-CONTRACT-HOSTING-OBSERVATION-V1` | 1 | `json-schema` | `schemas/hosting-observation.schema.json` | `awq.tests.governance.HostingObservationTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |
 | `AWQ-CONTRACT-LIFECYCLE-MODEL-V1` | 1 | `json-schema` | `schemas/lifecycle-model.schema.json` | `awq.tests.lifecycle_model.LifecycleTests` | [docs/FORMAL_ASSURANCE.md](FORMAL_ASSURANCE.md) |

@@ -159,7 +159,7 @@ class RustAdapterExecutionTests(unittest.TestCase):
     def test_catalog_schema_order_mapping_and_runtime_boundary(self) -> None:
         validate(
             {"schema_version": 1, "families": [self.family]},
-            "adapter-catalog.schema.json",
+            "adapter-catalog-v2.schema.json",
         )
         self.assertEqual(EXPECTED_IDS, list(self.contracts))
         for identifier in STABLE_IDS:

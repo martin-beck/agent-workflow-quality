@@ -19,19 +19,30 @@ digest-checking launcher, probes it, and atomically publishes a new prefix. Runt
 Java, the launcher, or TLA+ Tools. The launcher requires a separately provisioned `java` on
 `PATH` and returns exactly `TLC 1.8.0` for `tlc --version`.
 
-The catalog command is fixed:
+The catalog command is fixed and carries the shared host admission contract:
 
 ~~~text
-tlc -workers 1 -depth 1000 -config formal/Model.cfg formal/Model.tla
+tlc -workers 1 -depth 1000 -J-Xmx512m -config formal/Model.cfg formal/Model.tla
 ~~~
 
-`schemas/formal-adapter-contract.schema.json` and zero-dependency runtime validation require:
+`schemas/formal-adapter-contract-v2.schema.json` and zero-dependency runtime validation require:
 
 - the stable adapter and tool identifiers;
 - direct execution without a shell, response file, placeholder, or constructed argument;
 - 1 through 16 workers and a depth from 1 through 1,000,000;
 - exactly one confined `.cfg` path followed by one confined `.tla` path;
 - a finite deadline and `bounded-model` evidence classification.
+- the mandatory `shared-tla-admission-v1` boundary, a one-job queue, bounded cancellation
+  and restart counts, a 1024 MiB per-job memory ceiling, zero swap, and a 512 MiB JVM heap.
+
+The admission object is enforced at execution time. AWQ first probes the pinned `tlc` tool, then
+refuses to launch it directly: `_tlc_execution_result` resolves the separately provisioned
+`awq-tla-admit` helper and sends the queue, cancellation, restart, JVM heap, memory, zero-swap, and
+durable `formal/admission-state.json` arguments as one fixed argv. The helper owns the shared host
+admission boundary, durable queued/cancelled/restarted state, and per-job cgroup limits; a missing
+helper fails closed. AWQ never creates host cgroups, mutates the state repository, or silently
+retries a rejected/cancelled job. Missing, widened, or locally substituted admission metadata also
+fails closed during contract validation.
 
 The checked-in configuration remains responsible for finite constants and named invariants. Review
 those bounds together with the command bounds; the adapter cannot infer missing state-space limits

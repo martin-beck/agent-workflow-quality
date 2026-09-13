@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -30,6 +31,13 @@ import time
 if sys.argv[1:] == ["--version"]:
     print("TLC 1.8.0")
     raise SystemExit(0)
+if pathlib.Path(sys.argv[0]).name == "awq-tla-admit":
+    required = {
+        "--queue-limit", "--cancel-timeout-seconds", "--restart-limit",
+        "--memory-max-mib", "--swap-max-mib", "--jvm-heap-mib", "--queue-state",
+    }
+    if not required <= set(sys.argv[1:]):
+        raise SystemExit(91)
 private_names = ("HOME", "GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY")
 if any(name in __import__("os").environ for name in private_names):
     raise SystemExit(90)
@@ -86,6 +94,7 @@ class FormalAdapterExecutionTests(unittest.TestCase):
             repository.write(path.relative_to(source).as_posix(), content)
         tool_dir = repository.root / "tools"
         repository.write("tools/tlc", TOOL, executable=True)
+        repository.write("tools/awq-tla-admit", TOOL, executable=True)
         repository.commit()
         return repository, tool_dir
 
@@ -124,8 +133,8 @@ class FormalAdapterExecutionTests(unittest.TestCase):
 
     def test_catalog_profile_schema_and_fixed_native_success(self) -> None:
         self.assertEqual("ADAPTER-FORMAL-MODEL-TLC", self.contract["id"])
-        validate(self.contract, "adapter-contract.schema.json")
-        validate(self.contract, "formal-adapter-contract.schema.json")
+        validate(self.contract, "adapter-contract-v2.schema.json")
+        validate(self.contract, "formal-adapter-contract-v2.schema.json")
         repository, tool_dir = self.fixture()
         self.assertTrue(self.native(repository, tool_dir))
         result = self.adapter_run(repository, tool_dir)
@@ -198,23 +207,68 @@ class FormalAdapterExecutionTests(unittest.TestCase):
             (0, "sh"),
             (2, "all"),
             (4, "0"),
-            (6, "formal/Model.tla"),
             (7, "formal/Model.pcal"),
+            (8, "formal/Model.pcal"),
         ):
             candidate = deepcopy(self.contract)
             candidate["argv"][index] = replacement
             if index == 0:
                 candidate["tool"] = replacement
                 candidate["version_argv"][0] = replacement
-            if index in (6, 7):
-                candidate["config_paths"][index - 6] = replacement
+            if index in (7, 8):
+                candidate["config_paths"][index - 7] = replacement
             cases.append(candidate)
         for candidate in cases:
             with self.subTest(argv=candidate["argv"]):
                 with self.assertRaises(adapters.AdapterError):
                     adapters.validate_adapter(candidate)
                 with self.assertRaises(jsonschema.ValidationError):
-                    validate(candidate, "formal-adapter-contract.schema.json")
+                    validate(candidate, "formal-adapter-contract-v2.schema.json")
+
+    def test_admission_boundary_bounds_queue_restart_and_memory(self) -> None:
+        candidate = deepcopy(self.contract)
+        validate(candidate, "formal-adapter-contract-v2.schema.json")
+        for field, value in (
+            ("boundary", "local"),
+            ("queue_limit", 0),
+            ("cancel_timeout_seconds", 301),
+            ("restart_limit", 4),
+            ("memory_max_mib", 255),
+            ("swap_max_mib", 1),
+            ("jvm_heap_mib", 1024),
+        ):
+            with self.subTest(field=field):
+                broken = deepcopy(candidate)
+                broken["admission"][field] = value
+                with self.assertRaises(adapters.AdapterError):
+                    adapters.validate_adapter(broken)
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(broken, "formal-adapter-contract-v2.schema.json")
+        for field in (
+            "queue_limit",
+            "cancel_timeout_seconds",
+            "restart_limit",
+            "memory_max_mib",
+            "swap_max_mib",
+            "jvm_heap_mib",
+        ):
+            with self.subTest(boolean_field=field):
+                broken = deepcopy(candidate)
+                broken["admission"][field] = True
+                with self.assertRaises(adapters.AdapterError):
+                    adapters.validate_adapter(broken)
+                with self.assertRaises(jsonschema.ValidationError):
+                    validate(broken, "formal-adapter-contract-v2.schema.json")
+
+    def test_tlc_cannot_bypass_required_admission_launcher(self) -> None:
+        repository, tool_dir = self.fixture()
+        (tool_dir / "awq-tla-admit").unlink()
+        with mock.patch.dict(
+            os.environ, {"PATH": f"{tool_dir}:{Path(sys.executable).parent}"}, clear=False
+        ):
+            result = adapters.run_adapter(repository.root, self.contract)
+        self.assertEqual("fail", result["status"])
+        self.assertEqual("adapter-admission-unavailable", result["findings"][0]["code"])
 
 
 if __name__ == "__main__":
