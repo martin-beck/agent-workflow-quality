@@ -185,8 +185,8 @@ class ReleaseBoundaryTests(unittest.TestCase):
             ),
             self.assertRaisesRegex(ReleaseError, "exact update target"),
         ):
-            verified_update.update(fixture.consumer, "0.34.1", False, *fixture.arguments())
-        manifest["version"] = "0.34.1"
+            verified_update.update(fixture.consumer, "0.35.1", False, *fixture.arguments())
+        manifest["version"] = "0.35.1"
         policy_path = fixture.consumer / "quality/awq.json"
         lock_path = fixture.consumer / "quality/awq.lock.json"
         with self.assertRaisesRegex(ReleaseError, "changed"):
@@ -200,12 +200,12 @@ class ReleaseBoundaryTests(unittest.TestCase):
             mock.patch("pathlib.Path.replace", side_effect=OSError("redacted")),
             self.assertRaisesRegex(ReleaseError, "before publication"),
         ):
-            verified_update.update(fixture.consumer, "0.34.1", False, *fixture.arguments())
+            verified_update.update(fixture.consumer, "0.35.1", False, *fixture.arguments())
         with (
             mock.patch("fcntl.flock", side_effect=BlockingIOError),
             self.assertRaisesRegex(ReleaseError, "another verified update"),
         ):
-            verified_update.update(fixture.consumer, "0.34.1", False, *fixture.arguments())
+            verified_update.update(fixture.consumer, "0.35.1", False, *fixture.arguments())
         self.assertEqual(before, fixture.consumer_bytes())
         with self.assertRaises(ReleaseError):
             verified_update._directory(Path("relative"))
