@@ -78,6 +78,7 @@ MAX_ARGUMENT_LENGTH = 1000
 TLC_SUCCESS_LINE = b"Model checking completed. No error has been found."
 TLC_FAILURE_LINE = re.compile(rb"Error: Invariant [^\r\n]{1,200} is violated\.")
 ADMISSION_KEYS = {
+    "launcher",
     "boundary",
     "queue_limit",
     "cancel_timeout_seconds",
@@ -85,6 +86,7 @@ ADMISSION_KEYS = {
     "memory_max_mib",
     "swap_max_mib",
     "jvm_heap_mib",
+    "queue_state",
 }
 
 
@@ -223,6 +225,8 @@ def _validate_tlc_contract(value: dict[str, Any]) -> None:
         or not isinstance(admission, dict)
         or set(admission) != ADMISSION_KEYS
         or admission["boundary"] != "shared-tla-admission-v1"
+        or admission["launcher"] != "awq-tla-admit"
+        or not _safe_relative(admission["queue_state"])
         or not isinstance(admission["queue_limit"], int)
         or not 1 <= admission["queue_limit"] <= 16
         or not isinstance(admission["cancel_timeout_seconds"], int)
@@ -689,7 +693,7 @@ def _execution_result(
     started: float,
 ) -> dict[str, Any]:
     if contract["id"] == "ADAPTER-FORMAL-MODEL-TLC":
-        return _tlc_execution_result(root, executable, contract, environment, started)
+        return _tlc_execution_result(root, contract, environment, started)
     if contract.get("result_protocol") == "awq-bindings-v1":
         failure, bindings = _execution_with_bindings(
             root, executable, contract, environment, inputs
@@ -707,13 +711,36 @@ def _execution_result(
 
 def _tlc_execution_result(
     root: Path,
-    executable: str,
     contract: dict[str, Any],
     environment: dict[str, str],
     started: float,
 ) -> dict[str, Any]:
     """Normalize bounded TLC completion without exposing model-checker output."""
-    argv = [executable, *contract["argv"][1:]]
+    admission = contract["admission"]
+    launcher = shutil.which(admission["launcher"], path=os.environ.get("PATH"))
+    if launcher is None:
+        admission_failure = _finding(
+            "adapter-admission-unavailable", "", "shared formal admission launcher is unavailable"
+        )
+        return _result(contract, started, "fail", admission_failure)
+    argv = [
+        launcher,
+        "--queue-limit",
+        str(admission["queue_limit"]),
+        "--cancel-timeout-seconds",
+        str(admission["cancel_timeout_seconds"]),
+        "--restart-limit",
+        str(admission["restart_limit"]),
+        "--memory-max-mib",
+        str(admission["memory_max_mib"]),
+        "--swap-max-mib",
+        str(admission["swap_max_mib"]),
+        "--jvm-heap-mib",
+        str(admission["jvm_heap_mib"]),
+        "--queue-state",
+        admission["queue_state"],
+        *contract["argv"][1:],
+    ]
     failure: list[dict[str, str]] | None
     try:
         returncode, output, timed_out, overflow = _bounded_execution(

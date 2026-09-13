@@ -35,12 +35,14 @@ tlc -workers 1 -depth 1000 -J-Xmx512m -config formal/Model.cfg formal/Model.tla
 - the mandatory `shared-tla-admission-v1` boundary, a one-job queue, bounded cancellation
   and restart counts, a 1024 MiB per-job memory ceiling, zero swap, and a 512 MiB JVM heap.
 
-The admission object is a declarative handoff contract for the downstream state repository. AWQ
-does not implement or bypass that boundary: consumers must route every state-repository TLC
-invocation through their shared admission helper, persist queued/cancelled/restarted outcomes, and
-apply the declared cgroup memory and swap limits. Missing, widened, or locally substituted
-admission metadata fails closed during contract validation. Queue capacity, cancellation deadline,
-and restart count are intentionally finite; a rejected or cancelled job cannot be silently retried.
+The admission object is enforced at execution time. AWQ first probes the pinned `tlc` tool, then
+refuses to launch it directly: `_tlc_execution_result` resolves the separately provisioned
+`awq-tla-admit` helper and sends the queue, cancellation, restart, JVM heap, memory, zero-swap, and
+durable `formal/admission-state.json` arguments as one fixed argv. The helper owns the shared host
+admission boundary, durable queued/cancelled/restarted state, and per-job cgroup limits; a missing
+helper fails closed. AWQ never creates host cgroups, mutates the state repository, or silently
+retries a rejected/cancelled job. Missing, widened, or locally substituted admission metadata also
+fails closed during contract validation.
 
 The checked-in configuration remains responsible for finite constants and named invariants. Review
 those bounds together with the command bounds; the adapter cannot infer missing state-space limits

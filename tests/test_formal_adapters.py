@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import unittest
 from copy import deepcopy
 from pathlib import Path
@@ -30,6 +31,13 @@ import time
 if sys.argv[1:] == ["--version"]:
     print("TLC 1.8.0")
     raise SystemExit(0)
+if pathlib.Path(sys.argv[0]).name == "awq-tla-admit":
+    required = {
+        "--queue-limit", "--cancel-timeout-seconds", "--restart-limit",
+        "--memory-max-mib", "--swap-max-mib", "--jvm-heap-mib", "--queue-state",
+    }
+    if not required <= set(sys.argv[1:]):
+        raise SystemExit(91)
 private_names = ("HOME", "GITHUB_TOKEN", "AWS_SECRET_ACCESS_KEY")
 if any(name in __import__("os").environ for name in private_names):
     raise SystemExit(90)
@@ -86,6 +94,7 @@ class FormalAdapterExecutionTests(unittest.TestCase):
             repository.write(path.relative_to(source).as_posix(), content)
         tool_dir = repository.root / "tools"
         repository.write("tools/tlc", TOOL, executable=True)
+        repository.write("tools/awq-tla-admit", TOOL, executable=True)
         repository.commit()
         return repository, tool_dir
 
@@ -235,6 +244,16 @@ class FormalAdapterExecutionTests(unittest.TestCase):
                     adapters.validate_adapter(broken)
                 with self.assertRaises(jsonschema.ValidationError):
                     validate(broken, "formal-adapter-contract-v2.schema.json")
+
+    def test_tlc_cannot_bypass_required_admission_launcher(self) -> None:
+        repository, tool_dir = self.fixture()
+        (tool_dir / "awq-tla-admit").unlink()
+        with mock.patch.dict(
+            os.environ, {"PATH": f"{tool_dir}:{Path(sys.executable).parent}"}, clear=False
+        ):
+            result = adapters.run_adapter(repository.root, self.contract)
+        self.assertEqual("fail", result["status"])
+        self.assertEqual("adapter-admission-unavailable", result["findings"][0]["code"])
 
 
 if __name__ == "__main__":
