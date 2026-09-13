@@ -138,7 +138,7 @@ class SignedRelease:
             path = self.source / name
             path.write_text(
                 path.read_text().replace(
-                    'version = "' + (self.version or "0.34.0") + '"',
+                    'version = "' + (self.version or "0.35.0") + '"',
                     'version = "' + version + '"',
                     1,
                 )
