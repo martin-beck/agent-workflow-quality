@@ -297,6 +297,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_public_schema_accepts_template_and_rejects_unknown_fields",
         "docs/TERMINOLOGY.md",
     ),
+    "structural-refactoring": (
+        "structural_refactoring",
+        "StructuralRefactoringTests",
+        "test_language_neutral_fixtures_and_python_mapping_are_deterministic",
+        "test_command_strings_unsafe_scope_and_prohibited_changes_fail_closed",
+        "docs/STRUCTURAL_REFACTORING.md",
+    ),
     "test-report-evidence": (
         "test_reports",
         "TestReportEvidenceTests",

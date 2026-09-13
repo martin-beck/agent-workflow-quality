@@ -148,7 +148,6 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("structural-refactor-verify")
     item.add_argument("contract")
     _format_argument(item)
-    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -192,6 +191,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "execution-receipt-evaluate": lambda: execution_budget.evaluate_file(root, args.receipt),
         "evidence-lifecycle-evaluate": lambda: evidence_lifecycle.evaluate_file(
             root, args.contract, args.as_of, args.trusted_prior_head
+        ),
         "structural-refactor-verify": lambda: structural_refactoring.evaluate_file(
             root, args.contract
         ),
