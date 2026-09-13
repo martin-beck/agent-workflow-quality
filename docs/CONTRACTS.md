@@ -51,6 +51,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-REQUIREMENT-REGISTRY-V1` | 1 | `json-schema` | `schemas/requirement-registry.schema.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
 | `AWQ-CONTRACT-REQUIREMENTS-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/requirements.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
 | `AWQ-CONTRACT-STANDARDS-MAPPING-REGISTRY-V1` | 1 | `json-schema` | `schemas/standards-mapping-registry.schema.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
+| `AWQ-CONTRACT-STRUCTURAL-REFACTORING-V1` | 1 | `json-schema` | `schemas/structural-refactoring.schema.json` | `awq.tests.structural_refactoring.StructuralRefactoringTests` | [docs/STRUCTURAL_REFACTORING.md](STRUCTURAL_REFACTORING.md) |
 | `AWQ-CONTRACT-TERMINOLOGY-REGISTRY-V1` | 1 | `json-schema` | `schemas/terminology-registry.schema.json` | `awq.tests.terminology.TerminologyTests` | [docs/TERMINOLOGY.md](TERMINOLOGY.md) |
 | `AWQ-CONTRACT-TEST-REPORT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/test-report-evidence.schema.json` | `awq.tests.test_reports.TestReportEvidenceTests` | [docs/TEST_REPORTS.md](TEST_REPORTS.md) |
 | `AWQ-CONTRACT-VULNERABILITY-SUPPLY-V1` | 1 | `json-schema` | `schemas/vulnerability-supply.schema.json` | `awq.tests.vulnerability_supply.VulnerabilitySupplyTests` | [docs/VULNERABILITY_SUPPLY.md](VULNERABILITY_SUPPLY.md) |
