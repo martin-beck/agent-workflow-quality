@@ -120,6 +120,13 @@ def _validate_test_report_contract() -> None:
     )
 
 
+def _validate_execution_receipt_fixtures() -> None:
+    validate(
+        json.loads((ROOT / "fixtures/conforming/execution-receipt.json").read_bytes()),
+        "execution-receipt.schema.json",
+    )
+
+
 def main() -> int:
     contract_catalog, _ = load_contract_catalog()
     _validate_test_report_contract()
@@ -245,6 +252,7 @@ def main() -> int:
     ):
         validate(json.loads((ROOT / name).read_bytes()), "consumer-equivalence.schema.json")
     _validate_native_mapping_fixtures()
+    _validate_execution_receipt_fixtures()
     for name in (
         "fixtures/conforming/assurance/model.json",
         "fixtures/conforming/assurance/refactor.json",

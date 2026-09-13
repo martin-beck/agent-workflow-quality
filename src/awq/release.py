@@ -50,6 +50,7 @@ TEST_REPORT_SCHEMA_ASSETS = {"test-report-evidence.schema.json"}
 ONBOARDING_DATA_ASSETS = {"compatibility.json", "agent_recipes.json"}
 CONTRACT_CATALOG_SCHEMA_ASSETS = {"contract-catalog.schema.json"}
 CONTRACT_CATALOG_DATA_ASSETS = {"contract_catalog.json"}
+EXECUTION_SCHEMA_ASSETS = {"execution-receipt.schema.json"}
 REQUIRED_SCHEMAS |= (
     PROVENANCE_SCHEMA_ASSETS
     | PROMOTION_SCHEMA_ASSETS
@@ -63,6 +64,7 @@ REQUIRED_SCHEMAS |= (
     | ONBOARDING_SCHEMA_ASSETS
     | CONTRACT_CATALOG_SCHEMA_ASSETS
     | TEST_REPORT_SCHEMA_ASSETS
+    | EXECUTION_SCHEMA_ASSETS
 )
 SBOM_SCHEMA_ASSETS = frozenset(
     {
@@ -257,38 +259,25 @@ def _required_schemas(
     require_onboarding_assets: bool,
     require_contract_catalog_assets: bool,
     require_test_report_assets: bool,
+    require_execution_assets: bool,
 ) -> frozenset[str]:
-    required_schemas = (
-        REQUIRED_SCHEMAS if require_sbom_assets else REQUIRED_SCHEMAS - SBOM_SCHEMA_ASSETS
+    optional_assets = (
+        (require_sbom_assets, SBOM_SCHEMA_ASSETS),
+        (require_provenance_assets, PROVENANCE_SCHEMA_ASSETS),
+        (require_promotion_assets, PROMOTION_SCHEMA_ASSETS),
+        (require_formal_assets, FORMAL_SCHEMA_ASSETS),
+        (require_lifecycle_assets, LIFECYCLE_SCHEMA_ASSETS),
+        (require_refinement_assets, REFINEMENT_SCHEMA_ASSETS),
+        (require_python_refactor_assets, PYTHON_REFACTOR_SCHEMA_ASSETS),
+        (require_adversarial_assets, ADVERSARIAL_SCHEMA_ASSETS),
+        (require_reliability_assets, RELIABILITY_SCHEMA_ASSETS),
+        (require_onboarding_assets, ONBOARDING_SCHEMA_ASSETS),
+        (require_contract_catalog_assets, CONTRACT_CATALOG_SCHEMA_ASSETS),
+        (require_test_report_assets, TEST_REPORT_SCHEMA_ASSETS),
+        (require_execution_assets, EXECUTION_SCHEMA_ASSETS),
     )
-    if not require_provenance_assets:
-        required_schemas = required_schemas - PROVENANCE_SCHEMA_ASSETS
-    if not require_promotion_assets:
-        required_schemas = required_schemas - PROMOTION_SCHEMA_ASSETS
-    if not require_formal_assets:
-        required_schemas = required_schemas - FORMAL_SCHEMA_ASSETS
-    if not require_lifecycle_assets:
-        required_schemas = required_schemas - LIFECYCLE_SCHEMA_ASSETS
-    if not require_refinement_assets:
-        required_schemas = required_schemas - REFINEMENT_SCHEMA_ASSETS
-    if not require_python_refactor_assets:
-        required_schemas = required_schemas - PYTHON_REFACTOR_SCHEMA_ASSETS
-    if not require_adversarial_assets:
-        required_schemas = required_schemas - ADVERSARIAL_SCHEMA_ASSETS
-    if not require_reliability_assets:
-        required_schemas = required_schemas - RELIABILITY_SCHEMA_ASSETS
-    if not require_onboarding_assets:
-        required_schemas = required_schemas - ONBOARDING_SCHEMA_ASSETS
-    required_schemas = _excluding_when_disabled(
-        required_schemas,
-        CONTRACT_CATALOG_SCHEMA_ASSETS,
-        enabled=require_contract_catalog_assets,
-    )
-    return _excluding_when_disabled(
-        required_schemas,
-        TEST_REPORT_SCHEMA_ASSETS,
-        enabled=require_test_report_assets,
-    )
+    excluded = set().union(*(assets for required, assets in optional_assets if not required))
+    return REQUIRED_SCHEMAS - excluded
 
 
 def inspect_archive(
@@ -307,6 +296,7 @@ def inspect_archive(
     require_onboarding_assets: bool = True,
     require_contract_catalog_assets: bool = True,
     require_test_report_assets: bool = True,
+    require_execution_assets: bool = True,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -322,6 +312,7 @@ def inspect_archive(
         require_onboarding_assets,
         require_contract_catalog_assets,
         require_test_report_assets,
+        require_execution_assets,
     )
     required_data = (
         REQUIRED_DATA
@@ -817,6 +808,8 @@ def _verify_artifact(
                 >= (0, 30, 0),
                 require_test_report_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 31, 0),
+                require_execution_assets=tuple(int(part) for part in version.split("."))
+                >= (0, 32, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

@@ -113,6 +113,10 @@ Native mapping v2 additionally binds both observations to one exact reviewed sou
 definition, configuration, input set and platform class while retaining separate producer, tool,
 run, attempt and collection provenance.
 
+[Execution receipts](docs/EXECUTION_RECEIPTS.md) distinguish enforced, observed, estimated and
+unavailable budgets, preserve reserve-before-effect accounting, and report process cleanup and
+sandbox observations without claiming portable containment.
+
 ## Bounded formal and refactoring assurance
 
 See [the formal assurance contract](docs/FORMAL_ASSURANCE.md) for the executable finite-state model,

@@ -22,6 +22,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-EVIDENCE-IDENTITY-V1` | 1 | `json-schema` | `schemas/evidence-identity.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
 | `AWQ-CONTRACT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/evidence.schema.json` | `awq.tests.commands_cli.CommandTests` | [docs/QUALITY.md](QUALITY.md) |
 | `AWQ-CONTRACT-EXCEPTION-V1` | 1 | `json-schema` | `schemas/exception.schema.json` | `awq.tests.governance.ExceptionLifecycleTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |
+| `AWQ-CONTRACT-EXECUTION-RECEIPT-V1` | 1 | `json-schema` | `schemas/execution-receipt.schema.json` | `awq.tests.execution_budget.ExecutionBudgetTests` | [docs/EXECUTION_RECEIPTS.md](EXECUTION_RECEIPTS.md) |
 | `AWQ-CONTRACT-FORMAL-ADAPTER-CONTRACT-V1` | 1 | `json-schema` | `schemas/formal-adapter-contract.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_ADAPTERS.md](FORMAL_ADAPTERS.md) |
 | `AWQ-CONTRACT-FORMAL-EVIDENCE-V1` | 1 | `json-schema` | `schemas/formal-evidence.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_EVIDENCE.md](FORMAL_EVIDENCE.md) |
 | `AWQ-CONTRACT-HOSTING-OBSERVATION-V1` | 1 | `json-schema` | `schemas/hosting-observation.schema.json` | `awq.tests.governance.HostingObservationTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |

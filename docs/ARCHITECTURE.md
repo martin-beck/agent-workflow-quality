@@ -21,6 +21,8 @@ profile and binds it to the registry SHA-256 and AWQ version.
 - Evidence stores classifications, identifiers, timings and digests, never subprocess output.
 - Generic JUnit observations bind an exact fresh source/report set and verify testcase-level counts;
   artifact availability and file presence alone are not execution evidence.
+- Execution receipts separate enforced, observed, estimated and unavailable resource dimensions;
+  process cleanup and sandbox observations do not turn trusted executables into portable sandboxes.
 - Correlated observation sets bind exact source, scope and reviewed definitions while keeping
   producer-specific tool, run, attempt and collection provenance separate.
 - `init --dry-run` is read-only. Mutating initialization refuses to overwrite existing policy.
