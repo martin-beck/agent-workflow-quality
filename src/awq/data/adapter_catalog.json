@@ -748,6 +748,67 @@
       ]
     },
     {
+      "id": "repository-security",
+      "title": "Repository security assurance adapters",
+      "description": "Reviewed offline workflow syntax, security analysis, and introduced-history secret scanning with checksum-pinned setup artifacts.",
+      "assumptions": [
+        "actionlint, zizmor, and gitleaks are acquired separately into an isolated checksum-verified prefix before runtime; every adapter invocation is offline.",
+        "The project supplies an exact 40-hex base and head revision for introduced-range scanning and retains sufficient local history.",
+        "Diagnostics and matches are discarded by the runner; evidence contains only stable classifications, bounded paths, and digests.",
+        "Native downstream or device evidence is optional and non-authorizing; hosted runners or pinned containers and VMs provide portable execution.",
+        "The project installs the checksum-pinned repository-security wrappers before invoking adapters; AWQ never installs tools during a check."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-REPOSITORY-SECURITY-ACTIONLINT",
+          "tool": "actionlint",
+          "version": "1.7.7",
+          "version_argv": ["actionlint", "-version"],
+          "version_output": "1.7.7",
+          "argv": ["actionlint", "-color=false"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Workflow syntax analysis covers the selected repository workflows but cannot prove provider-side execution semantics.",
+          "remediation": "Repair the reported workflow syntax or policy issue and rerun the pinned offline actionlint command.",
+          "formats": [".yaml", ".yml"],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-REPOSITORY-SECURITY-GITLEAKS",
+          "tool": "gitleaks",
+          "version": "8.28.0",
+          "version_argv": ["gitleaks", "version"],
+          "version_output": "8.28.0",
+          "argv": ["gitleaks", "detect", "--no-banner", "--redact", "--log-opts={base}..{head}"],
+          "timeout_seconds": 600,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Secret scanning reports only configured introduced-history matches and cannot replace provider-side scanning or rotation procedures.",
+          "remediation": "Rotate any exposed credential, remove it from the introduced range, and rerun with exact reviewed base and head revisions.",
+          "formats": [".git"],
+          "config_paths": [".gitleaks.toml"]
+        },
+        {
+          "id": "ADAPTER-REPOSITORY-SECURITY-ZIZMOR",
+          "tool": "zizmor",
+          "version": "1.5.2",
+          "version_argv": ["zizmor", "--version"],
+          "version_output": "zizmor 1.5.2",
+          "argv": ["zizmor", "--pedantic"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Pedantic workflow security analysis is bounded static evidence and cannot prove action implementation safety or hosted policy settings.",
+          "remediation": "Address the reported workflow security finding or document a narrowly reviewed project exception, then rerun offline.",
+          "formats": [".yaml", ".yml"],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        }
+      ]
+    },
+    {
       "id": "rust",
       "title": "Rust stable, supply-chain, and advanced evidence adapters",
       "description": "Reviewed offline Rust 1.93.0 and dated-nightly formatting, lint, test, build, dependency, API, coverage, fixed-run fuzz, and mutation-sentinel commands.",
