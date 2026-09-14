@@ -239,6 +239,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
             mock.patch.object(helper, "_run", side_effect=run),
         ):
             bindings = helper._coverage_result(self.root, self.policy, "a" * 64, scratch)
+        self.assertEqual(4, len(bindings))
         self.assertEqual("coverage-policy", bindings[0]["kind"])
         invalid_scratch = self.root / "invalid-scratch"
         invalid_scratch.mkdir()

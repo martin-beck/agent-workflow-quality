@@ -686,8 +686,8 @@ def _environment(channel: str, scratch: Path) -> dict[str, str]:
     tool_bin = _toolchain_bin(channel)
     temporary = scratch / "tmp"
     target = scratch / "target"
-    temporary.mkdir()
-    target.mkdir()
+    temporary.mkdir(exist_ok=True)
+    target.mkdir(exist_ok=True)
     return {
         "PATH": f"{tool_bin}:/usr/bin:/bin",
         "LANG": "C.UTF-8",
