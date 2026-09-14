@@ -1,14 +1,11 @@
 # Capability claims
 
-capability_claims.json is a closed, offline registry of bounded AWQ capability claims. Each
-claim names a stable identifier, one reviewed maturity state, supported public surfaces,
-limitations, review provenance, and evidence bound to the exact source commit.
+This generated inventory is the reviewed public claim surface. It is descriptive, bounded, and does not imply roadmap, readiness, or universal behavior.
 
-Maturity is descriptive, not a roadmap or readiness guarantee: planned, foundation, implemented,
-integrated, environment-verified, unsupported, and deprecated are the reviewed states.
-Environmental verification requires environmental evidence and is never proof of universal
-behavior. Unsupported and deprecated claims require an explicit rationale. Unknown fields,
-duplicate identifiers, stale evidence, source-revision mismatches, missing surfaces, and attempts
-to promote synthetic evidence fail closed.
+| ID | Maturity | Surfaces | Limitations | Evidence |
+| --- | --- | --- | --- | --- |
+| AWQ-CAP-CORE | implemented | cli, documentation, schema | Evidence is bounded contract evidence and does not establish consumer operational readiness. | contract-test (live) |
+| AWQ-CAP-NATIVE | environment-verified | native-gate | Environmental evidence is an observation for the declared platform and is not universal proof. | environmental (live) |
+| AWQ-CAP-PLANNED | planned | documentation | Planned claims are non-claims until live evidence and implementation review are recorded. | mechanical (synthetic) |
 
-The registry is content-minimized and performs no subprocess execution or network access.
+Unknown fields, duplicate identifiers/evidence, unsafe or non-normalized paths, stale/future evidence, source revision mismatch, unsupported surfaces, synthetic promotion, and unreviewed jumps fail closed.

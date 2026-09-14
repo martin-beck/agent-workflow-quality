@@ -31,6 +31,7 @@ _MATURITY_ORDER = ("planned", "foundation", "implemented", "integrated", "enviro
 _ID = re.compile(r"^AWQ-CAP-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _HASH = re.compile(r"^[0-9a-f]{64}$")
+_TREE = re.compile(r"^[0-9a-f]{40}$")
 _TIME = re.compile(r"^20[0-9]{2}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 
 
@@ -55,7 +56,7 @@ def _source(value: Any) -> dict[str, str]:
         _fail("source")
     if not all(isinstance(value[k], str) and value[k] for k in value):
         _fail("source")
-    if _COMMIT.fullmatch(value["commit"]) is None or _HASH.fullmatch(value["tree"]) is None:
+    if _COMMIT.fullmatch(value["commit"]) is None or _TREE.fullmatch(value["tree"]) is None:
         _fail("source")
     if "/" not in value["repository"] or value["repository"].startswith(("http", "/")):
         _fail("source")
@@ -65,6 +66,7 @@ def _source(value: Any) -> dict[str, str]:
         or value["path"].startswith(("/", "~"))
         or ".." in value["path"].split("/")
         or "\\" in value["path"]
+        or "//" in value["path"]
     ):
         _fail("source")
     return dict(value)
@@ -113,6 +115,10 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
             or transition["reviewed"] is not True
             or (transition["from"] == maturity and maturity not in ("planned", "foundation"))
             or (
+                transition["from"] == "none"
+                and maturity not in ("planned", "foundation", "unsupported", "deprecated")
+            )
+            or (
                 transition["from"] in _MATURITY_ORDER
                 and maturity in _MATURITY_ORDER
                 and _MATURITY_ORDER.index(maturity) != _MATURITY_ORDER.index(transition["from"]) + 1
@@ -150,8 +156,9 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
         if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", str(review.get("reviewer", ""))):
             _fail("review")
         evidence = claim["evidence"]
-        if not isinstance(evidence, list) or not evidence:
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 32:
             _fail("evidence")
+        evidence_ids: set[str] = set()
         for item in evidence:
             if not isinstance(item, dict) or set(item) != {
                 "id",
@@ -163,10 +170,13 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
                 "origin",
             }:
                 _fail("evidence-fields")
-            if not isinstance(item["id"], str) or not re.fullmatch(
-                r"EVIDENCE-[A-Z0-9-]+", item["id"]
+            if (
+                not isinstance(item["id"], str)
+                or not re.fullmatch(r"EVIDENCE-[A-Z0-9-]+", item["id"])
+                or item["id"] in evidence_ids
             ):
                 _fail("evidence-id")
+            evidence_ids.add(item["id"])
             if (
                 item["class"] not in EVIDENCE
                 or _HASH.fullmatch(str(item["digest"])) is None
@@ -180,10 +190,13 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
             observed = _timestamp(item["observed_at"])
             if (
                 item["source_commit"] != source["commit"]
+                or isinstance(item["freshness_seconds"], bool)
                 or not isinstance(item["freshness_seconds"], int)
                 or not 1 <= item["freshness_seconds"] <= 31_536_000
             ):
                 _fail("evidence-binding")
+            if observed > now:
+                _fail("future-evidence")
             if (now - observed).total_seconds() > item["freshness_seconds"]:
                 _fail("stale-evidence")
         if maturity == "environment-verified" and not any(
@@ -204,6 +217,15 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
 
 def load_registry() -> tuple[dict[str, Any], str]:
     raw = files("awq.data").joinpath("capability_claims.json").read_bytes()
-    value = json.loads(raw)
+
+    def reject_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, val in pairs:
+            if key in result:
+                raise ProjectError("capability claims invalid: duplicate key")
+            result[key] = val
+        return result
+
+    value = json.loads(raw, object_pairs_hook=reject_pairs)
     validate_registry(value)
     return value, hashlib.sha256(canonical_bytes(value)).hexdigest()
