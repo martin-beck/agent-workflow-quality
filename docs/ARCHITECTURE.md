@@ -59,6 +59,11 @@ content-minimized evaluation distinguishes declarations from observed results, r
 native mappings, rejects stale or revision-mismatched evidence and classifies plan removals as
 weakening for review.
 
+`awq.workflow_trust` validates a closed repository-owned GitHub Actions trust policy and performs
+bounded lexical classification of supported events, runner classes, checkout identity, permissions,
+expressions and publication boundaries. It fails closed on unsupported constructs and emits only
+fixed messages; it does not parse arbitrary YAML or attest hosted runner and branch settings.
+
 The adapter runner is an execution boundary, not a process sandbox. It does not initiate network
 access or forward credentials, but a configured third-party executable remains trusted project
 tooling and could use ambient host capabilities. Contracts and their argv therefore require normal

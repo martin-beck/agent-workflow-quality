@@ -39,6 +39,12 @@ See [signed provenance and verified updates](PROVENANCE.md) for external trust, 
 tag pins, strict data-only candidate updates and atomic lock-only mutation. The legacy unauthenticated
 update path is disabled. Structural bundle integrity is distinct from publisher authentication.
 
+## GitHub workflow trust boundaries
+
+See [the workflow trust policy](WORKFLOW_TRUST.md) for the closed event, runner, checkout,
+permission, credential, expression and publication contract. Repository policy owns public labels
+and protected branches; AWQ validates declarations offline and does not attest hosted settings.
+
 ## Per-consumer promotion evidence
 
 Use [the promotion contract](PROMOTION.md) for bounded canonical evidence, controlled positive and

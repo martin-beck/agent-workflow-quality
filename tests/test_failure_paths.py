@@ -37,9 +37,33 @@ class FailurePathTests(unittest.TestCase):
         self.assertEqual([], checks.classified_formats(self.repo.root, [image, custom], policy))
         workflow = self.repo.write(
             ".github/workflows/ok.yml",
-            "permissions: {}\njobs:\n  t:\n    timeout-minutes: 1\n    steps:\n"
+            '"on":\n  push:\n    branches: [main]\npermissions: {}\njobs:\n'
+            "  t:\n    runs-on: ubuntu-latest\n"
+            "    timeout-minutes: 1\n    steps:\n"
             "      - uses: ./local\n"
-            "      - uses: actions/checkout@" + "a" * 40 + "\n",
+            "      - uses: actions/checkout@" + "a" * 40 + "\n"
+            "        with:\n          persist-credentials: false\n",
+        )
+        self.repo.json(
+            "quality/workflow-trust.json",
+            {
+                "schema_version": 1,
+                "events": {
+                    "untrusted": ["pull_request"],
+                    "environmental": ["schedule"],
+                    "trusted": ["push", "workflow_call", "workflow_dispatch"],
+                    "prohibited": ["pull_request_target"],
+                },
+                "runners": {
+                    "disposable": ["ubuntu-latest"],
+                    "trusted": ["trusted-linux"],
+                    "persistent": ["persistent-linux"],
+                },
+                "protected_branches": ["main"],
+                "publication_events": ["push-tags"],
+                "required_gate_workflows": [".github/workflows/verify.yml"],
+                "publication_workflows": [".github/workflows/release.yml"],
+            },
         )
         self.assertEqual([], checks.action_pins(self.repo.root, [workflow], policy))
         self.assertEqual([], checks.workflow_policy(self.repo.root, [workflow], policy))

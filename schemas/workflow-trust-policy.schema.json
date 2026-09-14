@@ -1,0 +1,85 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/workflow-trust-policy.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "events": {
+      "additionalProperties": false,
+      "properties": {
+        "untrusted": {"$ref": "#/$defs/events"},
+        "environmental": {"$ref": "#/$defs/events"},
+        "trusted": {"$ref": "#/$defs/events"},
+        "prohibited": {"$ref": "#/$defs/events"}
+      },
+      "required": ["untrusted", "environmental", "trusted", "prohibited"],
+      "type": "object"
+    },
+    "runners": {
+      "additionalProperties": false,
+      "properties": {
+        "disposable": {"$ref": "#/$defs/names"},
+        "trusted": {"$ref": "#/$defs/names"},
+        "persistent": {"$ref": "#/$defs/names"}
+      },
+      "required": ["disposable", "trusted", "persistent"],
+      "type": "object"
+    },
+    "protected_branches": {"$ref": "#/$defs/names"},
+    "publication_events": {
+      "items": {"enum": ["push-tags", "workflow_dispatch"]},
+      "maxItems": 2,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "required_gate_workflows": {"$ref": "#/$defs/workflows"},
+    "publication_workflows": {"$ref": "#/$defs/workflows"}
+  },
+  "$defs": {
+    "events": {
+      "items": {
+        "enum": [
+          "pull_request",
+          "pull_request_target",
+          "push",
+          "schedule",
+          "workflow_call",
+          "workflow_dispatch"
+        ]
+      },
+      "maxItems": 6,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "names": {
+      "items": {"maxLength": 100, "minLength": 1, "type": "string"},
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "workflows": {
+      "items": {
+        "pattern": "^\\.github/workflows/[A-Za-z0-9_.-]+\\.ya?ml$",
+        "type": "string"
+      },
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "events",
+    "runners",
+    "protected_branches",
+    "publication_events",
+    "required_gate_workflows",
+    "publication_workflows"
+  ],
+  "title": "AWQ GitHub Actions workflow trust policy",
+  "type": "object"
+}

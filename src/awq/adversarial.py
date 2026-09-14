@@ -200,11 +200,39 @@ def _requirement(root: Path, path: Path, command: str) -> dict[str, Any]:
     return checks.run_requirement(root, policy, requirement, [path])
 
 
+def _workflow_trust_policy(root: Path) -> None:
+    policy = {
+        "schema_version": 1,
+        "events": {
+            "untrusted": ["pull_request"],
+            "environmental": ["schedule"],
+            "trusted": ["push", "workflow_call", "workflow_dispatch"],
+            "prohibited": ["pull_request_target"],
+        },
+        "runners": {
+            "disposable": ["ubuntu-24.04"],
+            "trusted": ["trusted-linux"],
+            "persistent": ["persistent-linux"],
+        },
+        "protected_branches": ["main"],
+        "publication_events": ["push-tags"],
+        "required_gate_workflows": [".github/workflows/gate.yml"],
+        "publication_workflows": [".github/workflows/publish.yml"],
+    }
+    path = root / "quality/workflow-trust.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(canonical_bytes(policy))
+
+
 def _workflow(case: Case, root: Path, mutant: bool) -> str:
     path = root / ".github/workflows/verify.yml"
     path.parent.mkdir(parents=True)
+    _workflow_trust_policy(root)
     ref = "v" + str(case.variant) if case.operator == "floating" else "a" * 40
-    text = "permissions: {}\njobs:\n  test:\n    timeout-minutes: 2\n    steps:\n"
+    text = (
+        "on: pull_request\npermissions: {}\njobs:\n  test:\n    runs-on: ubuntu-24.04\n"
+        "    timeout-minutes: 2\n    steps:\n"
+    )
     text += "      - uses: public/action@" + ref + "\n"
     if case.operator == "missing-permissions":
         text = text.replace("permissions: {}\n", "")

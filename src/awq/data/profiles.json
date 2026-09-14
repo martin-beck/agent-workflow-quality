@@ -2,7 +2,7 @@
   "schema_version": 1,
   "profiles": [
     {"name":"core","description":"Portable repository baseline.","requirements":["AWQ-CORE-001","AWQ-CORE-002","AWQ-CORE-003","AWQ-CORE-004"]},
-    {"name":"github-actions","description":"GitHub Actions integrity and permissions.","requirements":["AWQ-GHA-001","AWQ-GHA-002","AWQ-GHA-003"]},
+    {"name":"github-actions","description":"GitHub Actions integrity, trust transitions and permissions.","requirements":["AWQ-GHA-001","AWQ-GHA-002","AWQ-GHA-003"]},
     {"name":"python","description":"Python source baseline.","requirements":["AWQ-PY-001"]},
     {"name":"shell","description":"Shell entry-point baseline.","requirements":["AWQ-SHELL-001"]},
     {"name":"docs","description":"Documentation structure and local integrity.","requirements":["AWQ-DOC-001"]},
