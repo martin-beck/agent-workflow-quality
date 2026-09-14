@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://martin-beck.github.io/agent-workflow-quality/schemas/native-bundle-assurance.schema.json",
+  "title": "AWQ native package and runtime bundle assurance v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "source", "toolchain", "target", "elf_policy", "packages", "signer_policy", "signatures", "rebuild", "limitations", "non_claims"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "native-bundle-assurance"},
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["repository", "commit", "tree", "archive_sha256"],
+      "properties": {
+        "repository": {"type": "string", "pattern": "^https://github[.]com/[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,100}$"},
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "archive_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "toolchain": {"$ref": "#/$defs/identity"},
+    "target": {"$ref": "#/$defs/target"},
+    "elf_policy": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["architectures", "classes", "machines", "allowed_dynamic_dependencies", "required_hardening", "forbidden_features", "forbidden_strings", "required_symbols", "max_alignment", "max_size"],
+          "properties": {
+            "architectures": {"$ref": "#/$defs/tokens"},
+            "classes": {"$ref": "#/$defs/tokens"},
+            "machines": {"$ref": "#/$defs/tokens"},
+            "allowed_dynamic_dependencies": {"$ref": "#/$defs/tokens"},
+            "required_hardening": {"$ref": "#/$defs/tokens"},
+            "forbidden_features": {"$ref": "#/$defs/tokens"},
+            "forbidden_strings": {"$ref": "#/$defs/tokens"},
+            "required_symbols": {"$ref": "#/$defs/tokens"},
+            "max_alignment": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+            "max_size": {"type": "integer", "minimum": 1, "maximum": 5000000}
+          }
+        }
+      ]
+    },
+    "packages": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"$ref": "#/$defs/package"}},
+    "signer_policy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "signatures": {
+      "type": "array", "minItems": 1, "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["package_id", "path", "size", "sha256", "artifact_sha256", "signer_id", "signer_policy_sha256"],
+        "properties": {
+          "package_id": {"$ref": "#/$defs/identifier"},
+          "path": {"$ref": "#/$defs/path"},
+          "size": {"type": "integer", "minimum": 1, "maximum": 8192},
+          "sha256": {"$ref": "#/$defs/digest"},
+          "artifact_sha256": {"$ref": "#/$defs/digest"},
+          "signer_id": {"$ref": "#/$defs/identifier"},
+          "signer_policy_sha256": {"$ref": "#/$defs/digest"}
+        }
+      }
+    },
+    "rebuild": {
+      "type": "array", "minItems": 1, "maxItems": 16,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["package_id", "first_sha256", "second_sha256", "manifest_sha256"],
+        "properties": {
+          "package_id": {"$ref": "#/$defs/identifier"},
+          "first_sha256": {"$ref": "#/$defs/digest"},
+          "second_sha256": {"$ref": "#/$defs/digest"},
+          "manifest_sha256": {"$ref": "#/$defs/digest"}
+        }
+      }
+    },
+    "limitations": {"type": "array", "minItems": 3, "maxItems": 3, "items": {"type": "string", "maxLength": 200}},
+    "non_claims": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 80}}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "pattern": "^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){1,7}$", "maxLength": 100},
+    "token": {"type": "string", "pattern": "^[a-z0-9][a-z0-9.+_-]{0,99}$"},
+    "tokens": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/token"}, "uniqueItems": true},
+    "path": {"type": "string", "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\\\\\)[^\\u0000]+$", "maxLength": 500},
+    "target": {"type": "string", "pattern": "^[a-z0-9_]+(?:-[a-z0-9_]+){2,5}$"},
+    "identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "version", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "version": {"$ref": "#/$defs/token"},
+        "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "elf": {
+      "type": "object", "additionalProperties": false,
+      "required": ["class", "machine", "architecture", "dynamic_dependencies", "hardening", "executable_stack", "text_relocations", "features", "strings", "symbols", "max_alignment", "readelf_sha256", "nm_sha256", "observation_sha256"],
+      "properties": {
+        "class": {"$ref": "#/$defs/token"},
+        "machine": {"$ref": "#/$defs/token"},
+        "architecture": {"$ref": "#/$defs/token"},
+        "dynamic_dependencies": {"$ref": "#/$defs/tokens"},
+        "hardening": {"$ref": "#/$defs/tokens"},
+        "executable_stack": {"type": "boolean"},
+        "text_relocations": {"type": "boolean"},
+        "features": {"$ref": "#/$defs/tokens"},
+        "strings": {"$ref": "#/$defs/tokens"},
+        "symbols": {"$ref": "#/$defs/tokens"},
+        "max_alignment": {"type": "integer", "minimum": 1, "maximum": 1073741824},
+        "readelf_sha256": {"$ref": "#/$defs/digest"},
+        "nm_sha256": {"$ref": "#/$defs/digest"},
+        "observation_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "inventory": {
+      "type": "object", "additionalProperties": false,
+      "required": ["path", "mode", "size", "sha256", "target", "license_id", "kind", "elf"],
+      "properties": {
+        "path": {"$ref": "#/$defs/path"},
+        "mode": {"type": "integer", "minimum": 0, "maximum": 4095},
+        "size": {"type": "integer", "minimum": 0, "maximum": 5000000},
+        "sha256": {"$ref": "#/$defs/digest"},
+        "target": {"$ref": "#/$defs/target"},
+        "license_id": {"$ref": "#/$defs/identifier"},
+        "kind": {"enum": ["data", "executable", "license", "notice"]},
+        "elf": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/elf"}]}
+      }
+    },
+    "package": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "archive", "normalized_timestamp", "inventory", "notices"],
+      "properties": {
+        "id": {"$ref": "#/$defs/identifier"},
+        "kind": {"enum": ["native-package", "runtime-bundle"]},
+        "archive": {
+          "type": "object", "additionalProperties": false,
+          "required": ["path", "format", "size", "sha256"],
+          "properties": {
+            "path": {"$ref": "#/$defs/path"},
+            "format": {"enum": ["tar-gzip", "zip"]},
+            "size": {"type": "integer", "minimum": 1, "maximum": 50000000},
+            "sha256": {"$ref": "#/$defs/digest"}
+          }
+        },
+        "normalized_timestamp": {"type": "integer", "minimum": 315532800, "maximum": 4102444800},
+        "inventory": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/inventory"}},
+        "notices": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/path"}, "uniqueItems": true}
+      }
+    }
+  }
+}

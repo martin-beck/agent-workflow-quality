@@ -39,6 +39,8 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-HOSTING-OBSERVATION-V1` | 1 | `json-schema` | `schemas/hosting-observation.schema.json` | `awq.tests.governance.HostingObservationTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |
 | `AWQ-CONTRACT-LIFECYCLE-MODEL-V1` | 1 | `json-schema` | `schemas/lifecycle-model.schema.json` | `awq.tests.lifecycle_model.LifecycleTests` | [docs/FORMAL_ASSURANCE.md](FORMAL_ASSURANCE.md) |
 | `AWQ-CONTRACT-LOCK-V2` | 2 | `json-schema` | `schemas/lock.schema.json` | `awq.tests.registry_project.ProjectTests` | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
+| `AWQ-CONTRACT-NATIVE-BUNDLE-ASSURANCE-V1` | 1 | `json-schema` | `schemas/native-bundle-assurance.schema.json` | `awq.tests.native_bundle.NativeBundleTests` | [docs/NATIVE_BUNDLES.md](NATIVE_BUNDLES.md) |
+| `AWQ-CONTRACT-NATIVE-BUNDLE-ASSURANCE-V2-V1` | 1 | `json-schema` | `schemas/native-bundle-assurance-v2.schema.json` | `awq.tests.native_bundle.NativeBundleTests` | [docs/NATIVE_BUNDLES.md](NATIVE_BUNDLES.md) |
 | `AWQ-CONTRACT-NATIVE-GATE-MAPPING-V1` | 1 | `json-schema` | `schemas/native-gate-mapping.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
 | `AWQ-CONTRACT-ONBOARDING-V1` | 1 | `json-schema` | `schemas/onboarding.schema.json` | `awq.tests.onboarding.OnboardingTests` | [docs/ONBOARDING.md](ONBOARDING.md) |
 | `AWQ-CONTRACT-PROFILE-REGISTRY-V1` | 1 | `json-schema` | `schemas/profile-registry.schema.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
