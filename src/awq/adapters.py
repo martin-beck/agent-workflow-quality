@@ -858,11 +858,14 @@ def run_adapter(  # noqa: C901 - bounded adapter lifecycle branches
     validate_adapter(contract)
     started = time.monotonic()
     original_contract = contract
-    contract, range_failure = _security_contract(root, contract, base_revision, head_revision)
+    substituted_contract, range_failure = _security_contract(
+        root, contract, base_revision, head_revision
+    )
     if range_failure:
         return _result(original_contract, started, "fail", range_failure)
-    if contract is None:
+    if substituted_contract is None:
         raise AdapterError("security contract substitution unexpectedly failed")
+    contract = substituted_contract
     failure = _config_failure(root, contract)
     if failure:
         return _result(contract, started, "fail", failure)
