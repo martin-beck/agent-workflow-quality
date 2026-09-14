@@ -99,7 +99,8 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             scanner = (
                 "import subprocess,sys; r=next(x[11:] for x in sys.argv "
                 "if x.startswith('--log-opts=')); "
-                "d=subprocess.check_output(['git','diff',r],text=True); found='SECRET_VALUE' in d; "
+                "d=subprocess.check_output(['git','log','-p','--reverse',r],text=True); "
+                "found='SECRET_VALUE' in d; "
                 "print('SECRET_VALUE') if found else None; raise SystemExit(1 if found else 0)"
             )
             contract.update(
@@ -115,6 +116,12 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
                 ],
                 config_paths=[],
             )
+            substituted, substitution_failure = adapters._security_contract(
+                root, contract, base, head
+            )
+            self.assertIsNone(substitution_failure)
+            assert substituted is not None
+            self.assertIn(f"--log-opts={base}..{head}", substituted["argv"])
             with mock.patch.object(
                 shutil,
                 "which",
@@ -125,8 +132,8 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
                 )
             temporary.cleanup()
             self.assertEqual(
-                "adapter-failed" if label == "introduced" else "pass",
-                result["findings"][0]["code"] if label == "introduced" else result["status"],
+                "adapter-failed" if label != "clean" else "pass",
+                result["findings"][0]["code"] if label != "clean" else result["status"],
             )
             self.assertNotIn("SECRET_VALUE", json.dumps(result))
 
