@@ -6,9 +6,11 @@
 from __future__ import annotations
 
 import copy
+import tempfile
 import unittest
 
 from awq import adapters
+from scripts import install_repository_security_tools as installer
 
 
 class RepositorySecurityAdapterTests(unittest.TestCase):
@@ -55,6 +57,41 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         self.assertIn("--redact", contract["argv"])
         self.assertIn("{base}..{head}", contract["argv"][-1])
         self.assertEqual("mechanical", contract["evidence"])
+
+    def test_installer_has_complete_official_linux_matrix_and_real_pins(self) -> None:
+        expected = {
+            "x86_64": {
+                "actionlint": "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757",
+                "zizmor": "e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a",
+                "gitleaks": "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb",
+            },
+            "aarch64": {
+                "actionlint": "401942f9c24ed71e4fe71b76c7d638f66d8633575c4016efd2977ce7c28317d0",
+                "zizmor": "7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540",
+                "gitleaks": "eff65261156100e5d94a6b3dec313d532fddfe19ae1590bf7a2b4f2699128356",
+            },
+        }
+        for architecture, artifacts in installer.ARTIFACTS.items():
+            with self.subTest(architecture=architecture):
+                self.assertEqual(
+                    expected[architecture], {item.name: item.sha256 for item in artifacts}
+                )
+                self.assertEqual(
+                    {"actionlint", "zizmor", "gitleaks"}, {item.name for item in artifacts}
+                )
+                for item in artifacts:
+                    self.assertIn("github.com/", item.url)
+                    self.assertNotIn("latest", item.url)
+                    self.assertRegex(item.sha256, r"^[0-9a-f]{64}$")
+
+    def test_installer_digest_fixture_rejects_tampering(self) -> None:
+        with tempfile.NamedTemporaryFile() as fixture:
+            fixture.write(b"tampered artifact")
+            fixture.flush()
+            with self.assertRaises(installer.InstallError):
+                installer.verify(
+                    installer.Path(fixture.name), installer.ARTIFACTS["x86_64"][0].sha256
+                )
 
 
 if __name__ == "__main__":

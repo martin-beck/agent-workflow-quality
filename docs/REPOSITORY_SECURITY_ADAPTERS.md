@@ -7,6 +7,12 @@ inputs: installers accept only reviewed HTTPS artifacts, verify a complete
 SHA-256 before atomic publication, and probe the exact version. Adapter
 execution performs no acquisition or network access.
 
+The setup matrix is explicit and covers Linux x86-64 and aarch64. actionlint
+1.7.7 and gitleaks 8.28.0 use their official release checksum manifests;
+zizmor 1.30.1 publishes no checksum manifest, so its exact release assets are
+independently hashed before review. The installer records the resulting
+SHA-256 pins and rejects every other architecture or asset URL.
+
 The gitleaks contract is intentionally range-bound. A caller must substitute
 two exact 40-hex revisions for `{base}` and `{head}` and must reject shallow or
 ambiguous history before invoking the pinned binary. Redaction is mandatory;

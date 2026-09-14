@@ -28,29 +28,51 @@ class Artifact:
 
 
 # These are immutable release-artifact pins. Update only with an independently reviewed
-# release digest and preserve the exact version probes in the adapter catalog.
+# release digest and preserve the exact version probes in the adapter catalog. The actionlint
+# and gitleaks values below match the vendors' published checksum manifests; zizmor publishes
+# no checksum manifest, so its GitHub release asset bytes were downloaded and hashed independently
+# on 2026-09-14. Release provenance is retained in the AR-0039 coordination record.
 ARTIFACTS = {
     "x86_64": (
         Artifact(
             "actionlint",
             "1.7.7",
-            "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_x86_64.tar.gz",
-            "8b2d8f5a9b1a8a9f5f1bbf2a9d0e9efc5b2dd7a3d7e4a40de0a0a8d5b6c7e8f9",
+            "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz",
+            "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757",
         ),
         Artifact(
             "zizmor",
-            "1.5.2",
-            "https://github.com/zizmorcore/zizmor/releases/download/v1.5.2/zizmor-x86_64-unknown-linux-gnu",
-            "1f4c6d3a2b5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8",
+            "1.30.1",
+            "https://github.com/zizmorcore/zizmor/releases/download/v1.30.1/zizmor-x86_64-unknown-linux-gnu.tar.gz",
+            "e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a",
         ),
         Artifact(
             "gitleaks",
             "8.28.0",
             "https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz",
-            "2a6d8e0f1b3c5d7f9a0b2c4d6e8f1a3b5c7d9e0f2a4b6c8d0e1f3a5b7c9d2e4",
+            "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb",
         ),
     ),
-    "aarch64": (),
+    "aarch64": (
+        Artifact(
+            "actionlint",
+            "1.7.7",
+            "https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_arm64.tar.gz",
+            "401942f9c24ed71e4fe71b76c7d638f66d8633575c4016efd2977ce7c28317d0",
+        ),
+        Artifact(
+            "zizmor",
+            "1.30.1",
+            "https://github.com/zizmorcore/zizmor/releases/download/v1.30.1/zizmor-aarch64-unknown-linux-gnu.tar.gz",
+            "7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540",
+        ),
+        Artifact(
+            "gitleaks",
+            "8.28.0",
+            "https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_arm64.tar.gz",
+            "eff65261156100e5d94a6b3dec313d532fddfe19ae1590bf7a2b4f2699128356",
+        ),
+    ),
 }
 
 
