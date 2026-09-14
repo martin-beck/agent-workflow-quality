@@ -85,6 +85,17 @@ class SbomTests(unittest.TestCase):
         self.assertTrue(
             any(node.get("name") == "uv.lock" and "verifiedUsing" in node for node in nodes)
         )
+        source_inputs = {
+            node["name"]
+            for node in nodes
+            if node["type"] == "software_File"
+            and node["name"]
+            in {"schemas/agent-runtime-replay.schema.json", "src/awq/agent_replay.py"}
+        }
+        self.assertEqual(
+            {"schemas/agent-runtime-replay.schema.json", "src/awq/agent_replay.py"},
+            source_inputs,
+        )
 
     def test_hostile_graph_mutations_fail(self) -> None:
         original = self.document()
