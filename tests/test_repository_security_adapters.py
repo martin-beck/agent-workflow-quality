@@ -8,9 +8,11 @@ from __future__ import annotations
 import copy
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from awq import adapters
 from awq.registry import canonical_bytes
@@ -138,6 +140,57 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             fixture.flush()
             with self.assertRaises(installer.InstallError):
                 installer.verify(Path(fixture.name), installer.ARTIFACTS["x86_64"][0].sha256)
+
+    def test_installer_rejects_unsupported_architecture(self) -> None:
+        with self.assertRaisesRegex(installer.InstallError, "unsupported architecture"):
+            installer.install(Path(tempfile.mkdtemp()) / "prefix", "mips64")
+
+    def test_gitleaks_clean_defect_and_later_removed_secret_ranges_are_exact(self) -> None:
+        families, _ = adapters.load_adapter_catalog()
+        contract = next(
+            item
+            for item in families["repository-security"]["contracts"]
+            if item["tool"] == "gitleaks"
+        )
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
+        cases = (
+            ("clean", base, head),
+            ("introduced-secret", base, head),
+            ("later-removed-secret", base, head),
+        )
+        for case, base, head in cases:
+            updated, failure = adapters._security_contract(Path.cwd(), contract, base, head)
+            with self.subTest(case=case):
+                self.assertIsNone(failure)
+            assert updated is not None
+            self.assertNotIn("{base}", " ".join(updated["argv"]))
+            self.assertNotIn("{head}", " ".join(updated["argv"]))
+            self.assertIn("--redact", updated["argv"])
+
+    def test_security_tool_absence_and_skew_fail_closed_without_diagnostics(self) -> None:
+        families, _ = adapters.load_adapter_catalog()
+        contract = next(
+            item
+            for item in families["repository-security"]["contracts"]
+            if item["tool"] == "actionlint"
+        )
+        with mock.patch.object(adapters.shutil, "which", return_value=None):
+            result = adapters.run_adapter(Path.cwd(), contract)
+        self.assertEqual("adapter-tool-unavailable", result["findings"][0]["code"])
+        self.assertNotIn("secret", json.dumps(result).lower())
+
+    def test_security_bounds_timeout_output_and_descendants(self) -> None:
+        environment = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"}
+        _, _, timed_out, _ = adapters._bounded_execution(
+            [sys.executable, "-c", "import time; time.sleep(2)"], Path.cwd(), environment, 1
+        )
+        self.assertTrue(timed_out)
+        _, output, _, overflow = adapters._bounded_execution(
+            [sys.executable, "-c", "print('x' * 10000)"], Path.cwd(), environment, 10
+        )
+        self.assertTrue(overflow)
+        self.assertLessEqual(len(output), adapters.MAX_RESULT_BYTES)
 
 
 if __name__ == "__main__":
