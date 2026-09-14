@@ -104,9 +104,7 @@ class NativeBundleTests(unittest.TestCase):
                 observed.pop("observation_sha256")
                 observed["artifact_sha256"] = entry["sha256"]
                 observed["size"] = entry["size"]
-                elf["observation_sha256"] = hashlib.sha256(
-                    canonical_bytes(observed)
-                ).hexdigest()
+                elf["observation_sha256"] = hashlib.sha256(canonical_bytes(observed)).hexdigest()
 
         return (
             {
