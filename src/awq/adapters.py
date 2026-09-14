@@ -12,7 +12,6 @@ import os
 import re
 import shutil
 import signal
-import shutil
 import subprocess
 import threading
 import time
