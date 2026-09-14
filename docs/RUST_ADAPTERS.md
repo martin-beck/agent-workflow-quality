@@ -80,7 +80,10 @@ SUPPLY_PREFIX/
 Runtime never executes Rustup proxies. Both wrappers validate exact regular executable files and
 invoke absolute tool paths. Each command receives a fresh external home, cache, Cargo target, and
 temporary directory. The runtime Cargo home is proxy-free and may not contain global configuration
-or credential files. Standard input is closed and native output is discarded.
+or credential files. Each execution validates a fixed entry and byte ceiling, rejects symlinks,
+and copies the reviewed cache into its fresh external scratch before Cargo starts. Cargo therefore
+cannot unpack packages or create cache state in the installed source cache or a later fixture.
+Standard input is closed and native output is discarded.
 
 The supply wrapper's exact probe is:
 
@@ -222,6 +225,8 @@ The optional advanced bundle exposes three deliberately separate contracts:
 | Coverage | `pr` | Aggregate line reachability meets the repository-owned floor for its exact package list and default-feature all-target command. |
 | Fuzz regression | `scheduled` | Every named cargo-fuzz-built ASan target completes its digest-bound copied seed corpus under fixed PRNG-seed, run, wall-time, per-input, input-length, sampled-RSS and allocation limits on `nightly-2026-09-01`. |
 | Mutation sentinel | `trusted-host` | Every mutant selected by exact package, file, genre and anchored safe-filter expression is caught under single-worker build, test and outer deadlines. |
+
+The advanced policy is schema version 2. It declares a bounded, sorted `package_floors` inventory: every required package has an independently reviewed line floor, denominator digest, review digest, and rationale; deferred or absent packages must carry explicit non-claim rationale. `workspace_line_floor` runs separately from package floors. The `workspaces` inventory names every executed coverage, fuzz, or mutation Cargo graph and binds its manifest, lockfile, source policy, license policy, advisory policy, and advisory snapshot by SHA-256. An operation is rejected unless exactly one declared workspace owns it and every bound input is tracked, regular, and unchanged.
 
 All three require canonical `quality/rust-advanced.json`. Fuzz projects additionally commit
 `fuzz/Cargo.toml`, `fuzz/Cargo.lock`, `fuzz/rust-toolchain.toml`, named target sources and every seed

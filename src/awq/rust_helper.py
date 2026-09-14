@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -19,6 +20,8 @@ VERSION_OUTPUT: Final = (
     "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)"
 )
 MAX_CONFIG_BYTES: Final = 1_000_000
+MAX_RUNTIME_CARGO_ENTRIES: Final = 20_000
+MAX_RUNTIME_CARGO_BYTES: Final = 268_435_456
 COMMAND_TIMEOUT_SECONDS: Final = 840
 EXPECTED_PROBES: Final = {
     "rustc": "rustc 1.93.0 (254b59607 2026-01-19)",
@@ -79,7 +82,26 @@ def _runtime_cargo() -> Path:
     return directory
 
 
-def _base_environment() -> dict[str, str]:
+def _isolated_runtime_cargo(scratch: Path) -> Path:
+    source = _runtime_cargo()
+    destination = scratch / "cargo"
+    size = 0
+    for entries, path in enumerate(source.rglob("*"), start=1):
+        if entries > MAX_RUNTIME_CARGO_ENTRIES:
+            raise RustCheckError("Rust runtime Cargo home exceeds the size bound")
+        if path.is_symlink():
+            raise RustCheckError("Rust runtime Cargo home is unsafe")
+        if path.is_file():
+            size += path.stat().st_size
+            if size > MAX_RUNTIME_CARGO_BYTES:
+                raise RustCheckError("Rust runtime Cargo home exceeds the size bound")
+        elif not path.is_dir():
+            raise RustCheckError("Rust runtime Cargo home is unsafe")
+    shutil.copytree(source, destination)
+    return destination
+
+
+def _base_environment(cargo_home: Path | None = None) -> dict[str, str]:
     tool_bin = _tool_bin()
     return {
         "PATH": f"{tool_bin}:/usr/bin:/bin",
@@ -87,7 +109,7 @@ def _base_environment() -> dict[str, str]:
         "LC_ALL": "C.UTF-8",
         "NO_COLOR": "1",
         "CARGO": str(_tool("cargo")),
-        "CARGO_HOME": str(_runtime_cargo()),
+        "CARGO_HOME": str(_runtime_cargo() if cargo_home is None else cargo_home),
         "CARGO_NET_OFFLINE": "true",
         "CARGO_TERM_COLOR": "never",
         "RUSTC": str(_tool("rustc")),
@@ -151,9 +173,9 @@ def _verify_project(root: Path) -> None:
     _confined_file(root, ".cargo/config.toml")
 
 
-def _arguments(mode: str) -> tuple[list[str], dict[str, str]]:
+def _arguments(mode: str, cargo_home: Path | None = None) -> tuple[list[str], dict[str, str]]:
     cargo = str(_tool("cargo"))
-    environment = _base_environment()
+    environment = _base_environment(cargo_home)
     if mode == "fmt":
         return [
             str(_tool("cargo-fmt")),
@@ -214,9 +236,10 @@ def _temporary_parent() -> Path | None:
 
 
 def _invoke(root: Path, mode: str) -> None:
-    argv, environment = _arguments(mode)
     with tempfile.TemporaryDirectory(prefix="awq-rust-", dir=_temporary_parent()) as scratch_name:
         scratch = Path(scratch_name)
+        cargo_home = _isolated_runtime_cargo(scratch)
+        argv, environment = _arguments(mode, cargo_home)
         target = scratch / "target"
         temporary = scratch / "tmp"
         target.mkdir()

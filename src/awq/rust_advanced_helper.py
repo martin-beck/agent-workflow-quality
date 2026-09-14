@@ -11,6 +11,7 @@ import json
 import os
 import re
 import resource
+import shutil
 import signal
 import subprocess
 import sys
@@ -30,6 +31,10 @@ MAX_RESULT_BYTES: Final = 2_000_000
 MAX_SEED_BYTES: Final = 65_536
 MAX_CORPUS_BYTES: Final = 1_000_000
 MAX_TARGETS: Final = 3
+MAX_PACKAGES: Final = 32
+MAX_WORKSPACES: Final = 16
+MAX_RUNTIME_CARGO_ENTRIES: Final = 20_000
+MAX_RUNTIME_CARGO_BYTES: Final = 268_435_456
 SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
 IDENTIFIER: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PACKAGE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$")
@@ -214,6 +219,33 @@ def _runtime_cargo() -> Path:
     return path
 
 
+def _isolated_runtime_cargo(scratch: Path) -> Path:
+    destination = scratch / "cargo"
+    if destination.exists() or destination.is_symlink():
+        if (
+            destination.is_symlink()
+            or not destination.is_dir()
+            or destination.resolve(strict=True) != destination
+        ):
+            raise RustAdvancedError("advanced Rust Cargo home is unsafe")
+        return destination
+    source = _runtime_cargo()
+    size = 0
+    for entries, path in enumerate(source.rglob("*"), start=1):
+        if entries > MAX_RUNTIME_CARGO_ENTRIES:
+            raise RustAdvancedError("advanced Rust Cargo home exceeds the size bound")
+        if path.is_symlink():
+            raise RustAdvancedError("advanced Rust Cargo home is unsafe")
+        if path.is_file():
+            size += path.stat().st_size
+            if size > MAX_RUNTIME_CARGO_BYTES:
+                raise RustAdvancedError("advanced Rust Cargo home exceeds the size bound")
+        elif not path.is_dir():
+            raise RustAdvancedError("advanced Rust Cargo home is unsafe")
+    shutil.copytree(source, destination)
+    return destination
+
+
 def _probe(argv: list[str], expected: str) -> None:
     completed = subprocess.run(  # noqa: S603 - exact integrity-checked executable.
         argv,
@@ -289,21 +321,144 @@ def _resources(value: object) -> dict[str, int]:
     }
 
 
-def _coverage(value: object) -> dict[str, Any]:
-    keys = {"all_targets", "feature_policy", "line_floor", "outer_timeout_seconds", "packages"}
+def _coverage(value: object) -> dict[str, Any]:  # noqa: C901
+    keys = {
+        "all_targets",
+        "feature_policy",
+        "outer_timeout_seconds",
+        "package_floors",
+        "workspace_line_floor",
+    }
     if not isinstance(value, dict) or set(value) != keys:
         raise RustAdvancedError("coverage policy is invalid")
-    packages = _strings(value["packages"], PACKAGE, maximum=5, label="coverage packages")
     if value["all_targets"] is not True or value["feature_policy"] != "default-features":
         raise RustAdvancedError("coverage command is unreviewed")
+    workspace_floor = value["workspace_line_floor"]
+    if workspace_floor is not None:
+        workspace_floor = _integer(workspace_floor, 1, 100, "workspace coverage floor")
+    package_floors = value["package_floors"]
+    if not isinstance(package_floors, list) or not 1 <= len(package_floors) <= MAX_PACKAGES:
+        raise RustAdvancedError("coverage package inventory is invalid")
+    validated: list[dict[str, Any]] = []
+    names: list[str] = []
+    required = 0
+    for item in package_floors:
+        if not isinstance(item, dict) or set(item) != {
+            "denominator_sha256",
+            "line_floor",
+            "name",
+            "rationale_id",
+            "review_sha256",
+            "status",
+        }:
+            raise RustAdvancedError("coverage package inventory is invalid")
+        name, status = item["name"], item["status"]
+        if not isinstance(name, str) or not PACKAGE.fullmatch(name):
+            raise RustAdvancedError("coverage package identity is invalid")
+        if status not in {"required", "deferred", "absent"}:
+            raise RustAdvancedError("coverage package status is invalid")
+        rationale = item["rationale_id"]
+        review = item["review_sha256"]
+        if (
+            not isinstance(rationale, str)
+            or not IDENTIFIER.fullmatch(rationale)
+            or not isinstance(review, str)
+            or not SHA256.fullmatch(review)
+        ):
+            raise RustAdvancedError("coverage package rationale is unreviewed")
+        floor, denominator = item["line_floor"], item["denominator_sha256"]
+        if status == "required":
+            floor = _integer(floor, 1, 100, "package coverage floor")
+            if not isinstance(denominator, str) or not SHA256.fullmatch(denominator):
+                raise RustAdvancedError("coverage denominator is invalid")
+            required += 1
+        elif floor is not None or denominator is not None:
+            raise RustAdvancedError("non-required coverage package has a floor")
+        names.append(name)
+        validated.append({**item, "line_floor": floor})
+    if names != sorted(set(names)) or not required:
+        raise RustAdvancedError("coverage package inventory is not ordered")
     return {
         **value,
-        "line_floor": _integer(value["line_floor"], 1, 100, "coverage floor"),
         "outer_timeout_seconds": _integer(
             value["outer_timeout_seconds"], 10, COMMAND_TIMEOUT_MAX, "coverage timeout"
         ),
-        "packages": packages,
+        "package_floors": validated,
+        "workspace_line_floor": workspace_floor,
     }
+
+
+def _file_binding(value: object, label: str) -> dict[str, str]:
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"path", "sha256"}
+        or not _safe_relative(value["path"])
+        or not isinstance(value["sha256"], str)
+        or not SHA256.fullmatch(value["sha256"])
+    ):
+        raise RustAdvancedError(f"{label} is invalid")
+    return value
+
+
+def _workspaces(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or not 1 <= len(value) <= MAX_WORKSPACES:
+        raise RustAdvancedError("Cargo workspace inventory is invalid")
+    result: list[dict[str, Any]] = []
+    identifiers: list[str] = []
+    assigned: list[str] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {
+            "advisory_policy",
+            "advisory_snapshot",
+            "id",
+            "license_policy",
+            "lock",
+            "manifest",
+            "operations",
+            "role",
+            "root",
+            "source_policy",
+        }:
+            raise RustAdvancedError("Cargo workspace inventory is invalid")
+        identifier, root, role = item["id"], item["root"], item["role"]
+        if (
+            not isinstance(identifier, str)
+            or not IDENTIFIER.fullmatch(identifier)
+            or (root != "." and not _safe_relative(root))
+            or role not in {"application", "fuzz", "mutation", "tooling", "other"}
+        ):
+            raise RustAdvancedError("Cargo workspace identity is invalid")
+        operations = _strings(
+            item["operations"], IDENTIFIER, maximum=3, label="Cargo workspace operations"
+        )
+        if any(operation not in {"coverage", "fuzz", "mutation"} for operation in operations):
+            raise RustAdvancedError("Cargo workspace operation is invalid")
+        expected_manifest = "Cargo.toml" if root == "." else f"{root}/Cargo.toml"
+        expected_lock = "Cargo.lock" if root == "." else f"{root}/Cargo.lock"
+        manifest = _file_binding(item["manifest"], "Cargo workspace manifest")
+        lock = _file_binding(item["lock"], "Cargo workspace lock")
+        if manifest["path"] != expected_manifest or lock["path"] != expected_lock:
+            raise RustAdvancedError("Cargo workspace root is inconsistent")
+        validated = {
+            **item,
+            "advisory_policy": _file_binding(item["advisory_policy"], "advisory policy"),
+            "advisory_snapshot": _file_binding(item["advisory_snapshot"], "advisory snapshot"),
+            "license_policy": _file_binding(item["license_policy"], "license policy"),
+            "lock": lock,
+            "manifest": manifest,
+            "operations": operations,
+            "source_policy": _file_binding(item["source_policy"], "source policy"),
+        }
+        identifiers.append(identifier)
+        assigned.extend(operations)
+        result.append(validated)
+    if identifiers != sorted(set(identifiers)) or sorted(assigned) != [
+        "coverage",
+        "fuzz",
+        "mutation",
+    ]:
+        raise RustAdvancedError("Cargo workspace inventory is incomplete")
+    return result
 
 
 def _fuzz_targets(value: object) -> list[dict[str, Any]]:
@@ -463,11 +618,11 @@ def _mutation(value: object) -> dict[str, Any]:
 
 def _configuration(root: Path) -> tuple[dict[str, Any], str]:
     value, digest = _read_json(root, "quality/rust-advanced.json")
-    keys = {"coverage", "fuzz", "mutation", "resources", "schema_version"}
+    keys = {"coverage", "fuzz", "mutation", "resources", "schema_version", "workspaces"}
     if (
         set(value) != keys
         or type(value["schema_version"]) is not int
-        or value["schema_version"] != 1
+        or value["schema_version"] != 2
     ):
         raise RustAdvancedError("advanced Rust policy is invalid")
     return {
@@ -475,7 +630,8 @@ def _configuration(root: Path) -> tuple[dict[str, Any], str]:
         "fuzz": _fuzz(value["fuzz"]),
         "mutation": _mutation(value["mutation"]),
         "resources": _resources(value["resources"]),
-        "schema_version": 1,
+        "schema_version": 2,
+        "workspaces": _workspaces(value["workspaces"]),
     }, digest
 
 
@@ -529,7 +685,13 @@ def _git(root: Path, *arguments: str) -> int:
 
 
 def _require_clean(root: Path) -> None:
-    if _git(root, "diff", "--quiet", "--") or _git(root, "diff", "--cached", "--quiet", "--"):
+    # ``git diff --quiet`` is a predicate with the inverse of the usual
+    # subprocess convention: zero means clean, one means differences.  Keep
+    # that inversion explicit so a clean native-equivalence fixture cannot be
+    # rejected as dirty (and unexpected git failures remain fail-closed).
+    worktree_dirty = _git(root, "diff", "--quiet", "--") != 0
+    index_dirty = _git(root, "diff", "--cached", "--quiet", "--") != 0
+    if worktree_dirty or index_dirty:
         raise RustAdvancedError("tracked project state is not clean")
 
 
@@ -553,6 +715,22 @@ def _temporary_parent() -> Path | None:
     return path
 
 
+def _confined_directory(root: Path, relative: str) -> Path:
+    """Return a non-symlink directory confined below the repository root."""
+    if not _safe_relative(relative):
+        raise RustAdvancedError("advanced Rust workspace path is unsafe")
+    path = root / relative
+    resolved_root = root.resolve(strict=True)
+    try:
+        resolved = path.resolve(strict=True)
+        resolved.relative_to(resolved_root)
+    except (OSError, ValueError):
+        raise RustAdvancedError("advanced Rust workspace root is unavailable") from None
+    if path.is_symlink() or not path.is_dir() or resolved != path:
+        raise RustAdvancedError("advanced Rust workspace root is unavailable")
+    return resolved
+
+
 def _environment(channel: str, scratch: Path) -> dict[str, str]:
     cargo = _rust_tool(channel, "cargo")
     rustc = _rust_tool(channel, "rustc")
@@ -560,8 +738,8 @@ def _environment(channel: str, scratch: Path) -> dict[str, str]:
     tool_bin = _toolchain_bin(channel)
     temporary = scratch / "tmp"
     target = scratch / "target"
-    temporary.mkdir()
-    target.mkdir()
+    temporary.mkdir(exist_ok=True)
+    target.mkdir(exist_ok=True)
     return {
         "PATH": f"{tool_bin}:/usr/bin:/bin",
         "LANG": "C.UTF-8",
@@ -569,7 +747,7 @@ def _environment(channel: str, scratch: Path) -> dict[str, str]:
         "NO_COLOR": "1",
         "CARGO": str(cargo),
         "CARGO_BUILD_JOBS": "1",
-        "CARGO_HOME": str(_runtime_cargo()),
+        "CARGO_HOME": str(_isolated_runtime_cargo(scratch)),
         "CARGO_NET_OFFLINE": "true",
         "CARGO_TARGET_DIR": str(target),
         "CARGO_TERM_COLOR": "never",
@@ -665,43 +843,53 @@ def _binding(kind: str, identifier: str, digest: str) -> dict[str, str]:
     return {"kind": kind, "id": identifier[:199], "sha256": digest}
 
 
-def _coverage_result(
-    root: Path, config: dict[str, Any], digest: str, scratch: Path
-) -> list[dict[str, str]]:
-    policy = config["coverage"]
-    output = scratch / "coverage.json"
-    argv = [
-        str(_tool("cargo-llvm-cov")),
-        "llvm-cov",
-        "--json",
-        "--summary-only",
-        "--output-path",
-        str(output),
-        "--fail-under-lines",
-        str(policy["line_floor"]),
-        "--locked",
-        "--offline",
-        "--all-targets",
-    ]
-    for package in policy["packages"]:
-        argv.extend(["--package", package])
-    code = _run(
-        argv,
-        root,
-        _environment(STABLE_TOOLCHAIN, scratch),
-        policy["outer_timeout_seconds"],
-        config["resources"],
+def _workspace_for_mode(
+    root: Path, config: dict[str, Any], mode: str
+) -> tuple[Path, dict[str, Any]]:
+    matches = [item for item in config["workspaces"] if mode in item["operations"]]
+    if len(matches) != 1:
+        raise RustAdvancedError("Cargo workspace operation is not uniquely assigned")
+    workspace = matches[0]
+    workspace_root = (
+        root if workspace["root"] == "." else _confined_directory(root, workspace["root"])
     )
-    if code:
-        raise RustAdvancedError("coverage command rejected the project")
+    return workspace_root, workspace
+
+
+def _verify_workspace_inputs(root: Path, config: dict[str, Any], mode: str) -> tuple[Path, str]:
+    workspace_root, workspace = _workspace_for_mode(root, config, mode)
+    paths: list[str] = []
+    inventory: list[dict[str, str]] = []
+    for field in (
+        "manifest",
+        "lock",
+        "source_policy",
+        "license_policy",
+        "advisory_policy",
+        "advisory_snapshot",
+    ):
+        reference = workspace[field]
+        path = _confined_file(root, reference["path"])
+        observed = _sha256(path)
+        if observed != reference["sha256"]:
+            raise RustAdvancedError("Cargo workspace supply input integrity mismatch")
+        paths.append(reference["path"])
+        inventory.append({"kind": field, "sha256": observed})
+    _require_tracked(root, sorted(paths))
+    digest = hashlib.sha256(
+        _canonical_bytes({"id": workspace["id"], "operation": mode, "inputs": inventory})
+    ).hexdigest()
+    return workspace_root, digest
+
+
+def _coverage_summary(output: Path) -> tuple[int, int]:
     if output.is_symlink() or not output.is_file() or output.stat().st_size > MAX_RESULT_BYTES:
         raise RustAdvancedError("coverage result is unavailable")
     try:
         report = json.loads(output.read_text(encoding="utf-8"))
         data = report["data"]
         lines = data[0]["totals"]["lines"]
-        count = lines["count"]
-        covered = lines["covered"]
+        count, covered = lines["count"], lines["covered"]
     except (KeyError, IndexError, TypeError, UnicodeError, json.JSONDecodeError) as error:
         raise RustAdvancedError("coverage result is invalid") from error
     if (
@@ -713,14 +901,111 @@ def _coverage_result(
         or type(covered) is not int
         or count <= 0
         or not 0 <= covered <= count
-        or covered * 100 < count * policy["line_floor"]
     ):
-        raise RustAdvancedError("coverage result does not meet the reviewed floor")
-    identifier = (
-        f"lines-floor-{policy['line_floor']}:packages-{len(policy['packages'])}:"
-        f"covered-{covered}-of-{count}"
+        raise RustAdvancedError("coverage result is invalid")
+    return count, covered
+
+
+def _run_coverage(
+    root: Path,
+    config: dict[str, Any],
+    scratch: Path,
+    *,
+    floor: int,
+    output_name: str,
+    package: str | None,
+) -> tuple[int, int]:
+    output = scratch / output_name
+    argv = [
+        str(_tool("cargo-llvm-cov")),
+        "llvm-cov",
+        "--json",
+        "--summary-only",
+        "--output-path",
+        str(output),
+        "--fail-under-lines",
+        str(floor),
+        "--locked",
+        "--offline",
+        "--all-targets",
+    ]
+    if package is not None:
+        argv.extend(["--package", package])
+    code = _run(
+        argv,
+        root,
+        _environment(STABLE_TOOLCHAIN, scratch),
+        config["coverage"]["outer_timeout_seconds"],
+        config["resources"],
     )
-    return [_binding("coverage-policy", identifier, digest)]
+    if code:
+        raise RustAdvancedError("coverage command rejected the project")
+    count, covered = _coverage_summary(output)
+    if covered * 100 < count * floor:
+        raise RustAdvancedError("coverage result does not meet the reviewed floor")
+    return count, covered
+
+
+def _coverage_result(
+    root: Path, config: dict[str, Any], digest: str, scratch: Path
+) -> list[dict[str, str]]:
+    policy = config["coverage"]
+    bindings: list[dict[str, str]] = []
+    workspace_floor = policy["workspace_line_floor"]
+    if workspace_floor is not None:
+        count, covered = _run_coverage(
+            root,
+            config,
+            scratch,
+            floor=workspace_floor,
+            output_name="coverage-workspace.json",
+            package=None,
+        )
+        result = {"covered": covered, "line_count": count, "scope": "workspace"}
+        bindings.append(
+            _binding(
+                "coverage-policy",
+                f"workspace:floor-{workspace_floor}:covered-{covered}-of-{count}",
+                hashlib.sha256(_canonical_bytes(result)).hexdigest(),
+            )
+        )
+    for package in policy["package_floors"]:
+        if package["status"] != "required":
+            continue
+        name, floor = package["name"], package["line_floor"]
+        count, covered = _run_coverage(
+            root,
+            config,
+            scratch,
+            floor=floor,
+            output_name=f"coverage-package-{len(bindings):03d}.json",
+            package=name,
+        )
+        denominator = {"line_count": count, "package": name}
+        denominator_digest = hashlib.sha256(_canonical_bytes(denominator)).hexdigest()
+        if denominator_digest != package["denominator_sha256"]:
+            raise RustAdvancedError("coverage denominator drifted from review")
+        percentage = covered * 10_000 // count
+        result = {
+            "covered": covered,
+            "line_count": count,
+            "package": name,
+            "percentage_basis_points": percentage,
+        }
+        bindings.extend(
+            [
+                _binding(
+                    "coverage-policy", f"package-{name}:denominator-{count}", denominator_digest
+                ),
+                _binding(
+                    "coverage-policy",
+                    f"package-{name}:floor-{floor}:covered-{covered}-of-{count}:pct-{percentage}",
+                    hashlib.sha256(_canonical_bytes(result)).hexdigest(),
+                ),
+            ]
+        )
+    bindings.append(_binding("coverage-policy", "reviewed-inventory", digest))
+    return sorted(bindings, key=lambda item: item["id"])
 
 
 def _copy_corpus(root: Path, policy: dict[str, Any], scratch: Path) -> tuple[Path, str, int]:
@@ -951,22 +1236,33 @@ def _mutation_result(
 
 
 def _execute(root: Path, mode: str, config: dict[str, Any], digest: str) -> list[dict[str, str]]:
-    lock_digest = _sha256(_confined_file(root, "Cargo.lock"))
+    workspace_root = root
+    workspace_prefix = "."
+    if "workspaces" in config:
+        workspace_root, _ = _verify_workspace_inputs(root, config, mode)
+        workspace_prefix = workspace_root.relative_to(root).as_posix()
+    lock_digest = _sha256(_confined_file(workspace_root, "Cargo.lock"))
     _require_clean(root)
-    declared = [
+    workspace_declared = [
         ".cargo/config.toml",
         "Cargo.lock",
         "Cargo.toml",
-        "quality/rust-advanced.json",
         "rust-toolchain.toml",
     ]
     if mode == "fuzz":
-        declared.extend(["fuzz/Cargo.lock", "fuzz/Cargo.toml", "fuzz/rust-toolchain.toml"])
-        declared.extend(
+        workspace_declared.extend(
+            ["fuzz/Cargo.lock", "fuzz/Cargo.toml", "fuzz/rust-toolchain.toml"]
+        )
+        workspace_declared.extend(
             f"fuzz/fuzz_targets/{target['name']}.rs" for target in config["fuzz"]["targets"]
         )
     if mode == "mutation":
-        declared.extend(config["mutation"]["files"])
+        workspace_declared.extend(config["mutation"]["files"])
+    declared = ["quality/rust-advanced.json"]
+    declared.extend(
+        path if workspace_prefix == "." else f"{workspace_prefix}/{path}"
+        for path in workspace_declared
+    )
     _require_tracked(root, sorted(set(declared)))
     try:
         with tempfile.TemporaryDirectory(
@@ -974,14 +1270,14 @@ def _execute(root: Path, mode: str, config: dict[str, Any], digest: str) -> list
         ) as name:
             scratch = Path(name)
             if mode == "coverage":
-                return _coverage_result(root, config, digest, scratch)
+                return _coverage_result(workspace_root, config, digest, scratch)
             if mode == "fuzz":
-                return _fuzz_result(root, config, digest, scratch)
+                return _fuzz_result(workspace_root, config, digest, scratch)
             if mode == "mutation":
-                return _mutation_result(root, config, digest, scratch)
+                return _mutation_result(workspace_root, config, digest, scratch)
             raise RustAdvancedError("unsupported advanced Rust check mode")
     finally:
-        if _sha256(_confined_file(root, "Cargo.lock")) != lock_digest:
+        if _sha256(_confined_file(workspace_root, "Cargo.lock")) != lock_digest:
             raise RustAdvancedError("Cargo.lock changed during advanced Rust execution")
         _require_clean(root)
 
@@ -1003,7 +1299,10 @@ def main(argv: list[str] | None = None) -> int:
             raise RustAdvancedError("invalid advanced Rust invocation")
         root = Path.cwd().resolve()
         config, digest = _configuration(root)
-        _verify_project(root, arguments[0], config)
+        project_root = root
+        if "workspaces" in config:
+            project_root, _ = _workspace_for_mode(root, config, arguments[0])
+        _verify_project(project_root, arguments[0], config)
         _emit(_execute(root, arguments[0], config, digest))
     except (
         OSError,

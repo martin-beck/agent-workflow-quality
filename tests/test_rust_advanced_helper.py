@@ -62,7 +62,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(helper.RustAdvancedError, "canonical"):
             helper._read_json(self.root, "quality/value.json")
         path.write_bytes(b"\xff")
-        with self.assertRaisesRegex(helper.RustAdvancedError, "invalid"):
+        with self.assertRaisesRegex(helper.RustAdvancedError, "invalid|unavailable"):
             helper._read_json(self.root, "quality/value.json")
         path.write_bytes(b"xx")
         with self.assertRaisesRegex(helper.RustAdvancedError, "size bound"):
@@ -81,7 +81,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
         invalid: list[tuple[str, object]] = [
             ("schema_version", True),
             ("resources", {"memory_mib": 4096}),
-            ("coverage", {**self.policy["coverage"], "line_floor": 0}),
+            ("coverage", {**self.policy["coverage"], "workspace_line_floor": 0}),
             ("coverage", {**self.policy["coverage"], "all_targets": False}),
             ("fuzz", {**self.policy["fuzz"], "toolchain": "nightly"}),
             ("fuzz", {**self.policy["fuzz"], "runs": 0}),
@@ -124,6 +124,57 @@ class RustAdvancedHelperTests(unittest.TestCase):
         with self.assertRaises(helper.RustAdvancedError):
             helper._mutation({**mutation, "expected_caught": mutation["max_mutants"] + 1})
 
+    def test_collection_validator_uncovered_shapes_and_existing_runtime(self) -> None:
+        target = self.policy["fuzz"]["targets"][0]
+        cases = [
+            ["not-an-object"],
+            [
+                {"name": target["name"], "seeds": target["seeds"]},
+                {"name": "zulu", "seeds": target["seeds"]},
+            ],
+        ]
+        for value in cases:
+            with self.assertRaises(helper.RustAdvancedError):
+                helper._fuzz_targets(value)
+        unordered = [
+            {"name": "zulu", "seeds": [{"path": "fuzz/corpus/zulu/a.txt", "sha256": "a" * 64}]},
+            {"name": "alpha", "seeds": [{"path": "fuzz/corpus/alpha/a.txt", "sha256": "a" * 64}]},
+        ]
+        with self.assertRaisesRegex(helper.RustAdvancedError, "ordered"):
+            helper._fuzz_targets(unordered)
+        seed_order = [
+            {
+                "name": "classify",
+                "seeds": list(
+                    reversed(
+                        [
+                            {"path": "fuzz/corpus/classify/a.txt", "sha256": "a" * 64},
+                            {"path": "fuzz/corpus/classify/b.txt", "sha256": "b" * 64},
+                        ]
+                    )
+                ),
+            }
+        ]
+        with self.assertRaisesRegex(helper.RustAdvancedError, "ordered"):
+            helper._fuzz_targets(seed_order)
+        with self.assertRaisesRegex(helper.RustAdvancedError, "fuzz policy"):
+            helper._fuzz({"targets": []})
+        with self.assertRaisesRegex(helper.RustAdvancedError, "mutation policy"):
+            helper._mutation({"files": []})
+        prefix = self.root / "runtime-prefix"
+        (prefix / "runtime-cargo").mkdir(parents=True)
+        scratch = self.root / "runtime-scratch"
+        scratch.mkdir()
+        with mock.patch.object(helper, "_prefix", return_value=prefix):
+            existing = scratch / "existing"
+            (existing / "cargo").mkdir(parents=True)
+            self.assertEqual(existing / "cargo", helper._isolated_runtime_cargo(existing))
+            with self.assertRaisesRegex(helper.RustAdvancedError, "unsafe"):
+                bad = scratch / "bad"
+                bad.mkdir()
+                (bad / "cargo").write_text("file", encoding="utf-8")
+                helper._isolated_runtime_cargo(bad)
+
     def test_project_declarations_and_temporary_parent_are_exact(self) -> None:
         stable = (
             '[toolchain]\nchannel = "1.93.0"\nprofile = "minimal"\n'
@@ -158,6 +209,117 @@ class RustAdvancedHelperTests(unittest.TestCase):
             self.assertRaisesRegex(helper.RustAdvancedError, "temporary"),
         ):
             helper._temporary_parent()
+
+    def test_confined_directory_and_workspace_selection_fail_closed(self) -> None:
+        auxiliary = self.root / "auxiliary"
+        auxiliary.mkdir()
+        self.assertEqual(auxiliary, helper._confined_directory(self.root, "auxiliary"))
+        outside = self.root.parent / f"outside-{self.root.name}"
+        outside.mkdir()
+        linked = self.root / "linked"
+        linked.symlink_to(outside, target_is_directory=True)
+        for relative in ("", "../outside-awq", "linked", "missing"):
+            with self.subTest(relative=relative), self.assertRaises(helper.RustAdvancedError):
+                helper._confined_directory(self.root, relative)
+        config = {"workspaces": self.policy["workspaces"]}
+        with self.assertRaisesRegex(helper.RustAdvancedError, "not uniquely"):
+            helper._workspace_for_mode(self.root, config, "unknown")
+        duplicate = {"workspaces": [*config["workspaces"], config["workspaces"][0]]}
+        with self.assertRaisesRegex(helper.RustAdvancedError, "not uniquely"):
+            helper._workspace_for_mode(self.root, duplicate, "coverage")
+
+    def test_workspace_input_bindings_validate_files_and_digest(self) -> None:
+        workspace = self.policy["workspaces"][0]
+        for field in (
+            "manifest",
+            "lock",
+            "source_policy",
+            "license_policy",
+            "advisory_policy",
+            "advisory_snapshot",
+        ):
+            reference = workspace[field]
+            self.write(reference["path"], b"reviewed")
+            workspace[field] = {
+                "path": reference["path"],
+                "sha256": hashlib.sha256(b"reviewed").hexdigest(),
+            }
+        with mock.patch.object(helper, "_require_tracked") as tracked:
+            root, digest = helper._verify_workspace_inputs(
+                self.root, {"workspaces": [workspace]}, "coverage"
+            )
+        self.assertIs(root, self.root)
+        self.assertEqual(64, len(digest))
+        tracked.assert_called_once()
+        workspace["lock"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(helper.RustAdvancedError, "integrity"):
+            helper._verify_workspace_inputs(self.root, {"workspaces": [workspace]}, "coverage")
+
+    def test_workspace_and_project_validation_reject_hostile_declarations(self) -> None:
+        valid = self.policy["workspaces"][0]
+        invalid: list[dict[str, object]] = [
+            {**valid, "id": "bad id"},
+            {**valid, "root": "../escape"},
+            {**valid, "role": "unknown"},
+            {**valid, "operations": ["coverage", "unknown"]},
+            {**valid, "manifest": {**valid["manifest"], "path": "wrong.toml"}},
+            {**valid, "source_policy": {"path": "x", "sha256": "bad"}},
+            {**valid, "operations": ["coverage"]},
+        ]
+        for item in invalid:
+            with self.subTest(item=item), self.assertRaises(helper.RustAdvancedError):
+                helper._workspaces([item])
+        with self.assertRaisesRegex(helper.RustAdvancedError, "incomplete"):
+            helper._workspaces([{**valid, "operations": ["coverage", "fuzz", "mutation"]}, valid])
+
+    def test_coverage_summary_and_mutation_outcome_edge_paths(self) -> None:
+        output = self.root / "coverage.json"
+        for report in (
+            {"type": "llvm.coverage.json.export", "version": "1", "data": [{"totals": {}}]},
+            {
+                "type": "llvm.coverage.json.export",
+                "version": "1",
+                "data": [{"totals": {"lines": {"count": 1, "covered": 2}}}],
+            },
+        ):
+            output.write_text(json.dumps(report), encoding="utf-8")
+            with self.assertRaisesRegex(helper.RustAdvancedError, "invalid"):
+                helper._coverage_summary(output)
+        output.unlink()
+        output.symlink_to(self.write("coverage-target.json", b"{}"))
+        with self.assertRaisesRegex(helper.RustAdvancedError, "unavailable"):
+            helper._coverage_summary(output)
+        policy = self.policy["mutation"]
+        report_dir = self.root / "mutants"
+        report_path = report_dir / "mutants.out/outcomes.json"
+        report_path.parent.mkdir(parents=True)
+        base = {
+            "cargo_mutants_version": "27.1.0",
+            "caught": 1,
+            "missed": 0,
+            "timeout": 0,
+            "unviable": 0,
+            "total_mutants": 1,
+            "outcomes": [
+                {
+                    "scenario": {
+                        "Mutant": {
+                            "name": "x",
+                            "file": "src/lib.rs",
+                            "package": "awq_advanced_fixture",
+                            "genre": "BinaryOperator",
+                        }
+                    }
+                }
+            ],
+        }
+        report_path.write_text(json.dumps(base), encoding="utf-8")
+        with self.assertRaisesRegex(helper.RustAdvancedError, "selection"):
+            helper._mutation_report(report_dir, policy)
+        base["outcomes"] = [{"scenario": {"Mutant": "bad"}}]
+        report_path.write_text(json.dumps(base), encoding="utf-8")
+        with self.assertRaisesRegex(helper.RustAdvancedError, "outcome"):
+            helper._mutation_report(report_dir, policy)
 
     def test_installation_paths_environment_and_probes_fail_closed(self) -> None:
         prefix = self.root / "prefix"
@@ -196,6 +358,50 @@ class RustAdvancedHelperTests(unittest.TestCase):
             self.assertRaisesRegex(helper.RustAdvancedError, "version"),
         ):
             helper._probe(["/reviewed"], "reviewed")
+
+    def test_runtime_cargo_is_bounded_and_isolated_per_scratch(self) -> None:
+        prefix = self.root / "isolated-prefix"
+        runtime = prefix / "runtime-cargo"
+        cached = runtime / "registry/cache/package.crate"
+        cached.parent.mkdir(parents=True)
+        cached.write_bytes(b"reviewed-cache")
+        first_scratch = self.root / "first-scratch"
+        second_scratch = self.root / "second-scratch"
+        first_scratch.mkdir()
+        second_scratch.mkdir()
+        with mock.patch.object(helper, "_prefix", return_value=prefix):
+            first = helper._isolated_runtime_cargo(first_scratch)
+            second = helper._isolated_runtime_cargo(second_scratch)
+        self.assertNotEqual(first, second)
+        self.assertEqual(b"reviewed-cache", (first / cached.relative_to(runtime)).read_bytes())
+        (first / cached.relative_to(runtime)).write_bytes(b"run-local")
+        self.assertEqual(b"reviewed-cache", cached.read_bytes())
+        linked = runtime / "linked"
+        linked.symlink_to(cached)
+        hostile_scratch = self.root / "hostile-scratch"
+        hostile_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=prefix),
+            self.assertRaisesRegex(helper.RustAdvancedError, "unsafe"),
+        ):
+            helper._isolated_runtime_cargo(hostile_scratch)
+        linked.unlink()
+        bounded_scratch = self.root / "bounded-scratch"
+        bounded_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=prefix),
+            mock.patch.object(helper, "MAX_RUNTIME_CARGO_BYTES", 1),
+            self.assertRaisesRegex(helper.RustAdvancedError, "size bound"),
+        ):
+            helper._isolated_runtime_cargo(bounded_scratch)
+        entry_scratch = self.root / "entry-scratch"
+        entry_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=prefix),
+            mock.patch.object(helper, "MAX_RUNTIME_CARGO_ENTRIES", 1),
+            self.assertRaisesRegex(helper.RustAdvancedError, "size bound"),
+        ):
+            helper._isolated_runtime_cargo(entry_scratch)
 
     def test_process_limits_success_and_timeout_kill_the_group(self) -> None:
         resources = self.policy["resources"]
@@ -239,13 +445,17 @@ class RustAdvancedHelperTests(unittest.TestCase):
             mock.patch.object(helper, "_run", side_effect=run),
         ):
             bindings = helper._coverage_result(self.root, self.policy, "a" * 64, scratch)
+        self.assertEqual(4, len(bindings))
         self.assertEqual("coverage-policy", bindings[0]["kind"])
-        (scratch / "coverage.json").write_text("{}", encoding="utf-8")
+        invalid_scratch = self.root / "invalid-scratch"
+        invalid_scratch.mkdir()
+        (invalid_scratch / "coverage.json").write_text("{}", encoding="utf-8")
+        scratch = invalid_scratch
         with (
             mock.patch.object(helper, "_tool", return_value=Path("/tool")),
             mock.patch.object(helper, "_environment", return_value={}),
             mock.patch.object(helper, "_run", return_value=0),
-            self.assertRaisesRegex(helper.RustAdvancedError, "invalid"),
+            self.assertRaisesRegex(helper.RustAdvancedError, "invalid|unavailable"),
         ):
             helper._coverage_result(self.root, self.policy, "a" * 64, scratch)
 
@@ -340,6 +550,8 @@ class RustAdvancedHelperTests(unittest.TestCase):
             helper._mutation_result(self.root, self.policy, "c" * 64, scratch)
 
     def test_execute_preserves_lock_and_main_redacts_failures(self) -> None:
+        execute_policy = dict(self.policy)
+        execute_policy.pop("workspaces", None)
         lock = self.write("Cargo.lock", "version = 4\n")
         with (
             mock.patch.object(helper, "_require_clean"),
@@ -347,7 +559,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
             mock.patch.object(helper, "_coverage_result", return_value=[]),
             mock.patch.object(helper, "_temporary_parent", return_value=self.root),
         ):
-            self.assertEqual([], helper._execute(self.root, "coverage", self.policy, "d" * 64))
+            self.assertEqual([], helper._execute(self.root, "coverage", execute_policy, "d" * 64))
 
         def change_lock(*_args: object) -> list[dict[str, str]]:
             lock.write_text("changed\n", encoding="utf-8")
@@ -360,7 +572,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
             mock.patch.object(helper, "_temporary_parent", return_value=self.root),
             self.assertRaisesRegex(helper.RustAdvancedError, "Cargo.lock changed"),
         ):
-            helper._execute(self.root, "coverage", self.policy, "d" * 64)
+            helper._execute(self.root, "coverage", execute_policy, "d" * 64)
         with mock.patch.object(helper, "_verify_installation", side_effect=OSError("private")):
             self.assertEqual(1, helper.main(["coverage"]))
         with mock.patch.object(helper, "_verify_installation"):

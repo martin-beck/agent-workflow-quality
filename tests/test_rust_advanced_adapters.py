@@ -24,7 +24,7 @@ ADVANCED_IDS = [
     "ADAPTER-RUST-MUTATION",
 ]
 BINDING_KINDS = {
-    "ADAPTER-RUST-COVERAGE": ["coverage-policy"],
+    "ADAPTER-RUST-COVERAGE": ["coverage-policy"] * 4,
     "ADAPTER-RUST-FUZZ": ["fuzz-corpus", "fuzz-plan"],
     "ADAPTER-RUST-MUTATION": ["mutation-outcome", "mutation-plan"],
 }
@@ -100,12 +100,17 @@ class RustAdvancedAdapterExecutionTests(unittest.TestCase):
                     "--output-path",
                     str(output),
                     "--fail-under-lines",
-                    str(coverage["line_floor"]),
+                    str(coverage["workspace_line_floor"]),
                     "--locked",
                     "--offline",
                     "--all-targets",
                 ]
-                for package in coverage["packages"]:
+                required_packages = [
+                    item["name"]
+                    for item in coverage["package_floors"]
+                    if item["status"] == "required"
+                ]
+                for package in required_packages:
                     argv.extend(["--package", package])
                 completed = subprocess.run(
                     argv,
@@ -260,6 +265,15 @@ class RustAdvancedAdapterExecutionTests(unittest.TestCase):
         validate(result, "adapter-result.schema.json")
 
     def test_catalog_contracts_are_explicit_bounded_and_schema_valid(self) -> None:
+        policy_bytes = Path(
+            "fixtures/conforming/rust-advanced/quality/rust-advanced.json"
+        ).read_bytes()
+        self.assertEqual(
+            (
+                json.dumps(json.loads(policy_bytes), sort_keys=True, separators=(",", ":")) + "\n"
+            ).encode(),
+            policy_bytes,
+        )
         self.assertEqual(ADVANCED_IDS, sorted(self.contracts))
         expected_tiers = {
             "ADAPTER-RUST-COVERAGE": "pr",

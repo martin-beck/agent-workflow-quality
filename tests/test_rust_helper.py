@@ -149,6 +149,49 @@ class RustHelperTests(unittest.TestCase):
         self.assertNotIn("HOME", run.call_args.kwargs["env"])
         self.assertEqual(subprocess.DEVNULL, run.call_args.kwargs["stdin"])
 
+    def test_runtime_cargo_is_bounded_and_isolated_per_scratch(self) -> None:
+        runtime = self.prefix / "runtime-cargo"
+        cached = runtime / "registry/cache/package.crate"
+        cached.parent.mkdir(parents=True)
+        cached.write_bytes(b"reviewed-cache")
+        first_scratch = self.root / "first-scratch"
+        second_scratch = self.root / "second-scratch"
+        first_scratch.mkdir()
+        second_scratch.mkdir()
+        with mock.patch.object(helper, "_prefix", return_value=self.prefix):
+            first = helper._isolated_runtime_cargo(first_scratch)
+            second = helper._isolated_runtime_cargo(second_scratch)
+        self.assertNotEqual(first, second)
+        self.assertEqual(b"reviewed-cache", (first / cached.relative_to(runtime)).read_bytes())
+        (first / cached.relative_to(runtime)).write_bytes(b"run-local")
+        self.assertEqual(b"reviewed-cache", cached.read_bytes())
+        linked = runtime / "linked"
+        linked.symlink_to(cached)
+        hostile_scratch = self.root / "hostile-scratch"
+        hostile_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=self.prefix),
+            self.assertRaisesRegex(helper.RustCheckError, "unsafe"),
+        ):
+            helper._isolated_runtime_cargo(hostile_scratch)
+        linked.unlink()
+        bounded_scratch = self.root / "bounded-scratch"
+        bounded_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=self.prefix),
+            mock.patch.object(helper, "MAX_RUNTIME_CARGO_BYTES", 1),
+            self.assertRaisesRegex(helper.RustCheckError, "size bound"),
+        ):
+            helper._isolated_runtime_cargo(bounded_scratch)
+        entry_scratch = self.root / "entry-scratch"
+        entry_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=self.prefix),
+            mock.patch.object(helper, "MAX_RUNTIME_CARGO_ENTRIES", 1),
+            self.assertRaisesRegex(helper.RustCheckError, "size bound"),
+        ):
+            helper._isolated_runtime_cargo(entry_scratch)
+
     def test_project_requires_exact_regular_bounded_configuration(self) -> None:
         helper._verify_project(self.project)
         (self.project / "rust-toolchain.toml").write_text(
@@ -239,8 +282,11 @@ class RustHelperTests(unittest.TestCase):
             assert isinstance(environment, dict)
             target = Path(environment["CARGO_TARGET_DIR"])
             temporary = Path(environment["TMPDIR"])
+            cargo_home = Path(environment["CARGO_HOME"])
             self.assertTrue(target.is_dir())
             self.assertTrue(temporary.is_dir())
+            self.assertEqual(target.parent / "cargo", cargo_home)
+            self.assertTrue(cargo_home.is_dir())
             self.assertEqual(self.root, target.parents[1])
             self.assertEqual(self.root, temporary.parents[1])
             self.assertEqual(self.project, kwargs["cwd"])
@@ -248,14 +294,20 @@ class RustHelperTests(unittest.TestCase):
 
         with (
             mock.patch.dict("os.environ", {"TMPDIR": str(self.root)}, clear=True),
-            mock.patch.object(helper, "_arguments", return_value=(["/tool"], {})),
+            mock.patch.object(
+                helper,
+                "_arguments",
+                side_effect=lambda _mode, cargo: (["/tool"], {"CARGO_HOME": str(cargo)}),
+            ),
             mock.patch.object(subprocess, "run", side_effect=completed),
+            mock.patch.object(helper, "_prefix", return_value=self.prefix),
         ):
             helper._invoke(self.project, "fmt")
 
         with (
             mock.patch.dict("os.environ", {"TMPDIR": str(self.root)}, clear=True),
             mock.patch.object(helper, "_arguments", return_value=(["/tool"], {})),
+            mock.patch.object(helper, "_prefix", return_value=self.prefix),
             mock.patch.object(
                 subprocess,
                 "run",
