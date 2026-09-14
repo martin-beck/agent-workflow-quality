@@ -166,7 +166,7 @@ def _ordinary_commit_key(source: Path) -> str | None:
         return configured
 
 
-def _state_release_ready(state_repo: Path, commit: str) -> None:
+def _state_release_ready(state_repo: Path) -> str:
     """Require the state task to authorize the exact candidate for external signing."""
     task_path = state_repo / "tasks" / "AR-0054.md"
     try:
@@ -177,11 +177,15 @@ def _state_release_ready(state_repo: Path, commit: str) -> None:
         raise SigningError("release state task is unavailable or malformed") from error
     if task.get("status") != "open" or task.get("owner") or task.get("claim_expires"):
         raise SigningError("AR-0054 is not open and ownerless for external release signing")
-    if task.get("observed_head") != commit or task.get("observed_dirty") != 0:
-        raise SigningError("release state does not match the exact clean candidate commit")
+    expected = task.get("observed_head")
+    if not isinstance(expected, str) or len(expected) != 40:
+        raise SigningError("release state has no exact candidate commit")
+    if task.get("observed_dirty") != 0:
+        raise SigningError("release state records a dirty candidate tree")
     next_action = task.get("next_action")
     if not isinstance(next_action, str) or "sign" not in next_action.lower():
         raise SigningError("release state does not authorize signing")
+    return expected
 
 
 def _authorized_github_key(public: str, allowed_signers: Path) -> None:
@@ -242,7 +246,7 @@ def _tag_exists(source: Path, tag: str) -> bool:
     return code == 0
 
 
-def sign_release(
+def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-closed
     source: Path,
     bundle: Path,
     private_key: Path,
@@ -267,9 +271,13 @@ def sign_release(
     observed_tag = tag or f"v{observed_version}"
     if observed_tag != f"v{observed_version}" or "/" in observed_tag or ".." in observed_tag:
         raise SigningError("tag must be the version tag")
+    state_commit = _state_release_ready(state_repo)
     commit = _require_clean_source(source)
-    _state_release_ready(state_repo, commit)
-    _checkout_exact(source, commit)
+    if commit != state_commit:
+        _checkout_exact(source, state_commit)
+        commit = _require_clean_source(source)
+        if commit != state_commit:
+            raise SigningError("checkout did not reach the state-authorized release commit")
     manifest = _manifest(bundle, observed_version)
     before = _digest(manifest)
     _verify_manifest(source, manifest)
@@ -308,6 +316,10 @@ def sign_release(
         if _digest(manifest) != before:
             raise SigningError("manifest changed during signing")
         temporary_manifest.with_name(temporary_manifest.name + ".sig").replace(signature)
+    if _require_clean_source(source) != commit or _tag_exists(source, observed_tag):
+        with contextlib.suppress(OSError):
+            signature.unlink()
+        raise SigningError("release changed during signing; nothing was tagged")
     code, _ = _run(
         [
             "/usr/bin/git",
