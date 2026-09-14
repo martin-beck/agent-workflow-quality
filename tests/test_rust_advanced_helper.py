@@ -291,8 +291,8 @@ class RustAdvancedHelperTests(unittest.TestCase):
             helper._coverage_summary(output)
         policy = self.policy["mutation"]
         report_dir = self.root / "mutants"
-        report = report_dir / "mutants.out/outcomes.json"
-        report.parent.mkdir(parents=True)
+        report_path = report_dir / "mutants.out/outcomes.json"
+        report_path.parent.mkdir(parents=True)
         base = {
             "cargo_mutants_version": "27.1.0",
             "caught": 1,
@@ -313,11 +313,11 @@ class RustAdvancedHelperTests(unittest.TestCase):
                 }
             ],
         }
-        report.write_text(json.dumps(base), encoding="utf-8")
+        report_path.write_text(json.dumps(base), encoding="utf-8")
         with self.assertRaisesRegex(helper.RustAdvancedError, "selection"):
             helper._mutation_report(report_dir, policy)
         base["outcomes"] = [{"scenario": {"Mutant": "bad"}}]
-        report.write_text(json.dumps(base), encoding="utf-8")
+        report_path.write_text(json.dumps(base), encoding="utf-8")
         with self.assertRaisesRegex(helper.RustAdvancedError, "outcome"):
             helper._mutation_report(report_dir, policy)
 
