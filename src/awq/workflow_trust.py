@@ -220,7 +220,7 @@ def _top_permissions_invalid(text: str) -> bool:
 
 
 def _checkout_blocks(job: str) -> list[str]:
-    starts = list(re.finditer(r"(?m)^      - uses: actions/checkout@[0-9a-f]{40}\s*$", job))
+    starts = list(re.finditer(r"(?m)^      - uses: actions/checkout@[^\s]+\s*$", job))
     blocks: list[str] = []
     for index, item in enumerate(starts):
         end = starts[index + 1].start() if index + 1 < len(starts) else len(job)
@@ -229,6 +229,10 @@ def _checkout_blocks(job: str) -> list[str]:
             end = item.end() + next_step.start()
         blocks.append(job[item.start() : end])
     return blocks
+
+
+def _pinned_checkout(block: str) -> bool:
+    return bool(re.search(r"(?m)^      - uses: actions/checkout@[0-9a-f]{40}\s*$", block))
 
 
 def _run_content(text: str) -> str:
@@ -412,7 +416,24 @@ def evaluate_workflow(  # noqa: C901
                     "caller-controlled input reaches a privileged job",
                 )
             )
-        for checkout in _checkout_blocks(job):
+        checkouts = _checkout_blocks(job)
+        if required_gate and len(checkouts) != 1:
+            findings.append(
+                _finding(
+                    "required-gate-checkout",
+                    "required-gate candidate evidence requires exactly one "
+                    "statically inspectable checkout",
+                )
+            )
+        if required_gate and len(checkouts) == 1 and not _pinned_checkout(checkouts[0]):
+            findings.append(
+                _finding(
+                    "required-gate-checkout",
+                    "required-gate candidate evidence requires exactly one "
+                    "statically inspectable checkout",
+                )
+            )
+        for checkout in checkouts:
             if not re.search(r"(?m)^\s+persist-credentials:\s*false\s*$", checkout):
                 findings.append(
                     _finding(

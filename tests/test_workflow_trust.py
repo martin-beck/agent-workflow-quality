@@ -208,6 +208,25 @@ class WorkflowTrustTests(unittest.TestCase):
                 ),
                 "checkout-not-exact-head",
             ),
+            "required-gate-no-checkout": (
+                workflow(checkout="      - run: python -m awq\n"),
+                "required-gate-checkout",
+            ),
+            "required-gate-ambiguous-checkouts": (
+                workflow(
+                    checkout=(
+                        "      - uses: actions/checkout@" + "a" * 40 + "\n"
+                        "        with:\n"
+                        "          ref: ${{ github.event.pull_request.head.sha }}\n"
+                        "          persist-credentials: false\n"
+                        "      - uses: actions/checkout@" + "b" * 40 + "\n"
+                        "        with:\n"
+                        "          ref: ${{ github.event.pull_request.head.sha }}\n"
+                        "          persist-credentials: false\n"
+                    )
+                ),
+                "required-gate-checkout",
+            ),
             "dynamic-runner": (workflow(runner="${{ inputs.runner }}"), "unknown-runner-class"),
             "unsupported-event": (
                 workflow(event="repository_dispatch"),

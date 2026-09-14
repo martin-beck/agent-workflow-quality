@@ -9,8 +9,8 @@ classes, unsafe paths, unsupported events, and oversized inputs fail closed.
 The workflow check rejects `pull_request_target`, unreviewed pull-request code on trusted or
 persistent runners, write permissions outside a named publication boundary, caller-controlled
 privileged inputs, required-gate `continue-on-error`, command-bound secret or event expressions,
-mutable container images, retained checkout credentials, and candidate checkouts not bound to
-`${{ github.event.pull_request.head.sha }}`. Matrix runner values are accepted only when their
+mutable container images, retained checkout credentials, and required-gate candidate evidence without exactly one statically inspectable, SHA-pinned
+`actions/checkout` step, and candidate checkouts not bound to `${{ github.event.pull_request.head.sha }}`. Matrix runner values are accepted only when their
 complete static set belongs to the disposable class.
 
 Findings contain only a stable code, the repository-relative workflow path, and a fixed remediation
