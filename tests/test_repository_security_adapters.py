@@ -90,9 +90,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             fixture.write(b"tampered artifact")
             fixture.flush()
             with self.assertRaises(installer.InstallError):
-                installer.verify(
-                    Path(fixture.name), installer.ARTIFACTS["x86_64"][0].sha256
-                )
+                installer.verify(Path(fixture.name), installer.ARTIFACTS["x86_64"][0].sha256)
 
 
 if __name__ == "__main__":
