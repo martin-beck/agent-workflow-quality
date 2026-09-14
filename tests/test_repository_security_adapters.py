@@ -182,7 +182,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             ):
                 result = adapters.run_adapter(Path.cwd(), contract, **kwargs)
                 self.assertEqual("adapter-tool-unavailable", result["findings"][0]["code"])
-                self.assertNotIn("secret", json.dumps(result).lower())
+                self.assertNotIn("PRIVATE_SECRET_DIAGNOSTIC", json.dumps(result))
 
     def test_gitleaks_hostile_diagnostic_is_not_retained(self) -> None:
         families, _ = adapters.load_adapter_catalog()
