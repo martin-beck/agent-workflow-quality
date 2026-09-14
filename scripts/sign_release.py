@@ -15,10 +15,12 @@ import contextlib
 import hashlib
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -34,22 +36,54 @@ class SigningError(ValueError):
     """A release signing precondition failed."""
 
 
-def _run(argv: list[str], *, cwd: Path | None = None) -> tuple[int, bytes]:
+def _run(  # noqa: C901 - bounded process lifecycle is intentionally explicit
+    argv: list[str], *, cwd: Path | None = None
+) -> tuple[int, bytes]:
     """Run a fixed argument vector with bounded, non-persistent output."""
+    process: subprocess.Popen[bytes] | None = None
     try:
-        completed = subprocess.run(  # noqa: S603 - argv is constructed as an explicit vector
+        process = subprocess.Popen(  # noqa: S603 - argv is constructed as an explicit vector
             argv,
             cwd=cwd,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            check=False,
-            timeout=TIMEOUT,
             env={"PATH": "/usr/bin:/bin", "LC_ALL": "C", "LANG": "C"},
         )
+        if process.stdout is None:
+            raise SigningError(f"{argv[0]} did not provide a readable output stream")
+        fd = process.stdout.fileno()
+        os.set_blocking(fd, False)
+        output = bytearray()
+        deadline = time.monotonic() + TIMEOUT
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise subprocess.TimeoutExpired(argv[0], TIMEOUT)
+            ready, _, _ = select.select([fd], [], [], remaining)
+            if ready:
+                chunk = os.read(fd, MAX_OUTPUT + 1 - len(output))
+                if not chunk:
+                    break
+                output.extend(chunk)
+                if len(output) > MAX_OUTPUT:
+                    raise SigningError(f"{argv[0]} produced too much output")
+            elif process.poll() is not None:
+                break
+        return process.wait(timeout=1), bytes(output)
+    except SigningError:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait()
+        raise
     except (OSError, subprocess.TimeoutExpired) as error:
+        if process is not None and process.poll() is None:
+            process.kill()
+            process.wait()
         raise SigningError(f"command unavailable or timed out: {argv[0]}") from error
-    return completed.returncode, completed.stdout[: MAX_OUTPUT + 1]
+    finally:
+        if process is not None and process.stdout is not None:
+            process.stdout.close()
 
 
 def _git(root: Path, *args: str) -> tuple[int, bytes]:
@@ -265,19 +299,24 @@ def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-cl
     public_key = (public_key or Path(str(private_key) + ".pub")).expanduser().resolve()
     state_repo = (state_repo or source.parent / "agent-workflow-quality-state").resolve()
     allowed_signers = (
-        allowed_signers or source / "config" / "allowed_signers"
+        allowed_signers or source.parent / "awq-release-trust" / "allowed_signers"
     ).expanduser().resolve()
-    observed_version = version or _version(source)
-    observed_tag = tag or f"v{observed_version}"
-    if observed_tag != f"v{observed_version}" or "/" in observed_tag or ".." in observed_tag:
-        raise SigningError("tag must be the version tag")
     state_commit = _state_release_ready(state_repo)
     commit = _require_clean_source(source)
     if commit != state_commit:
+        if not confirm:
+            raise SigningError(
+                "preview requires the clone at the state-authorized commit; rerun with --yes "
+                "only after reviewing the requested detached checkout"
+            )
         _checkout_exact(source, state_commit)
         commit = _require_clean_source(source)
         if commit != state_commit:
             raise SigningError("checkout did not reach the state-authorized release commit")
+    observed_version = version or _version(source)
+    observed_tag = tag or f"v{observed_version}"
+    if observed_tag != f"v{observed_version}" or "/" in observed_tag or ".." in observed_tag:
+        raise SigningError("tag must be the version tag")
     manifest = _manifest(bundle, observed_version)
     before = _digest(manifest)
     _verify_manifest(source, manifest)
@@ -360,13 +399,31 @@ def main(argv: list[str] | None = None) -> int:
         help="clean release clone (default: current directory)",
     )
     parser.add_argument(
-        "--bundle", type=Path, default=Path("release"), help="bundle directory (default: ./release)"
+        "--bundle",
+        type=Path,
+        default=Path("..") / "awq-release",
+        help="external bundle directory (default: ../awq-release)",
     )
     parser.add_argument(
         "--key",
         type=Path,
         default=Path("~/.ssh/awq-release-signing"),
         help="dedicated GitHub SSH signing key",
+    )
+    parser.add_argument(
+        "--allowed-signers",
+        type=Path,
+        default=None,
+        help=(
+            "external reviewed allowed-signers file "
+            "(default: ../awq-release-trust/allowed_signers)"
+        ),
+    )
+    parser.add_argument(
+        "--state-repo",
+        type=Path,
+        default=None,
+        help="local AWQ state clone (default: ../agent-workflow-quality-state)",
     )
     parser.add_argument("--public-key", type=Path, help="matching public key (default: KEY.pub)")
     parser.add_argument("--version", help="release version (default: pyproject.toml)")
@@ -378,6 +435,8 @@ def main(argv: list[str] | None = None) -> int:
             args.source,
             args.bundle,
             args.key,
+            state_repo=args.state_repo,
+            allowed_signers=args.allowed_signers,
             public_key=args.public_key,
             version=args.version,
             tag=args.tag,
