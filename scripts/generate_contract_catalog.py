@@ -234,6 +234,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_inventory_signature_rebuild_and_archive_safety_fail_closed",
         "docs/NATIVE_BUNDLES.md",
     ),
+    "native-bundle-assurance-v2": (
+        "native_bundle",
+        "NativeBundleTests",
+        "test_native_package_and_runtime_bundle_are_complete_and_deterministic",
+        "test_inventory_signature_rebuild_and_archive_safety_fail_closed",
+        "docs/NATIVE_BUNDLES.md",
+    ),
     "evidence-identity": (
         "native_mapping",
         "NativeMappingTests",
