@@ -80,7 +80,10 @@ SUPPLY_PREFIX/
 Runtime never executes Rustup proxies. Both wrappers validate exact regular executable files and
 invoke absolute tool paths. Each command receives a fresh external home, cache, Cargo target, and
 temporary directory. The runtime Cargo home is proxy-free and may not contain global configuration
-or credential files. Standard input is closed and native output is discarded.
+or credential files. Each execution validates a fixed entry and byte ceiling, rejects symlinks,
+and copies the reviewed cache into its fresh external scratch before Cargo starts. Cargo therefore
+cannot unpack packages or create cache state in the installed source cache or a later fixture.
+Standard input is closed and native output is discarded.
 
 The supply wrapper's exact probe is:
 

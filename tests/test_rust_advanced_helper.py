@@ -197,6 +197,50 @@ class RustAdvancedHelperTests(unittest.TestCase):
         ):
             helper._probe(["/reviewed"], "reviewed")
 
+    def test_runtime_cargo_is_bounded_and_isolated_per_scratch(self) -> None:
+        prefix = self.root / "isolated-prefix"
+        runtime = prefix / "runtime-cargo"
+        cached = runtime / "registry/cache/package.crate"
+        cached.parent.mkdir(parents=True)
+        cached.write_bytes(b"reviewed-cache")
+        first_scratch = self.root / "first-scratch"
+        second_scratch = self.root / "second-scratch"
+        first_scratch.mkdir()
+        second_scratch.mkdir()
+        with mock.patch.object(helper, "_prefix", return_value=prefix):
+            first = helper._isolated_runtime_cargo(first_scratch)
+            second = helper._isolated_runtime_cargo(second_scratch)
+        self.assertNotEqual(first, second)
+        self.assertEqual(b"reviewed-cache", (first / cached.relative_to(runtime)).read_bytes())
+        (first / cached.relative_to(runtime)).write_bytes(b"run-local")
+        self.assertEqual(b"reviewed-cache", cached.read_bytes())
+        linked = runtime / "linked"
+        linked.symlink_to(cached)
+        hostile_scratch = self.root / "hostile-scratch"
+        hostile_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=prefix),
+            self.assertRaisesRegex(helper.RustAdvancedError, "unsafe"),
+        ):
+            helper._isolated_runtime_cargo(hostile_scratch)
+        linked.unlink()
+        bounded_scratch = self.root / "bounded-scratch"
+        bounded_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=prefix),
+            mock.patch.object(helper, "MAX_RUNTIME_CARGO_BYTES", 1),
+            self.assertRaisesRegex(helper.RustAdvancedError, "size bound"),
+        ):
+            helper._isolated_runtime_cargo(bounded_scratch)
+        entry_scratch = self.root / "entry-scratch"
+        entry_scratch.mkdir()
+        with (
+            mock.patch.object(helper, "_prefix", return_value=prefix),
+            mock.patch.object(helper, "MAX_RUNTIME_CARGO_ENTRIES", 1),
+            self.assertRaisesRegex(helper.RustAdvancedError, "size bound"),
+        ):
+            helper._isolated_runtime_cargo(entry_scratch)
+
     def test_process_limits_success_and_timeout_kill_the_group(self) -> None:
         resources = self.policy["resources"]
         with mock.patch.object(resource, "setrlimit") as limit:

@@ -11,6 +11,7 @@ import json
 import os
 import re
 import resource
+import shutil
 import signal
 import subprocess
 import sys
@@ -32,6 +33,8 @@ MAX_CORPUS_BYTES: Final = 1_000_000
 MAX_TARGETS: Final = 3
 MAX_PACKAGES: Final = 32
 MAX_WORKSPACES: Final = 16
+MAX_RUNTIME_CARGO_ENTRIES: Final = 20_000
+MAX_RUNTIME_CARGO_BYTES: Final = 268_435_456
 SHA256: Final = re.compile(r"^[0-9a-f]{64}$")
 IDENTIFIER: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 PACKAGE: Final = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$")
@@ -214,6 +217,33 @@ def _runtime_cargo() -> Path:
         if (path / name).exists() or (path / name).is_symlink():
             raise RustAdvancedError("advanced Rust Cargo home is unsafe")
     return path
+
+
+def _isolated_runtime_cargo(scratch: Path) -> Path:
+    destination = scratch / "cargo"
+    if destination.exists() or destination.is_symlink():
+        if (
+            destination.is_symlink()
+            or not destination.is_dir()
+            or destination.resolve(strict=True) != destination
+        ):
+            raise RustAdvancedError("advanced Rust Cargo home is unsafe")
+        return destination
+    source = _runtime_cargo()
+    size = 0
+    for entries, path in enumerate(source.rglob("*"), start=1):
+        if entries > MAX_RUNTIME_CARGO_ENTRIES:
+            raise RustAdvancedError("advanced Rust Cargo home exceeds the size bound")
+        if path.is_symlink():
+            raise RustAdvancedError("advanced Rust Cargo home is unsafe")
+        if path.is_file():
+            size += path.stat().st_size
+            if size > MAX_RUNTIME_CARGO_BYTES:
+                raise RustAdvancedError("advanced Rust Cargo home exceeds the size bound")
+        elif not path.is_dir():
+            raise RustAdvancedError("advanced Rust Cargo home is unsafe")
+    shutil.copytree(source, destination)
+    return destination
 
 
 def _probe(argv: list[str], expected: str) -> None:
@@ -695,7 +725,7 @@ def _environment(channel: str, scratch: Path) -> dict[str, str]:
         "NO_COLOR": "1",
         "CARGO": str(cargo),
         "CARGO_BUILD_JOBS": "1",
-        "CARGO_HOME": str(_runtime_cargo()),
+        "CARGO_HOME": str(_isolated_runtime_cargo(scratch)),
         "CARGO_NET_OFFLINE": "true",
         "CARGO_TARGET_DIR": str(target),
         "CARGO_TERM_COLOR": "never",
