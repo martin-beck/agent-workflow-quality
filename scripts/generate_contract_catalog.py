@@ -24,6 +24,13 @@ RELEASE_VERSION = re.compile(r"^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-
 
 # module, class, positive case, hostile case, documentation
 FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
+    "workflow-claims": (
+        "workflow_claims",
+        "WorkflowClaimsTests",
+        "test_valid",
+        "test_hostile_claims_and_assets_fail_closed",
+        "docs/WORKFLOW_CLAIMS.md",
+    ),
     "agent-runtime-replay": (
         "agent_replay",
         "AgentReplayTests",
@@ -351,6 +358,7 @@ REGISTRIES = {
     "profiles": "profile-registry",
     "requirement_mappings": "standards-mapping-registry",
     "requirements": "requirement-registry",
+    "workflow_claims": "workflow-claims",
 }
 
 
