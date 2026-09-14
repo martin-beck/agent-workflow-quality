@@ -24,6 +24,13 @@ RELEASE_VERSION = re.compile(r"^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-
 
 # module, class, positive case, hostile case, documentation
 FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
+    "agent-runtime-replay": (
+        "agent_replay",
+        "AgentReplayTests",
+        "test_canonical_replay_schema_runtime_cli_and_redaction",
+        "test_timeline_matching_bounds_uncertainty_and_live_promotion_fail_closed",
+        "docs/AGENT_RUNTIME_REPLAY.md",
+    ),
     "adapter-catalog-v2": (
         "adapters",
         "AdapterContractTests",

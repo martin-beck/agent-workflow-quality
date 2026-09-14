@@ -15,6 +15,7 @@ from typing import Any
 
 from awq import (
     adversarial,
+    agent_replay,
     assurance,
     assurance_plan,
     commands,
@@ -149,6 +150,9 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("structural-refactor-verify")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("agent-replay-evaluate")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -196,6 +200,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "structural-refactor-verify": lambda: structural_refactoring.evaluate_file(
             root, args.contract
         ),
+        "agent-replay-evaluate": lambda: agent_replay.evaluate_file(root, args.contract),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,
