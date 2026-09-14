@@ -71,9 +71,22 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         self.assertEqual("adapter-failed", result["findings"][0]["code"])
         self.assertNotIn("synthetic", json.dumps(result))
 
-    def test_real_git_range_scanner_reports_clean_defect_and_removed_cases(self) -> None:
-        for label, status in (("clean", 0), ("introduced", 1), ("later-removed", 1)):
+    def test_real_git_range_scanner_distinguishes_clean_introduced_and_removed(self) -> None:
+        for label in ("clean", "introduced", "later-removed"):
             temporary, root, base, head = self._git_fixture()
+            if label == "introduced":
+                (root / "README.md").write_text("SECRET_VALUE=synthetic\n", encoding="utf-8")
+            elif label == "later-removed":
+                (root / "README.md").write_text("SECRET_VALUE=synthetic\n", encoding="utf-8")
+                subprocess.run(["git", "-C", root, "add", "README.md"], check=True)
+                subprocess.run(["git", "-C", root, "commit", "-qm", "secret"], check=True)
+                (root / "README.md").write_text("clean\n", encoding="utf-8")
+            if label != "clean":
+                subprocess.run(["git", "-C", root, "add", "README.md"], check=True)
+                subprocess.run(["git", "-C", root, "commit", "-qm", label], check=True)
+            head = subprocess.check_output(
+                ["git", "-C", root, "rev-parse", "HEAD"], text=True
+            ).strip()
             families, _ = adapters.load_adapter_catalog()
             contract = copy.deepcopy(
                 next(
@@ -83,12 +96,23 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
                 )
             )
             tool = Path(sys.executable).name
+            scanner = (
+                "import subprocess,sys; r=next(x[11:] for x in sys.argv "
+                "if x.startswith('--log-opts=')); "
+                "d=subprocess.check_output(['git','diff',r],text=True); found='SECRET_VALUE' in d; "
+                "print('SECRET_VALUE') if found else None; raise SystemExit(1 if found else 0)"
+            )
             contract.update(
                 tool=tool,
                 version=sys.version.split()[0],
                 version_argv=[tool, "--version"],
                 version_output=f"Python {sys.version.split()[0]}",
-                argv=[tool, "-c", f"import sys; print('case={label}'); raise SystemExit({status})"],
+                argv=[
+                    tool,
+                    "-c",
+                    scanner,
+                    "--log-opts={base}..{head}",
+                ],
                 config_paths=[],
             )
             with mock.patch.object(
@@ -101,10 +125,10 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
                 )
             temporary.cleanup()
             self.assertEqual(
-                "pass" if status == 0 else "adapter-failed",
-                result["status"] if status == 0 else result["findings"][0]["code"],
+                "adapter-failed" if label == "introduced" else "pass",
+                result["findings"][0]["code"] if label == "introduced" else result["status"],
             )
-            self.assertNotIn("case=", json.dumps(result))
+            self.assertNotIn("SECRET_VALUE", json.dumps(result))
 
     def test_shallow_history_is_rejected_before_scanner(self) -> None:
         temporary, root, base, head = self._git_fixture()
