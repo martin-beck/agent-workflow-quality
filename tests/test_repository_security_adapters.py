@@ -18,6 +18,8 @@ from awq import adapters
 from awq.registry import canonical_bytes
 from scripts import install_repository_security_tools as installer
 
+ROOT = Path(__file__).parents[1]
+
 
 class RepositorySecurityAdapterTests(unittest.TestCase):
     def test_versioned_catalog_loader_preserves_v1_history(self) -> None:
@@ -89,7 +91,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         for base, head in ((None, None), ("a" * 39, "b" * 40), ("a" * 40, "a" * 40)):
             with self.subTest(base=base, head=head):
                 result = adapters.run_adapter(
-                    Path.cwd(), contract, base_revision=base, head_revision=head
+                    ROOT, contract, base_revision=base, head_revision=head
                 )
                 self.assertEqual("adapter-range-invalid", result["findings"][0]["code"])
 
@@ -100,9 +102,11 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             for item in families["repository-security"]["contracts"]
             if item["tool"] == "gitleaks"
         )
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
-        updated, failure = adapters._security_contract(Path.cwd(), contract, base, head)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        base = subprocess.check_output(
+            ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
+        ).strip()
+        updated, failure = adapters._security_contract(ROOT, contract, base, head)
         self.assertIsNone(failure)
         assert updated is not None
         self.assertIn(base + ".." + head, updated["argv"][-1])
@@ -152,15 +156,17 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             for item in families["repository-security"]["contracts"]
             if item["tool"] == "gitleaks"
         )
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        base = subprocess.check_output(
+            ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
+        ).strip()
         cases = (
             ("clean", base, head),
             ("introduced-secret", base, head),
             ("later-removed-secret", base, head),
         )
         for case, base, head in cases:
-            updated, failure = adapters._security_contract(Path.cwd(), contract, base, head)
+            updated, failure = adapters._security_contract(ROOT, contract, base, head)
             with self.subTest(case=case):
                 self.assertIsNone(failure)
             assert updated is not None
@@ -173,14 +179,18 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         for contract in families["repository-security"]["contracts"]:
             kwargs: dict[str, str] = {}
             if contract["tool"] == "gitleaks":
-                head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-                base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
+                head = subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+                ).strip()
+                base = subprocess.check_output(
+                    ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
+                ).strip()
                 kwargs = {"base_revision": base, "head_revision": head}
             with (
                 self.subTest(tool=contract["tool"]),
                 mock.patch.object(adapters.shutil, "which", return_value=None),
             ):
-                result = adapters.run_adapter(Path.cwd(), contract, **kwargs)
+                result = adapters.run_adapter(ROOT, contract, **kwargs)
                 self.assertEqual("adapter-tool-unavailable", result["findings"][0]["code"])
                 self.assertNotIn("PRIVATE_SECRET_DIAGNOSTIC", json.dumps(result))
 
@@ -202,12 +212,15 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             argv=[tool, "-c", "print('PRIVATE_SECRET_DIAGNOSTIC')"],
             config_paths=[],
         )
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
-        with mock.patch.object(adapters.shutil, "which", return_value=sys.executable):
-            result = adapters.run_adapter(
-                Path.cwd(), contract, base_revision=base, head_revision=head
-            )
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        base = subprocess.check_output(
+            ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
+        ).strip()
+        with (
+            mock.patch.object(adapters.shutil, "which", return_value=sys.executable),
+            mock.patch.object(adapters, "_security_contract", return_value=(contract, None)),
+        ):
+            result = adapters.run_adapter(ROOT, contract, base_revision=base, head_revision=head)
         self.assertNotIn("PRIVATE_SECRET_DIAGNOSTIC", json.dumps(result))
 
     def test_gitleaks_execution_path_normalizes_defect_without_secret(self) -> None:
@@ -228,12 +241,15 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             argv=[tool, "-c", "print('SYNTHETIC_SECRET_VALUE'); raise SystemExit(7)"],
             config_paths=[],
         )
-        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
-        with mock.patch.object(adapters.shutil, "which", return_value=sys.executable):
-            result = adapters.run_adapter(
-                Path.cwd(), contract, base_revision=base, head_revision=head
-            )
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        base = subprocess.check_output(
+            ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
+        ).strip()
+        with (
+            mock.patch.object(adapters.shutil, "which", return_value=sys.executable),
+            mock.patch.object(adapters, "_security_contract", return_value=(contract, None)),
+        ):
+            result = adapters.run_adapter(ROOT, contract, base_revision=base, head_revision=head)
         self.assertEqual("adapter-failed", result["findings"][0]["code"])
         self.assertNotIn("SYNTHETIC_SECRET_VALUE", json.dumps(result))
 
