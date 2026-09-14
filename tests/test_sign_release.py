@@ -220,20 +220,54 @@ class SignReleaseTests(unittest.TestCase):
         original = subprocess.check_output(
             ["git", "-C", str(self.source), "rev-parse", "HEAD"], text=True
         ).strip()
-        with self.assertRaisesRegex(
-            sign_release.SigningError, "preview requires"
-        ), mock.patch.object(sign_release, "_verify_manifest"):
-                sign_release.sign_release(
-                    self.source,
-                    self.bundle,
-                    self.key,
-                    state_repo=self.state,
-                    allowed_signers=self.source / "config/allowed_signers",
-                    confirm=False,
-                )
+        with (
+            self.assertRaisesRegex(sign_release.SigningError, "preview requires"),
+            mock.patch.object(sign_release, "_verify_manifest"),
+        ):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+                confirm=False,
+            )
         self.assertEqual(
             original,
             subprocess.check_output(
                 ["git", "-C", str(self.source), "rev-parse", "HEAD"], text=True
             ).strip(),
+        )
+
+    def test_tag_failure_removes_manifest_signature(self) -> None:
+        real_run = sign_release._run
+
+        def fail_tag(argv: list[str], *, cwd: Path | None = None) -> tuple[int, bytes]:
+            if argv and argv[0] == "/usr/bin/git" and "tag" in argv and "-s" in argv:
+                raise sign_release.SigningError("command unavailable or timed out")
+            if argv and argv[0] == "/usr/bin/ssh-keygen" and "-Y" in argv:
+                Path(argv[-1] + ".sig").write_bytes(b"synthetic signature")
+                return 0, b""
+            return real_run(argv, cwd=cwd)
+
+        signature = self.manifest.with_name(self.manifest.name + ".sig")
+        with (
+            mock.patch.object(sign_release, "_verify_manifest"),
+            mock.patch.object(sign_release, "_run", side_effect=fail_tag),
+            self.assertRaisesRegex(sign_release.SigningError, "annotated SSH tag"),
+        ):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+                confirm=True,
+            )
+        self.assertFalse(signature.exists())
+        self.assertEqual(
+            subprocess.check_output(
+                ["git", "-C", str(self.source), "tag", "--list", "v0.35.0"], text=True
+            ),
+            "",
         )
