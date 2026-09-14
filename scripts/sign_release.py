@@ -17,6 +17,7 @@ import json
 import os
 import select
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -36,6 +37,18 @@ class SigningError(ValueError):
     """A release signing precondition failed."""
 
 
+def _terminate(process: subprocess.Popen[bytes]) -> None:
+    """Terminate the bounded command and any child processes it spawned."""
+    if process.poll() is not None:
+        return
+    with contextlib.suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGKILL)
+    with contextlib.suppress(OSError):
+        process.kill()
+    with contextlib.suppress(OSError):
+        process.wait()
+
+
 def _run(  # noqa: C901 - bounded process lifecycle is intentionally explicit
     argv: list[str], *, cwd: Path | None = None
 ) -> tuple[int, bytes]:
@@ -48,6 +61,7 @@ def _run(  # noqa: C901 - bounded process lifecycle is intentionally explicit
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
+            start_new_session=True,
             env={"PATH": "/usr/bin:/bin", "LC_ALL": "C", "LANG": "C"},
         )
         if process.stdout is None:
@@ -72,14 +86,12 @@ def _run(  # noqa: C901 - bounded process lifecycle is intentionally explicit
                 break
         return process.wait(timeout=1), bytes(output)
     except SigningError:
-        if process is not None and process.poll() is None:
-            process.kill()
-            process.wait()
+        if process is not None:
+            _terminate(process)
         raise
     except (OSError, subprocess.TimeoutExpired) as error:
-        if process is not None and process.poll() is None:
-            process.kill()
-            process.wait()
+        if process is not None:
+            _terminate(process)
         raise SigningError(f"command unavailable or timed out: {argv[0]}") from error
     finally:
         if process is not None and process.stdout is not None:
