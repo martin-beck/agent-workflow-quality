@@ -136,6 +136,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_cli_json_success_failure_and_error",
         "docs/QUALITY.md",
     ),
+    "experiment-receipt": (
+        "experiment",
+        "ExperimentReceiptTests",
+        "test_deterministic_small_and_consumer_receipts",
+        "test_hostile_methodology_claims_fail_closed",
+        "docs/EXPERIMENT_EVIDENCE.md",
+    ),
     "execution-receipt": (
         "execution_budget",
         "ExecutionBudgetTests",

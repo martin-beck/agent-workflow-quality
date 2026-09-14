@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-workflow-quality.example/schemas/experiment-receipt-v1",
+  "title": "Benchmark-neutral experiment receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "experiment_id", "source", "workload_sha256", "config_sha256", "predeclaration", "conditions", "observations", "bias_treatment", "uncertainty", "raw_artifacts", "methodology_review", "environmental_validity"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "experiment-receipt"},
+    "experiment_id": {"type": "string", "pattern": "^EXP-[A-Z0-9][A-Z0-9-]{0,31}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "tree_sha256"],
+      "properties": {
+        "revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tree_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "workload_sha256": {"$ref": "#/$defs/sha256"},
+    "config_sha256": {"$ref": "#/$defs/sha256"},
+    "predeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registered_at", "design_sha256", "population", "planned_samples", "repeats", "warmup_samples", "precision_target_ppm", "confidence", "stopping_rule", "resource_budget"],
+      "properties": {
+        "registered_at": {"$ref": "#/$defs/timestamp"},
+        "design_sha256": {"$ref": "#/$defs/sha256"},
+        "population": {"type": "string", "minLength": 1, "maxLength": 256},
+        "planned_samples": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "repeats": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "warmup_samples": {"type": "integer", "minimum": 0, "maximum": 100000},
+        "precision_target_ppm": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "confidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["method", "level_ppm"],
+          "properties": {
+            "method": {"enum": ["t-interval", "bootstrap", "exact"]},
+            "level_ppm": {"type": "integer", "minimum": 500000, "maximum": 999999}
+          }
+        },
+        "stopping_rule": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "max_samples", "max_duration_seconds"],
+          "properties": {
+            "kind": {"enum": ["fixed-samples", "precision-or-budget"]},
+            "max_samples": {"type": "integer", "minimum": 1, "maximum": 1000000},
+            "max_duration_seconds": {"type": "integer", "minimum": 1, "maximum": 604800}
+          }
+        },
+        "resource_budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cpu_seconds", "wall_seconds", "memory_bytes"],
+          "properties": {
+            "cpu_seconds": {"type": "integer", "minimum": 1, "maximum": 604800},
+            "wall_seconds": {"type": "integer", "minimum": 1, "maximum": 604800},
+            "memory_bytes": {"type": "integer", "minimum": 1048576, "maximum": 1099511627776}
+          }
+        }
+      }
+    },
+    "conditions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["load_model", "concurrency", "cache_state", "network_state", "retries", "timeout_seconds"],
+      "properties": {
+        "load_model": {"enum": ["open", "closed"]},
+        "concurrency": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "cache_state": {"enum": ["cold", "warm", "mixed"]},
+        "network_state": {"enum": ["offline", "controlled", "external"]},
+        "retries": {"type": "integer", "minimum": 0, "maximum": 100},
+        "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 86400}
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_revisions", "attempted", "completed", "failed", "timed_out", "cancelled", "missing", "contaminated", "highest_tested_capacity", "claimed_capacity", "raw_result_sha256", "observed_at"],
+      "properties": {
+        "source_revisions": {"type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[0-9a-f]{40}$"}},
+        "attempted": {"$ref": "#/$defs/count"},
+        "completed": {"$ref": "#/$defs/count"},
+        "failed": {"$ref": "#/$defs/count"},
+        "timed_out": {"$ref": "#/$defs/count"},
+        "cancelled": {"$ref": "#/$defs/count"},
+        "missing": {"$ref": "#/$defs/count"},
+        "contaminated": {"$ref": "#/$defs/count"},
+        "highest_tested_capacity": {"type": "integer", "minimum": 0, "maximum": 1000000000},
+        "claimed_capacity": {"type": "integer", "minimum": 0, "maximum": 1000000000},
+        "raw_result_sha256": {"$ref": "#/$defs/sha256"},
+        "observed_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "bias_treatment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["coordinated_omission", "survivorship_bias", "capacity_basis", "contamination_disposition", "contamination_rationale"],
+      "properties": {
+        "coordinated_omission": {"enum": ["avoided", "measured", "not-applicable"]},
+        "survivorship_bias": {"enum": ["included-failures", "adjusted", "not-applicable"]},
+        "capacity_basis": {"enum": ["highest-tested", "inferred"]},
+        "contamination_disposition": {"enum": ["none", "included", "excluded-with-rationale"]},
+        "contamination_rationale": {"type": "string", "maxLength": 512}
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "level_ppm", "estimate", "lower", "upper", "precision_achieved_ppm", "status"],
+      "properties": {
+        "method": {"enum": ["t-interval", "bootstrap", "exact"]},
+        "level_ppm": {"type": "integer", "minimum": 500000, "maximum": 999999},
+        "estimate": {"$ref": "#/$defs/measurement"},
+        "lower": {"$ref": "#/$defs/measurement"},
+        "upper": {"$ref": "#/$defs/measurement"},
+        "precision_achieved_ppm": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "status": {"enum": ["met", "not-met"]}
+      }
+    },
+    "raw_artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "sha256", "bytes"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1, "maxLength": 64},
+          "sha256": {"$ref": "#/$defs/sha256"},
+          "bytes": {"type": "integer", "minimum": 1, "maximum": 1073741824}
+        }
+      }
+    },
+    "methodology_review": {"type": "string", "minLength": 20, "maxLength": 512},
+    "environmental_validity": {"enum": ["unverified", "reviewed"]}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "measurement": {"type": "integer", "minimum": -1000000000000, "maximum": 1000000000000}
+  }
+}
