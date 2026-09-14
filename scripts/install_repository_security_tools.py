@@ -64,7 +64,7 @@ def verify(path: Path, digest: str) -> None:
         raise InstallError(f"{path.name}: SHA-256 mismatch")
 
 
-def install(prefix: Path, architecture: str | None = None) -> None:
+def install(prefix: Path, architecture: str | None = None) -> None:  # noqa: C901 - bounded three-tool setup pipeline
     arch = architecture or platform.machine()
     artifacts = ARTIFACTS.get(
         {"x86_64": "x86_64", "amd64": "x86_64", "aarch64": "aarch64", "arm64": "aarch64"}.get(
@@ -81,7 +81,7 @@ def install(prefix: Path, architecture: str | None = None) -> None:
         (staging / "bin").mkdir()
         for artifact in artifacts:
             destination = staging / "bin" / artifact.name
-            request = Request(artifact.url, headers={"User-Agent": "agent-workflow-quality"})
+            request = Request(artifact.url, headers={"User-Agent": "agent-workflow-quality"})  # noqa: S310 - immutable reviewed artifact URL
             with urlopen(request, timeout=30) as response:  # noqa: S310 - fixed reviewed host below
                 if response.geturl().split("/", 3)[2] not in HOSTS:
                     raise InstallError("artifact redirected to an unreviewed host")
@@ -108,7 +108,7 @@ def install(prefix: Path, architecture: str | None = None) -> None:
             if destination.stat().st_size > MAX_BYTES:
                 raise InstallError(f"{artifact.name}: executable exceeds the size bound")
             destination.chmod(0o755)
-            probe = subprocess.run(
+            probe = subprocess.run(  # noqa: S603 - exact staged executable and fixed argv
                 [str(destination), "--version"],
                 cwd=staging,
                 env={
@@ -125,7 +125,7 @@ def install(prefix: Path, architecture: str | None = None) -> None:
             )
             if probe.returncode or artifact.version.encode() not in probe.stdout[:4096]:
                 raise InstallError(f"{artifact.name}: exact version probe failed")
-        os.replace(staging, prefix)
+        staging.replace(prefix)
 
 
 def main(argv: list[str] | None = None) -> int:
