@@ -23,6 +23,53 @@ ROOT = Path(__file__).parents[1]
 
 
 class RepositorySecurityAdapterTests(unittest.TestCase):
+    def _git_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path, str, str]:
+        temporary = tempfile.TemporaryDirectory()
+        root = Path(temporary.name)
+        subprocess.run(["git", "init", "-q", root], check=True)
+        subprocess.run(
+            ["git", "-C", root, "config", "user.email", "fixture@example.invalid"], check=True
+        )
+        subprocess.run(["git", "-C", root, "config", "user.name", "fixture"], check=True)
+        (root / "README.md").write_text("clean\n", encoding="utf-8")
+        subprocess.run(["git", "-C", root, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", root, "commit", "-qm", "base"], check=True)
+        base = subprocess.check_output(["git", "-C", root, "rev-parse", "HEAD"], text=True).strip()
+        (root / "README.md").write_text("later-removed-secret=synthetic\n", encoding="utf-8")
+        subprocess.run(["git", "-C", root, "add", "README.md"], check=True)
+        subprocess.run(["git", "-C", root, "commit", "-qm", "introduced"], check=True)
+        head = subprocess.check_output(["git", "-C", root, "rev-parse", "HEAD"], text=True).strip()
+        return temporary, root, base, head
+
+    def test_real_git_range_executes_fake_gitleaks_and_redacts_diagnostics(self) -> None:
+        temporary, root, base, head = self._git_fixture()
+        self.addCleanup(temporary.cleanup)
+        families, _ = adapters.load_adapter_catalog()
+        contract = copy.deepcopy(
+            next(
+                item
+                for item in families["repository-security"]["contracts"]
+                if item["tool"] == "gitleaks"
+            )
+        )
+        tool = Path(sys.executable).name
+        contract.update(
+            tool=tool,
+            version=sys.version.split()[0],
+            version_argv=[tool, "--version"],
+            version_output=f"Python {sys.version.split()[0]}",
+            argv=[tool, "-c", "raise SystemExit(7)"],
+            config_paths=[],
+        )
+
+        def locate(name: str, **_: object) -> str | None:
+            return "/usr/bin/git" if name == "git" else sys.executable
+
+        with mock.patch.object(shutil, "which", side_effect=locate):
+            result = adapters.run_adapter(root, contract, base_revision=base, head_revision=head)
+        self.assertEqual("adapter-failed", result["findings"][0]["code"])
+        self.assertNotIn("synthetic", json.dumps(result))
+
     def test_versioned_catalog_loader_preserves_v1_history(self) -> None:
         data = Path(__file__).parents[1] / "src/awq/data"
         historical = json.loads((data / "adapter_catalog.json").read_bytes())
