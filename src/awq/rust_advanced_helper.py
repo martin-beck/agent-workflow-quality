@@ -685,7 +685,13 @@ def _git(root: Path, *arguments: str) -> int:
 
 
 def _require_clean(root: Path) -> None:
-    if _git(root, "diff", "--quiet", "--") or _git(root, "diff", "--cached", "--quiet", "--"):
+    # ``git diff --quiet`` is a predicate with the inverse of the usual
+    # subprocess convention: zero means clean, one means differences.  Keep
+    # that inversion explicit so a clean native-equivalence fixture cannot be
+    # rejected as dirty (and unexpected git failures remain fail-closed).
+    worktree_dirty = _git(root, "diff", "--quiet", "--") != 0
+    index_dirty = _git(root, "diff", "--cached", "--quiet", "--") != 0
+    if worktree_dirty or index_dirty:
         raise RustAdvancedError("tracked project state is not clean")
 
 
@@ -707,6 +713,22 @@ def _temporary_parent() -> Path | None:
     ):
         raise RustAdvancedError("temporary directory is unavailable")
     return path
+
+
+def _confined_directory(root: Path, relative: str) -> Path:
+    """Return a non-symlink directory confined below the repository root."""
+    if not _safe_relative(relative):
+        raise RustAdvancedError("advanced Rust workspace path is unsafe")
+    path = root / relative
+    resolved_root = root.resolve(strict=True)
+    try:
+        resolved = path.resolve(strict=True)
+        resolved.relative_to(resolved_root)
+    except (OSError, ValueError):
+        raise RustAdvancedError("advanced Rust workspace root is unavailable") from None
+    if path.is_symlink() or not path.is_dir() or resolved != path:
+        raise RustAdvancedError("advanced Rust workspace root is unavailable")
+    return resolved
 
 
 def _environment(channel: str, scratch: Path) -> dict[str, str]:
@@ -821,11 +843,21 @@ def _binding(kind: str, identifier: str, digest: str) -> dict[str, str]:
     return {"kind": kind, "id": identifier[:199], "sha256": digest}
 
 
-def _verify_workspace_inputs(root: Path, config: dict[str, Any], mode: str) -> str:
+def _workspace_for_mode(
+    root: Path, config: dict[str, Any], mode: str
+) -> tuple[Path, dict[str, Any]]:
     matches = [item for item in config["workspaces"] if mode in item["operations"]]
     if len(matches) != 1:
         raise RustAdvancedError("Cargo workspace operation is not uniquely assigned")
     workspace = matches[0]
+    workspace_root = (
+        root if workspace["root"] == "." else _confined_directory(root, workspace["root"])
+    )
+    return workspace_root, workspace
+
+
+def _verify_workspace_inputs(root: Path, config: dict[str, Any], mode: str) -> tuple[Path, str]:
+    workspace_root, workspace = _workspace_for_mode(root, config, mode)
     paths: list[str] = []
     inventory: list[dict[str, str]] = []
     for field in (
@@ -844,9 +876,10 @@ def _verify_workspace_inputs(root: Path, config: dict[str, Any], mode: str) -> s
         paths.append(reference["path"])
         inventory.append({"kind": field, "sha256": observed})
     _require_tracked(root, sorted(paths))
-    return hashlib.sha256(
+    digest = hashlib.sha256(
         _canonical_bytes({"id": workspace["id"], "operation": mode, "inputs": inventory})
     ).hexdigest()
+    return workspace_root, digest
 
 
 def _coverage_summary(output: Path) -> tuple[int, int]:
@@ -1203,39 +1236,48 @@ def _mutation_result(
 
 
 def _execute(root: Path, mode: str, config: dict[str, Any], digest: str) -> list[dict[str, str]]:
-    lock_digest = _sha256(_confined_file(root, "Cargo.lock"))
+    workspace_root = root
+    workspace_prefix = "."
+    if "workspaces" in config:
+        workspace_root, _ = _verify_workspace_inputs(root, config, mode)
+        workspace_prefix = workspace_root.relative_to(root).as_posix()
+    lock_digest = _sha256(_confined_file(workspace_root, "Cargo.lock"))
     _require_clean(root)
-    declared = [
+    workspace_declared = [
         ".cargo/config.toml",
         "Cargo.lock",
         "Cargo.toml",
-        "quality/rust-advanced.json",
         "rust-toolchain.toml",
     ]
     if mode == "fuzz":
-        declared.extend(["fuzz/Cargo.lock", "fuzz/Cargo.toml", "fuzz/rust-toolchain.toml"])
-        declared.extend(
+        workspace_declared.extend(
+            ["fuzz/Cargo.lock", "fuzz/Cargo.toml", "fuzz/rust-toolchain.toml"]
+        )
+        workspace_declared.extend(
             f"fuzz/fuzz_targets/{target['name']}.rs" for target in config["fuzz"]["targets"]
         )
     if mode == "mutation":
-        declared.extend(config["mutation"]["files"])
+        workspace_declared.extend(config["mutation"]["files"])
+    declared = ["quality/rust-advanced.json"]
+    declared.extend(
+        path if workspace_prefix == "." else f"{workspace_prefix}/{path}"
+        for path in workspace_declared
+    )
     _require_tracked(root, sorted(set(declared)))
-    if "workspaces" in config:
-        _verify_workspace_inputs(root, config, mode)
     try:
         with tempfile.TemporaryDirectory(
             prefix="awq-rust-advanced-", dir=_temporary_parent()
         ) as name:
             scratch = Path(name)
             if mode == "coverage":
-                return _coverage_result(root, config, digest, scratch)
+                return _coverage_result(workspace_root, config, digest, scratch)
             if mode == "fuzz":
-                return _fuzz_result(root, config, digest, scratch)
+                return _fuzz_result(workspace_root, config, digest, scratch)
             if mode == "mutation":
-                return _mutation_result(root, config, digest, scratch)
+                return _mutation_result(workspace_root, config, digest, scratch)
             raise RustAdvancedError("unsupported advanced Rust check mode")
     finally:
-        if _sha256(_confined_file(root, "Cargo.lock")) != lock_digest:
+        if _sha256(_confined_file(workspace_root, "Cargo.lock")) != lock_digest:
             raise RustAdvancedError("Cargo.lock changed during advanced Rust execution")
         _require_clean(root)
 
@@ -1257,7 +1299,10 @@ def main(argv: list[str] | None = None) -> int:
             raise RustAdvancedError("invalid advanced Rust invocation")
         root = Path.cwd().resolve()
         config, digest = _configuration(root)
-        _verify_project(root, arguments[0], config)
+        project_root = root
+        if "workspaces" in config:
+            project_root, _ = _workspace_for_mode(root, config, arguments[0])
+        _verify_project(project_root, arguments[0], config)
         _emit(_execute(root, arguments[0], config, digest))
     except (
         OSError,

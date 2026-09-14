@@ -121,11 +121,23 @@ class RustAdvancedHelperEdgeTests(unittest.TestCase):
             self.assertEqual(0, helper._git(self.root, "status"))
             helper._require_clean(self.root)
             helper._require_tracked(self.root, ["Cargo.lock"])
-        with mock.patch.object(helper, "_git", return_value=1):
-            with self.assertRaisesRegex(helper.RustAdvancedError, "not clean"):
-                helper._require_clean(self.root)
-            with self.assertRaisesRegex(helper.RustAdvancedError, "not tracked"):
-                helper._require_tracked(self.root, ["Cargo.lock"])
+        with (
+            mock.patch.object(helper, "_git", side_effect=[1, 0]),
+            self.assertRaisesRegex(helper.RustAdvancedError, "not clean"),
+        ):
+            helper._require_clean(self.root)
+        with (
+            mock.patch.object(helper, "_git", side_effect=[0, 1]),
+            self.assertRaisesRegex(helper.RustAdvancedError, "not clean"),
+        ):
+            helper._require_clean(self.root)
+        with mock.patch.object(helper, "_git", return_value=0):
+            helper._require_clean(self.root)
+        with (
+            mock.patch.object(helper, "_git", return_value=1),
+            self.assertRaisesRegex(helper.RustAdvancedError, "not tracked"),
+        ):
+            helper._require_tracked(self.root, ["Cargo.lock"])
 
     def test_deadline_and_binding_bounds(self) -> None:
         with (
@@ -270,6 +282,25 @@ class RustAdvancedHelperEdgeTests(unittest.TestCase):
             self.assertRaisesRegex(helper.RustAdvancedError, "unsupported"),
         ):
             helper._execute(self.root, "unknown", execute_config, "c" * 64)
+
+    def test_execute_runs_declared_auxiliary_workspace_from_its_root(self) -> None:
+        auxiliary = self.root / "auxiliary"
+        auxiliary.mkdir()
+        (auxiliary / "Cargo.lock").write_text("version = 4\n", encoding="utf-8")
+        with (
+            mock.patch.object(
+                helper, "_verify_workspace_inputs", return_value=(auxiliary, "e" * 64)
+            ),
+            mock.patch.object(helper, "_require_clean"),
+            mock.patch.object(helper, "_require_tracked") as tracked,
+            mock.patch.object(helper, "_temporary_parent", return_value=self.root),
+            mock.patch.object(helper, "_coverage_result", return_value=[]) as coverage,
+        ):
+            self.assertEqual([], helper._execute(self.root, "coverage", self.config, "d" * 64))
+        coverage.assert_called_once()
+        self.assertIs(auxiliary, coverage.call_args.args[0])
+        tracked.assert_called_once()
+        self.assertIn("auxiliary/Cargo.toml", tracked.call_args.args[1])
 
     def test_main_success_is_canonical_and_invalid_invocation_is_redacted(self) -> None:
         bindings = [{"kind": "coverage-policy", "id": "reviewed", "sha256": "a" * 64}]
