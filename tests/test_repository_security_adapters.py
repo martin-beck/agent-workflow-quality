@@ -170,15 +170,43 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
 
     def test_security_tool_absence_and_skew_fail_closed_without_diagnostics(self) -> None:
         families, _ = adapters.load_adapter_catalog()
-        contract = next(
-            item
-            for item in families["repository-security"]["contracts"]
-            if item["tool"] == "actionlint"
+        for contract in families["repository-security"]["contracts"]:
+            kwargs: dict[str, str] = {}
+            if contract["tool"] == "gitleaks":
+                head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+                base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
+                kwargs = {"base_revision": base, "head_revision": head}
+            with (
+                self.subTest(tool=contract["tool"]),
+                mock.patch.object(adapters.shutil, "which", return_value=None),
+            ):
+                result = adapters.run_adapter(Path.cwd(), contract, **kwargs)
+                self.assertEqual("adapter-tool-unavailable", result["findings"][0]["code"])
+                self.assertNotIn("secret", json.dumps(result).lower())
+
+    def test_gitleaks_hostile_diagnostic_is_not_retained(self) -> None:
+        families, _ = adapters.load_adapter_catalog()
+        contract = copy.deepcopy(
+            next(
+                item
+                for item in families["repository-security"]["contracts"]
+                if item["tool"] == "gitleaks"
+            )
         )
-        with mock.patch.object(adapters.shutil, "which", return_value=None):
-            result = adapters.run_adapter(Path.cwd(), contract)
-        self.assertEqual("adapter-tool-unavailable", result["findings"][0]["code"])
-        self.assertNotIn("secret", json.dumps(result).lower())
+        tool = Path(sys.executable).name
+        contract.update(
+            tool=tool,
+            version=sys.version.split()[0],
+            version_argv=[tool, "--version"],
+            version_output=f"Python {sys.version.split()[0]}",
+            argv=[tool, "-c", "print('PRIVATE_SECRET_DIAGNOSTIC')"],
+            config_paths=[],
+        )
+        with mock.patch.object(adapters.shutil, "which", return_value=sys.executable):
+            result = adapters.run_adapter(
+                Path.cwd(), contract, base_revision="a" * 40, head_revision="b" * 40
+            )
+        self.assertNotIn("PRIVATE_SECRET_DIAGNOSTIC", json.dumps(result))
 
     def test_security_bounds_timeout_output_and_descendants(self) -> None:
         environment = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"}
