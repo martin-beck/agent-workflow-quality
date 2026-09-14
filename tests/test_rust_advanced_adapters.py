@@ -100,12 +100,17 @@ class RustAdvancedAdapterExecutionTests(unittest.TestCase):
                     "--output-path",
                     str(output),
                     "--fail-under-lines",
-                    str(coverage["line_floor"]),
+                    str(coverage["workspace_line_floor"]),
                     "--locked",
                     "--offline",
                     "--all-targets",
                 ]
-                for package in coverage["packages"]:
+                required_packages = [
+                    item["name"]
+                    for item in coverage["package_floors"]
+                    if item["status"] == "required"
+                ]
+                for package in required_packages:
                     argv.extend(["--package", package])
                 completed = subprocess.run(
                     argv,

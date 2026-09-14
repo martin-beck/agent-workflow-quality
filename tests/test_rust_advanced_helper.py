@@ -62,7 +62,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
         with self.assertRaisesRegex(helper.RustAdvancedError, "canonical"):
             helper._read_json(self.root, "quality/value.json")
         path.write_bytes(b"\xff")
-        with self.assertRaisesRegex(helper.RustAdvancedError, "invalid"):
+        with self.assertRaisesRegex(helper.RustAdvancedError, "invalid|unavailable"):
             helper._read_json(self.root, "quality/value.json")
         path.write_bytes(b"xx")
         with self.assertRaisesRegex(helper.RustAdvancedError, "size bound"):
@@ -81,7 +81,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
         invalid: list[tuple[str, object]] = [
             ("schema_version", True),
             ("resources", {"memory_mib": 4096}),
-            ("coverage", {**self.policy["coverage"], "line_floor": 0}),
+            ("coverage", {**self.policy["coverage"], "workspace_line_floor": 0}),
             ("coverage", {**self.policy["coverage"], "all_targets": False}),
             ("fuzz", {**self.policy["fuzz"], "toolchain": "nightly"}),
             ("fuzz", {**self.policy["fuzz"], "runs": 0}),
@@ -240,12 +240,15 @@ class RustAdvancedHelperTests(unittest.TestCase):
         ):
             bindings = helper._coverage_result(self.root, self.policy, "a" * 64, scratch)
         self.assertEqual("coverage-policy", bindings[0]["kind"])
-        (scratch / "coverage.json").write_text("{}", encoding="utf-8")
+        invalid_scratch = self.root / "invalid-scratch"
+        invalid_scratch.mkdir()
+        (invalid_scratch / "coverage.json").write_text("{}", encoding="utf-8")
+        scratch = invalid_scratch
         with (
             mock.patch.object(helper, "_tool", return_value=Path("/tool")),
             mock.patch.object(helper, "_environment", return_value={}),
             mock.patch.object(helper, "_run", return_value=0),
-            self.assertRaisesRegex(helper.RustAdvancedError, "invalid"),
+            self.assertRaisesRegex(helper.RustAdvancedError, "invalid|unavailable"),
         ):
             helper._coverage_result(self.root, self.policy, "a" * 64, scratch)
 
@@ -340,6 +343,8 @@ class RustAdvancedHelperTests(unittest.TestCase):
             helper._mutation_result(self.root, self.policy, "c" * 64, scratch)
 
     def test_execute_preserves_lock_and_main_redacts_failures(self) -> None:
+        execute_policy = dict(self.policy)
+        execute_policy.pop("workspaces", None)
         lock = self.write("Cargo.lock", "version = 4\n")
         with (
             mock.patch.object(helper, "_require_clean"),
@@ -347,7 +352,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
             mock.patch.object(helper, "_coverage_result", return_value=[]),
             mock.patch.object(helper, "_temporary_parent", return_value=self.root),
         ):
-            self.assertEqual([], helper._execute(self.root, "coverage", self.policy, "d" * 64))
+            self.assertEqual([], helper._execute(self.root, "coverage", execute_policy, "d" * 64))
 
         def change_lock(*_args: object) -> list[dict[str, str]]:
             lock.write_text("changed\n", encoding="utf-8")
@@ -360,7 +365,7 @@ class RustAdvancedHelperTests(unittest.TestCase):
             mock.patch.object(helper, "_temporary_parent", return_value=self.root),
             self.assertRaisesRegex(helper.RustAdvancedError, "Cargo.lock changed"),
         ):
-            helper._execute(self.root, "coverage", self.policy, "d" * 64)
+            helper._execute(self.root, "coverage", execute_policy, "d" * 64)
         with mock.patch.object(helper, "_verify_installation", side_effect=OSError("private")):
             self.assertEqual(1, helper.main(["coverage"]))
         with mock.patch.object(helper, "_verify_installation"):

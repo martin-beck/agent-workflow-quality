@@ -223,6 +223,8 @@ The optional advanced bundle exposes three deliberately separate contracts:
 | Fuzz regression | `scheduled` | Every named cargo-fuzz-built ASan target completes its digest-bound copied seed corpus under fixed PRNG-seed, run, wall-time, per-input, input-length, sampled-RSS and allocation limits on `nightly-2026-09-01`. |
 | Mutation sentinel | `trusted-host` | Every mutant selected by exact package, file, genre and anchored safe-filter expression is caught under single-worker build, test and outer deadlines. |
 
+The advanced policy is schema version 2. It declares a bounded, sorted `package_floors` inventory: every required package has an independently reviewed line floor, denominator digest, review digest, and rationale; deferred or absent packages must carry explicit non-claim rationale. `workspace_line_floor` runs separately from package floors. The `workspaces` inventory names every executed coverage, fuzz, or mutation Cargo graph and binds its manifest, lockfile, source policy, license policy, advisory policy, and advisory snapshot by SHA-256. An operation is rejected unless exactly one declared workspace owns it and every bound input is tracked, regular, and unchanged.
+
 All three require canonical `quality/rust-advanced.json`. Fuzz projects additionally commit
 `fuzz/Cargo.toml`, `fuzz/Cargo.lock`, `fuzz/rust-toolchain.toml`, named target sources and every seed
 listed with its SHA-256. The reviewed PRNG seed is explicit and included in the fuzz-plan binding. Setup may acquire locked project dependencies into the bundle's

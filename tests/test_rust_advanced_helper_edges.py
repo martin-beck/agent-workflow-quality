@@ -247,6 +247,8 @@ class RustAdvancedHelperEdgeTests(unittest.TestCase):
         )
 
     def test_execute_dispatches_fuzz_mutation_and_rejects_unknown(self) -> None:
+        execute_config = dict(self.config)
+        execute_config.pop("workspaces", None)
         (self.root / "Cargo.lock").write_text("version = 4\n", encoding="utf-8")
         for mode, function in (
             ("fuzz", "_fuzz_result"),
@@ -259,7 +261,7 @@ class RustAdvancedHelperEdgeTests(unittest.TestCase):
                 mock.patch.object(helper, "_temporary_parent", return_value=self.root),
                 mock.patch.object(helper, function, return_value=[]) as invoked,
             ):
-                self.assertEqual([], helper._execute(self.root, mode, self.config, "c" * 64))
+                self.assertEqual([], helper._execute(self.root, mode, execute_config, "c" * 64))
                 invoked.assert_called_once()
         with (
             mock.patch.object(helper, "_require_clean"),
@@ -267,7 +269,7 @@ class RustAdvancedHelperEdgeTests(unittest.TestCase):
             mock.patch.object(helper, "_temporary_parent", return_value=self.root),
             self.assertRaisesRegex(helper.RustAdvancedError, "unsupported"),
         ):
-            helper._execute(self.root, "unknown", self.config, "c" * 64)
+            helper._execute(self.root, "unknown", execute_config, "c" * 64)
 
     def test_main_success_is_canonical_and_invalid_invocation_is_redacted(self) -> None:
         bindings = [{"kind": "coverage-policy", "id": "reviewed", "sha256": "a" * 64}]
