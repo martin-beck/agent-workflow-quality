@@ -123,6 +123,32 @@ class SignReleaseTests(unittest.TestCase):
                         allowed_signers=self.source / "config/allowed_signers",
                     )
 
+    def test_rejects_key_not_in_reviewed_github_policy(self) -> None:
+        other = self.root / "other-key"
+        subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)], check=True
+        )
+        with self.assertRaisesRegex(
+            sign_release.SigningError, "reviewed GitHub signing key"
+        ), mock.patch.object(sign_release, "_verify_manifest"):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                other,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+            )
+        self.assertFalse((self.manifest.with_name(self.manifest.name + ".sig")).exists())
+        self.assertEqual(
+            subprocess.run(
+                ["git", "-C", str(self.source), "tag", "--list", "v0.35.0"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout,
+            "",
+        )
+
     def test_refuses_existing_tag_or_signature(self) -> None:
         signature = self.manifest.with_name(self.manifest.name + ".sig")
         signature.write_bytes(b"existing")
