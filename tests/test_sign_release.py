@@ -196,3 +196,44 @@ class SignReleaseTests(unittest.TestCase):
             self.assertRaisesRegex(sign_release.SigningError, "timed out"),
         ):
             sign_release._run([sys.executable, "-c", code])
+
+    def test_rejects_nonhex_state_head_before_any_side_effect(self) -> None:
+        task_path = self.state / "tasks" / "AR-0054.md"
+        task = __import__("json").loads(task_path.read_text(encoding="utf-8").split("---\n")[1])
+        task["observed_head"] = "z" * 40
+        task_path.write_text("---\n" + __import__("json").dumps(task) + "\n---\n", encoding="utf-8")
+        with self.assertRaisesRegex(sign_release.SigningError, "exact candidate"):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+            )
+        self.assertFalse((self.manifest.with_name(self.manifest.name + ".sig")).exists())
+
+    def test_preview_refuses_wrong_head_without_checkout(self) -> None:
+        task_path = self.state / "tasks" / "AR-0054.md"
+        task = __import__("json").loads(task_path.read_text(encoding="utf-8").split("---\n")[1])
+        task["observed_head"] = "0" * 40
+        task_path.write_text("---\n" + __import__("json").dumps(task) + "\n---\n", encoding="utf-8")
+        original = subprocess.check_output(
+            ["git", "-C", str(self.source), "rev-parse", "HEAD"], text=True
+        ).strip()
+        with self.assertRaisesRegex(
+            sign_release.SigningError, "preview requires"
+        ), mock.patch.object(sign_release, "_verify_manifest"):
+                sign_release.sign_release(
+                    self.source,
+                    self.bundle,
+                    self.key,
+                    state_repo=self.state,
+                    allowed_signers=self.source / "config/allowed_signers",
+                    confirm=False,
+                )
+        self.assertEqual(
+            original,
+            subprocess.check_output(
+                ["git", "-C", str(self.source), "rev-parse", "HEAD"], text=True
+            ).strip(),
+        )
