@@ -13,6 +13,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-ADAPTER-RESULT-V1` | 1 | `json-schema` | `schemas/adapter-result.schema.json` | `awq.tests.adapters.AdapterRunnerTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADVERSARIAL-CAMPAIGN-V1` | 1 | `json-schema` | `schemas/adversarial-campaign.schema.json` | `awq.tests.adversarial.AdversarialTests` | [docs/ADVERSARIAL.md](ADVERSARIAL.md) |
 | `AWQ-CONTRACT-AGENT-RECIPES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/agent_recipes.json` | `awq.tests.onboarding.OnboardingTests` | [docs/ONBOARDING.md](ONBOARDING.md) |
+| `AWQ-CONTRACT-AGENT-RUNTIME-REPLAY-V1` | 1 | `json-schema` | `schemas/agent-runtime-replay.schema.json` | `awq.tests.agent_replay.AgentReplayTests` | [docs/AGENT_RUNTIME_REPLAY.md](AGENT_RUNTIME_REPLAY.md) |
 | `AWQ-CONTRACT-ANDROID-JVM-POLICY-V1` | 1 | `json-schema` | `schemas/android-jvm-policy.schema.json` | `awq.tests.android_jvm_adapters.AndroidJvmAdapterTests` | [docs/ANDROID_JVM_ADAPTERS.md](ANDROID_JVM_ADAPTERS.md) |
 | `AWQ-CONTRACT-ASSURANCE-CONTRACT-V1` | 1 | `json-schema` | `schemas/assurance-contract.schema.json` | `awq.tests.assurance.FormalAssuranceTests` | [docs/FORMAL_ASSURANCE.md](FORMAL_ASSURANCE.md) |
 | `AWQ-CONTRACT-ASSURANCE-PLAN-V1` | 1 | `json-schema` | `schemas/assurance-plan.schema.json` | `awq.tests.assurance_plan.AssurancePlanTests` | [docs/ASSURANCE_PLANS.md](ASSURANCE_PLANS.md) |

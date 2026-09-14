@@ -36,7 +36,9 @@ INPUT_PATHS = (
     BUILD_CONSTRAINTS_PATH,
     LICENSE_PATH,
     "LICENSE",
+    "schemas/agent-runtime-replay.schema.json",
     SCHEMA_PATH,
+    "src/awq/agent_replay.py",
 )
 MAX_BYTES = 2_000_000
 MAX_PACKAGES = 100

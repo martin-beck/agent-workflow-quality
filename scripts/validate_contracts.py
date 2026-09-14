@@ -336,6 +336,10 @@ def main() -> int:
     _validate_formal_evidence_fixtures()
     _validate_terminology_fixtures()
     _validate_reliability_fixtures()
+    validate(
+        json.loads((ROOT / "fixtures/conforming/agent-runtime-replay.json").read_bytes()),
+        "agent-runtime-replay.schema.json",
+    )
     validate(requirements, "requirement-registry.schema.json")
     validate(profiles, "profile-registry.schema.json")
     validate(adapter_catalog, "adapter-catalog-v2.schema.json")
