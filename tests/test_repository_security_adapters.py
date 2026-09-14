@@ -12,6 +12,7 @@ import unittest
 from pathlib import Path
 
 from awq import adapters
+from awq.registry import canonical_bytes
 from scripts import install_repository_security_tools as installer
 
 
@@ -26,7 +27,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         self.assertEqual(current["families"], list(loaded.values()))
         self.assertEqual(
             digest,
-            __import__("hashlib").sha256(adapters.canonical_bytes(current)).hexdigest(),
+            __import__("hashlib").sha256(canonical_bytes(current)).hexdigest(),
         )
         with self.assertRaises(adapters.AdapterError):
             adapters.validate_adapter_catalog({**historical, "schema_version": 2})
