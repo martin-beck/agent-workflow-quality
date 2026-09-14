@@ -63,6 +63,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-VULNERABILITY-SUPPLY-V1` | 1 | `json-schema` | `schemas/vulnerability-supply.schema.json` | `awq.tests.vulnerability_supply.VulnerabilitySupplyTests` | [docs/VULNERABILITY_SUPPLY.md](VULNERABILITY_SUPPLY.md) |
 | `AWQ-CONTRACT-WORKFLOW-CLAIMS-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/workflow_claims.json` | `awq.tests.workflow_claims.WorkflowClaimsTests` | [docs/WORKFLOW_CLAIMS.md](WORKFLOW_CLAIMS.md) |
 | `AWQ-CONTRACT-WORKFLOW-CLAIMS-V1` | 1 | `json-schema` | `schemas/workflow-claims.schema.json` | `awq.tests.workflow_claims.WorkflowClaimsTests` | [docs/WORKFLOW_CLAIMS.md](WORKFLOW_CLAIMS.md) |
+| `AWQ-CONTRACT-WORKFLOW-TRUST-POLICY-V1` | 1 | `json-schema` | `schemas/workflow-trust-policy.schema.json` | `awq.tests.workflow_trust.WorkflowTrustTests` | [docs/WORKFLOW_TRUST.md](WORKFLOW_TRUST.md) |
 
 ## Compatibility policy
 
