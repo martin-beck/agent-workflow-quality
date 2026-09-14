@@ -202,11 +202,40 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             argv=[tool, "-c", "print('PRIVATE_SECRET_DIAGNOSTIC')"],
             config_paths=[],
         )
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
         with mock.patch.object(adapters.shutil, "which", return_value=sys.executable):
             result = adapters.run_adapter(
-                Path.cwd(), contract, base_revision="a" * 40, head_revision="b" * 40
+                Path.cwd(), contract, base_revision=base, head_revision=head
             )
         self.assertNotIn("PRIVATE_SECRET_DIAGNOSTIC", json.dumps(result))
+
+    def test_gitleaks_execution_path_normalizes_defect_without_secret(self) -> None:
+        families, _ = adapters.load_adapter_catalog()
+        contract = copy.deepcopy(
+            next(
+                item
+                for item in families["repository-security"]["contracts"]
+                if item["tool"] == "gitleaks"
+            )
+        )
+        tool = Path(sys.executable).name
+        contract.update(
+            tool=tool,
+            version=sys.version.split()[0],
+            version_argv=[tool, "--version"],
+            version_output=f"Python {sys.version.split()[0]}",
+            argv=[tool, "-c", "print('SYNTHETIC_SECRET_VALUE'); raise SystemExit(7)"],
+            config_paths=[],
+        )
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
+        with mock.patch.object(adapters.shutil, "which", return_value=sys.executable):
+            result = adapters.run_adapter(
+                Path.cwd(), contract, base_revision=base, head_revision=head
+            )
+        self.assertEqual("adapter-failed", result["findings"][0]["code"])
+        self.assertNotIn("SYNTHETIC_SECRET_VALUE", json.dumps(result))
 
     def test_security_bounds_timeout_output_and_descendants(self) -> None:
         environment = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "LC_ALL": "C.UTF-8"}
