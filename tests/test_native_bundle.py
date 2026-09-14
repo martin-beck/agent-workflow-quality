@@ -11,14 +11,18 @@ import io
 import json
 import tarfile
 import tempfile
+import time
 import unittest
+import zipfile
 from pathlib import Path
 from typing import Any, cast
+from unittest import mock
 
 from awq import native_bundle
 from awq.cli import main
 from awq.project import ProjectError
 from awq.registry import canonical_bytes
+from awq.release import MAX_MEMBERS
 from scripts.validate_contracts import validate
 
 EPOCH = 1_800_000_000
@@ -294,6 +298,251 @@ class NativeBundleTests(unittest.TestCase):
                 ]
             ),
         )
+
+    def test_primitive_contract_helpers_reject_untrusted_shapes(self) -> None:
+        invalid: tuple[tuple[Any, tuple[Any, ...]], ...] = (
+            (native_bundle._object, ([], "field", "object")),
+            (native_bundle._digest, ("not-a-digest",)),
+            (native_bundle._identifier, ("TOOL", "TOOL", "identifier")),
+            (native_bundle._integer, (True, 0, 2, "integer")),
+            (native_bundle._path, ("", "path")),
+            (native_bundle._path, ("a\\b", "path")),
+            (
+                native_bundle._sorted_strings,
+                ("not-a-list", native_bundle.TOKEN, 0, 2, "strings"),
+            ),
+            (native_bundle._sorted_strings, (["BAD!"], native_bundle.TOKEN, 0, 2, "strings")),
+            (native_bundle._sorted_strings, (["b", "a"], native_bundle.TOKEN, 0, 2, "strings")),
+        )
+        for function, arguments in invalid:
+            with (
+                self.subTest(function=function.__name__, arguments=arguments),
+                self.assertRaises(ProjectError),
+            ):
+                function(*arguments)
+        self.assertEqual("a/b", native_bundle._path("a/b", "path"))
+        self.assertEqual(
+            ["a", "b"],
+            native_bundle._sorted_strings(["a", "b"], native_bundle.TOKEN, 1, 2, "strings"),
+        )
+
+    def test_archive_formats_and_regular_file_boundaries_are_fail_closed(self) -> None:
+        with self.assertRaises(ProjectError):
+            native_bundle._archive_members(self.root / "missing", "tar-gzip", EPOCH)
+        with self.assertRaises(ProjectError):
+            native_bundle._archive_members(self.root / "missing", "unknown", EPOCH)
+        bad_tar = self.root / "bad.tar.gz"
+        with tarfile.open(bad_tar, "w:gz") as archive:
+            member = tarfile.TarInfo("file")
+            member.size = 1
+            member.mtime = EPOCH + 1
+            archive.addfile(member, io.BytesIO(b"x"))
+        with self.assertRaises(ProjectError):
+            native_bundle._archive_members(bad_tar, "tar-gzip", EPOCH)
+        link_tar = self.root / "link.tar.gz"
+        with tarfile.open(link_tar, "w:gz") as archive:
+            member = tarfile.TarInfo("link")
+            member.type = tarfile.SYMTYPE
+            member.linkname = "target"
+            archive.addfile(member)
+        with self.assertRaises(ProjectError):
+            native_bundle._archive_members(link_tar, "tar-gzip", EPOCH)
+
+        zip_path = self.root / "bundle.zip"
+        stamp = time.gmtime(EPOCH)
+        info = zipfile.ZipInfo(
+            "data",
+            (
+                stamp.tm_year,
+                stamp.tm_mon,
+                stamp.tm_mday,
+                stamp.tm_hour,
+                stamp.tm_min,
+                stamp.tm_sec - stamp.tm_sec % 2,
+            ),
+        )
+        info.external_attr = 0o644 << 16
+        with zipfile.ZipFile(zip_path, "w") as zip_archive:
+            zip_archive.writestr(info, b"data")
+        members = native_bundle._archive_members(zip_path, "zip", EPOCH)
+        self.assertEqual("data", members[0]["path"])
+        bad_zip = self.root / "bad.zip"
+        bad_info = zipfile.ZipInfo("data", info.date_time)
+        bad_info.comment = b"metadata"
+        with zipfile.ZipFile(bad_zip, "w") as zip_archive:
+            zip_archive.writestr(bad_info, b"data")
+        with self.assertRaises(ProjectError):
+            native_bundle._archive_members(bad_zip, "zip", EPOCH)
+
+        regular = self.root / "regular"
+        regular.write_bytes(b"x")
+        with self.assertRaises(ProjectError):
+            native_bundle._regular(self.root, "regular", "0" * 64, 1)
+        with self.assertRaises(ProjectError):
+            native_bundle._regular(self.root, "missing", "0" * 64, 1)
+
+        with mock.patch("awq.native_bundle.tarfile.open") as tar_open:
+            archive = tar_open.return_value.__enter__.return_value
+            archive.getmembers.return_value = [mock.Mock()] * (MAX_MEMBERS + 1)
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "tar-gzip", EPOCH)
+        with mock.patch("awq.native_bundle.zipfile.ZipFile") as zip_open:
+            archive = zip_open.return_value.__enter__.return_value
+            archive.infolist.return_value = [mock.Mock()] * (MAX_MEMBERS + 1)
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "zip", EPOCH)
+
+        member = mock.Mock()
+        member.isfile.return_value = True
+        member.issym.return_value = False
+        member.islnk.return_value = False
+        member.mtime = EPOCH
+        member.uid = member.gid = 0
+        member.uname = member.gname = ""
+        member.pax_headers = {}
+        member.size = 1
+        member.name = "file"
+        with mock.patch("awq.native_bundle.tarfile.open") as tar_open:
+            archive = tar_open.return_value.__enter__.return_value
+            archive.getmembers.return_value = [member]
+            archive.extractfile.return_value = None
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "tar-gzip", EPOCH)
+        with mock.patch("awq.native_bundle.tarfile.open") as tar_open:
+            archive = tar_open.return_value.__enter__.return_value
+            archive.getmembers.return_value = [member]
+            archive.extractfile.return_value.read.return_value = b"x"
+            member.size = 2
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "tar-gzip", EPOCH)
+        with mock.patch("awq.native_bundle.tarfile.open") as tar_open:
+            archive = tar_open.return_value.__enter__.return_value
+            archive.getmembers.return_value = [member]
+            private = b"-----BEGIN PRIVATE KEY-----"
+            member.size = len(private)
+            archive.extractfile.return_value.read.return_value = private
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "tar-gzip", EPOCH)
+        duplicate = mock.Mock()
+        duplicate.isfile.return_value = True
+        duplicate.issym.return_value = False
+        duplicate.islnk.return_value = False
+        duplicate.mtime = EPOCH
+        duplicate.uid = duplicate.gid = 0
+        duplicate.uname = duplicate.gname = ""
+        duplicate.pax_headers = {}
+        duplicate.size = 1
+        duplicate.name = "same"
+        with mock.patch("awq.native_bundle.tarfile.open") as tar_open:
+            archive = tar_open.return_value.__enter__.return_value
+            archive.getmembers.return_value = [duplicate, duplicate]
+            archive.extractfile.return_value.read.return_value = b"x"
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "tar-gzip", EPOCH)
+        directory = zipfile.ZipInfo("directory/")
+        directory.external_attr = 0
+        with mock.patch("awq.native_bundle.zipfile.ZipFile") as zip_open:
+            archive = zip_open.return_value.__enter__.return_value
+            archive.infolist.return_value = [directory]
+            with self.assertRaises(ProjectError):
+                native_bundle._archive_members(self.root / "unused", "zip", EPOCH)
+
+    def test_native_bundle_rejects_each_remaining_contract_boundary(self) -> None:
+        mutations: list[tuple[str, dict[str, Any]]] = []
+        for field, replacement in (("schema_version", 2), ("kind", "other")):
+            value = copy.deepcopy(self.document)
+            value[field] = replacement
+            mutations.append((field, value))
+        value = copy.deepcopy(self.document)
+        value["source"]["repository"] = "https://example.invalid/source"
+        mutations.append(("repository", value))
+        for field in ("commit", "tree"):
+            value = copy.deepcopy(self.document)
+            value["source"][field] = "x"
+            mutations.append((field, value))
+        value = copy.deepcopy(self.document)
+        value["toolchain"]["version"] = "bad version"
+        mutations.append(("toolchain-version", value))
+        value = copy.deepcopy(self.document)
+        value["target"] = "bad"
+        mutations.append(("target", value))
+        value = copy.deepcopy(self.document)
+        value["packages"] = []
+        mutations.append(("packages", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["kind"] = "other"
+        mutations.append(("package-kind", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"] = []
+        mutations.append(("inventory", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][0]["kind"] = "other"
+        mutations.append(("classification", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][0]["license_id"] = "BAD"
+        mutations.append(("license", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][0]["kind"] = "executable"
+        mutations.append(("elf-required", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][1]["elf"] = None
+        mutations.append(("elf-forbidden", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["notices"] = ["missing"]
+        mutations.append(("notice", value))
+        value = copy.deepcopy(self.document)
+        value["signatures"] = []
+        mutations.append(("signatures", value))
+        value = copy.deepcopy(self.document)
+        value["signatures"][0]["signer_id"] = "SIGNER-OTHER"
+        mutations.append(("signature-binding", value))
+        value = copy.deepcopy(self.document)
+        value["rebuild"] = []
+        mutations.append(("rebuild", value))
+        value = copy.deepcopy(self.document)
+        value["rebuild"][0]["package_id"] = "PACKAGE-OTHER"
+        mutations.append(("rebuild-coverage", value))
+        value = copy.deepcopy(self.document)
+        value["limitations"] = []
+        mutations.append(("claims", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][1]["elf"]["readelf_sha256"] = "b" * 64
+        mutations.append(("elf-output-binding", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][1]["elf"]["readelf_tool"]["version"] = "bad version"
+        mutations.append(("elf-tool-version", value))
+        value = copy.deepcopy(self.document)
+        value["elf_policy"] = None
+        mutations.append(("elf-policy-required", value))
+        value = copy.deepcopy(self.document)
+        value["packages"][1]["id"] = value["packages"][0]["id"]
+        mutations.append(("package-duplicate", value))
+        value = copy.deepcopy(self.document)
+        value["signatures"][1] = copy.deepcopy(value["signatures"][0])
+        mutations.append(("signature-order", value))
+        value = copy.deepcopy(self.document)
+        value["rebuild"][1] = copy.deepcopy(value["rebuild"][0])
+        mutations.append(("rebuild-order", value))
+        for name, value in mutations:
+            with self.subTest(name=name), self.assertRaises(ProjectError):
+                native_bundle.evaluate(self.root, value)
+
+    def test_evaluate_file_rejects_noncanonical_and_invalid_json(self) -> None:
+        path = self.root / "input.json"
+        path.write_bytes(json.dumps(self.document).encode())
+        with (
+            mock.patch.object(native_bundle, "strict_json", return_value=self.document),
+            self.assertRaises(ProjectError),
+        ):
+            native_bundle.evaluate_file(self.root, "input.json")
+        path.write_bytes(b'{"kind": "native-bundle-assurance"}')
+        with self.assertRaises(ProjectError):
+            native_bundle.evaluate_file(self.root, "input.json")
+        path.write_bytes(b"not-json")
+        with self.assertRaises(ProjectError):
+            native_bundle.evaluate_file(self.root, "input.json")
+        with self.assertRaises(ProjectError):
+            native_bundle.evaluate_file(self.root, "missing.json")
 
 
 if __name__ == "__main__":
