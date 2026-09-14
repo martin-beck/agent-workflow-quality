@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import tempfile
 import unittest
+from pathlib import Path
 
 from awq import adapters
 from scripts import install_repository_security_tools as installer
@@ -90,7 +91,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             fixture.flush()
             with self.assertRaises(installer.InstallError):
                 installer.verify(
-                    installer.Path(fixture.name), installer.ARTIFACTS["x86_64"][0].sha256
+                    Path(fixture.name), installer.ARTIFACTS["x86_64"][0].sha256
                 )
 
 
