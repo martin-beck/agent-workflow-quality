@@ -76,6 +76,33 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         self.assertIn("{base}..{head}", contract["argv"][-1])
         self.assertEqual("mechanical", contract["evidence"])
 
+    def test_gitleaks_rejects_missing_or_ambiguous_revisions(self) -> None:
+        families, _ = adapters.load_adapter_catalog()
+        contract = next(
+            item
+            for item in families["repository-security"]["contracts"]
+            if item["tool"] == "gitleaks"
+        )
+        for base, head in ((None, None), ("a" * 39, "b" * 40), ("a" * 40, "a" * 40)):
+            with self.subTest(base=base, head=head):
+                result = adapters.run_adapter(
+                    Path.cwd(), contract, base_revision=base, head_revision=head
+                )
+                self.assertEqual("adapter-range-invalid", result["findings"][0]["code"])
+
+    def test_gitleaks_substitutes_exact_revisions_without_literal_placeholders(self) -> None:
+        families, _ = adapters.load_adapter_catalog()
+        contract = next(
+            item
+            for item in families["repository-security"]["contracts"]
+            if item["tool"] == "gitleaks"
+        )
+        updated, failure = adapters._security_contract(contract, "a" * 40, "b" * 40)
+        self.assertIsNone(failure)
+        assert updated is not None
+        self.assertIn("a" * 40 + ".." + "b" * 40, updated["argv"][-1])
+        self.assertNotIn("{base}", " ".join(updated["argv"]))
+
     def test_installer_has_complete_official_linux_matrix_and_real_pins(self) -> None:
         expected = {
             "x86_64": {

@@ -56,6 +56,7 @@ BINDING_KINDS = {
 }
 BINDING_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,199}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+REVISION = re.compile(r"^[0-9a-f]{40}$")
 MAX_RESULT_BYTES = 4096
 MAX_SELECTED_INPUTS = 10_000
 MAX_SELECTED_INPUT_BYTES = 1_000_000
@@ -710,6 +711,37 @@ def _execution_result(
     return _result(contract, started, "fail" if failure else "pass", failure or [])
 
 
+def _security_contract(
+    contract: dict[str, Any], base: str | None, head: str | None
+) -> tuple[dict[str, Any] | None, list[dict[str, str]] | None]:
+    """Substitute caller-supplied immutable revisions for the gitleaks template."""
+    if contract["id"] != "ADAPTER-REPOSITORY-SECURITY-GITLEAKS":
+        return contract, None
+    if (
+        base is None
+        or head is None
+        or not REVISION.fullmatch(base)
+        or not REVISION.fullmatch(head)
+        or base == head
+    ):
+        return None, _finding(
+            "adapter-range-invalid",
+            "",
+            "introduced-history range requires two distinct 40-hex revisions",
+        )
+    updated = dict(contract)
+    updated["argv"] = [
+        item.replace("{base}", base).replace("{head}", head) for item in contract["argv"]
+    ]
+    if any("{" in item or "}" in item for item in updated["argv"]):
+        return None, _finding(
+            "adapter-range-invalid",
+            "",
+            "introduced-history range contains an unresolved placeholder",
+        )
+    return updated, None
+
+
 def _tlc_execution_result(
     root: Path,
     contract: dict[str, Any],
@@ -779,10 +811,22 @@ def _tlc_execution_result(
     return _result(contract, started, "fail" if failure else "pass", failure or [])
 
 
-def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
+def run_adapter(  # noqa: C901 - bounded adapter lifecycle branches
+    root: Path,
+    contract: dict[str, Any],
+    *,
+    base_revision: str | None = None,
+    head_revision: str | None = None,
+) -> dict[str, Any]:
     """Run one validated adapter with exact version and content-minimized evidence."""
     validate_adapter(contract)
     started = time.monotonic()
+    original_contract = contract
+    contract, range_failure = _security_contract(contract, base_revision, head_revision)
+    if range_failure:
+        return _result(original_contract, started, "fail", range_failure)
+    if contract is None:
+        raise AdapterError("security contract substitution unexpectedly failed")
     failure = _config_failure(root, contract)
     if failure:
         return _result(contract, started, "fail", failure)
