@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import signal
+import shutil
 import subprocess
 import threading
 import time
@@ -712,7 +713,7 @@ def _execution_result(
 
 
 def _security_contract(
-    contract: dict[str, Any], base: str | None, head: str | None
+    root: Path, contract: dict[str, Any], base: str | None, head: str | None
 ) -> tuple[dict[str, Any] | None, list[dict[str, str]] | None]:
     """Substitute caller-supplied immutable revisions for the gitleaks template."""
     if contract["id"] != "ADAPTER-REPOSITORY-SECURITY-GITLEAKS":
@@ -728,6 +729,42 @@ def _security_contract(
             "adapter-range-invalid",
             "",
             "introduced-history range requires two distinct 40-hex revisions",
+        )
+    if (root / ".git" / "shallow").is_file():
+        return None, _finding(
+            "adapter-range-shallow", "", "introduced-history range requires complete local history"
+        )
+    git = shutil.which("git")
+    if git is None:
+        return None, _finding(
+            "adapter-tool-unavailable", "", "Git is unavailable for range validation"
+        )
+    for revision in (base, head):
+        probe = subprocess.run(  # noqa: S603 - fixed git argv and validated revision
+            [git, "rev-parse", "--verify", f"{revision}^{{commit}}"],
+            cwd=root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+        if probe.returncode:
+            return None, _finding(
+                "adapter-range-invalid", "", "introduced-history revision is unavailable"
+            )
+    ancestry = subprocess.run(  # noqa: S603 - fixed git argv and validated revisions
+        [git, "merge-base", "--is-ancestor", base, head],
+        cwd=root,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=10,
+        check=False,
+    )
+    if ancestry.returncode:
+        return None, _finding(
+            "adapter-range-ambiguous", "", "introduced-history revisions are not an ordered range"
         )
     updated = dict(contract)
     updated["argv"] = [
@@ -822,7 +859,7 @@ def run_adapter(  # noqa: C901 - bounded adapter lifecycle branches
     validate_adapter(contract)
     started = time.monotonic()
     original_contract = contract
-    contract, range_failure = _security_contract(contract, base_revision, head_revision)
+    contract, range_failure = _security_contract(root, contract, base_revision, head_revision)
     if range_failure:
         return _result(original_contract, started, "fail", range_failure)
     if contract is None:

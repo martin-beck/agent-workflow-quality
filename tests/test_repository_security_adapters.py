@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -97,10 +98,12 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             for item in families["repository-security"]["contracts"]
             if item["tool"] == "gitleaks"
         )
-        updated, failure = adapters._security_contract(contract, "a" * 40, "b" * 40)
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+        base = subprocess.check_output(["git", "rev-parse", f"{head}^"], text=True).strip()
+        updated, failure = adapters._security_contract(Path.cwd(), contract, base, head)
         self.assertIsNone(failure)
         assert updated is not None
-        self.assertIn("a" * 40 + ".." + "b" * 40, updated["argv"][-1])
+        self.assertIn(base + ".." + head, updated["argv"][-1])
         self.assertNotIn("{base}", " ".join(updated["argv"]))
 
     def test_installer_has_complete_official_linux_matrix_and_real_pins(self) -> None:
