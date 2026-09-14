@@ -546,6 +546,21 @@ def policy_diff(root: Path, base: str, head: str) -> dict[str, Any]:
     changes: list[dict[str, str]] = []
     _compare_policy(old_policy, new_policy, changes)
     _compare_lock(old_lock, new_lock, changes)
+    try:
+        old_claims = _git_json(root, base, "src/awq/data/capability_claims.json")
+    except ProjectError:
+        old_claims = {}
+    try:
+        new_claims = _git_json(root, head, "src/awq/data/capability_claims.json")
+    except ProjectError:
+        new_claims = {}
+    if old_claims != new_claims:
+        _change(
+            changes,
+            "review",
+            "capability_claims",
+            "Capability maturity, surfaces, limitations or evidence changed.",
+        )
     weakening = any(item["classification"] == "weakening" for item in changes)
     return {
         "status": "fail" if weakening else "pass",
