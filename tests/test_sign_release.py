@@ -271,3 +271,52 @@ class SignReleaseTests(unittest.TestCase):
             ),
             "",
         )
+
+    def test_confirm_signs_manifest_and_creates_annotated_tag(self) -> None:
+        signature = self.manifest.with_name(self.manifest.name + ".sig")
+        with mock.patch.object(sign_release, "_verify_manifest"):
+            result = sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+                confirm=True,
+            )
+        try:
+            self.assertEqual("v0.35.0", result["tag"])
+            self.assertTrue(signature.is_file())
+            tag_type = subprocess.check_output(
+                ["git", "-C", str(self.source), "cat-file", "-t", "v0.35.0"],
+                text=True,
+            ).strip()
+            self.assertEqual("tag", tag_type)
+        finally:
+            signature.unlink(missing_ok=True)
+            subprocess.run(
+                ["git", "-C", str(self.source), "tag", "-d", "v0.35.0"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+
+    def test_cli_uses_trivial_default_paths(self) -> None:
+        expected = {
+            "version": "0.35.0",
+            "commit": "0" * 40,
+            "manifest_sha256": "0" * 64,
+            "signer_fingerprint": "SHA256:test",
+            "tag": "v0.35.0",
+        }
+        with (
+            mock.patch.object(sign_release, "sign_release", return_value=expected) as invoke,
+            mock.patch("sys.stdout"),
+            mock.patch("sys.stderr"),
+            mock.patch("pathlib.Path.cwd", return_value=self.source),
+        ):
+            self.assertEqual(0, sign_release.main([]))
+        args, kwargs = invoke.call_args
+        self.assertEqual(self.source, args[0])
+        self.assertEqual(Path("..") / "awq-release", args[1])
+        self.assertEqual(Path("~/.ssh/awq-release-signing"), args[2])
+        self.assertIsNone(kwargs["state_repo"])
+        self.assertIsNone(kwargs["allowed_signers"])
