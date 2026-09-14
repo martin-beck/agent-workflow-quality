@@ -52,6 +52,9 @@ def render() -> str:
             "source revision, gate definition, configuration, input, platform and freshness. "
             "The generated examples are descriptive inventories, not coordinator state and not "
             "proof that downstream gates ran.",
+            "The named repositories above are sanitized, non-authoritative fixtures only; AWQ does not "
+            "execute them or require them at runtime. Consumers own their native Android/JVM evidence "
+            "and must bind it to the generic AWQ adapter contract.",
             "",
             "Use `awq assurance-plan-check PLAN --format json` for content-minimized validation "
             "and `awq assurance-plan-diff BASE HEAD --format json` for deterministic review. "

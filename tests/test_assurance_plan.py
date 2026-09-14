@@ -424,6 +424,8 @@ class AssurancePlanTests(unittest.TestCase):
         )
         self.assertIn("declarations only", rendered)
         self.assertIn("never `pass`", rendered)
+        self.assertIn("non-authoritative fixtures only", rendered)
+        self.assertIn("generic AWQ adapter contract", rendered)
         self.assertNotIn(str(ROOT), rendered)
 
     def test_duplicate_json_and_private_values_are_rejected_without_echo(self) -> None:
