@@ -32,15 +32,26 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
     def test_security_contracts_reject_mutable_or_unsafe_changes(self) -> None:
         families, _ = adapters.load_adapter_catalog()
         for original in families["repository-security"]["contracts"]:
-            for field, value in (("version_output", "latest"), ("argv", ["sh", "-c", "unsafe"]), ("formats", [".YML"])):
+            for field, value in (
+                ("version_output", "latest"),
+                ("argv", ["sh", "-c", "unsafe"]),
+                ("formats", [".YML"]),
+            ):
                 contract = copy.deepcopy(original)
                 contract[field] = value
-                with self.subTest(identifier=original["id"], field=field), self.assertRaises(adapters.AdapterError):
+                with (
+                    self.subTest(identifier=original["id"], field=field),
+                    self.assertRaises(adapters.AdapterError),
+                ):
                     adapters.validate_adapter(contract)
 
     def test_gitleaks_contract_is_redacted_and_range_bound(self) -> None:
         families, _ = adapters.load_adapter_catalog()
-        contract = next(item for item in families["repository-security"]["contracts"] if item["tool"] == "gitleaks")
+        contract = next(
+            item
+            for item in families["repository-security"]["contracts"]
+            if item["tool"] == "gitleaks"
+        )
         self.assertIn("--redact", contract["argv"])
         self.assertIn("{base}..{head}", contract["argv"][-1])
         self.assertEqual("mechanical", contract["evidence"])
