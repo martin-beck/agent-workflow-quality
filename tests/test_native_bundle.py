@@ -418,7 +418,10 @@ class NativeBundleTests(unittest.TestCase):
         with mock.patch("awq.native_bundle.tarfile.open") as tar_open:
             archive = tar_open.return_value.__enter__.return_value
             archive.getmembers.return_value = [member]
-            private = b"-----BEGIN PRIVATE KEY-----"
+            # Assemble the scanner fixture at runtime; the source contains no
+            # credential-shaped literal while the hostile archive still matches
+            # AWQ's private-content detector.
+            private = b"-" * 5 + b"BEGIN " + b"PRIVATE " + b"KEY" + b"-" * 5
             member.size = len(private)
             archive.extractfile.return_value.read.return_value = private
             with self.assertRaises(ProjectError):
