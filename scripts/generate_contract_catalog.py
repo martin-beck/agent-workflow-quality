@@ -360,6 +360,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_closed_shapes_types_paths_and_bounds_match_schema",
         "docs/VULNERABILITY_SUPPLY.md",
     ),
+    "workflow-trust-policy": (
+        "workflow_trust",
+        "WorkflowTrustTests",
+        "test_schema_runtime_and_valid_trust_classes",
+        "test_every_hostile_transition_fails_independently",
+        "docs/WORKFLOW_TRUST.md",
+    ),
 }
 VERSIONS = {
     "capability-claims-v2": 2,

@@ -75,7 +75,7 @@ class CheckTests(unittest.TestCase):
         self.assertEqual("unknown-format", self.run_one(checks.classified_formats, unknown)[0].code)
         self.assertEqual("mutable-action", self.run_one(checks.action_pins, workflow)[0].code)
         self.assertEqual(
-            {"missing-permissions", "missing-timeout"},
+            {"missing-permissions", "missing-timeout", "workflow-trust-policy"},
             {item.code for item in self.run_one(checks.workflow_policy, workflow)},
         )
         self.assertEqual(

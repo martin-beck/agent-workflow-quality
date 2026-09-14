@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `5c528388a642f111aacb9182249168b48d7d391520e5eeaaeaaaba5bb338e2bc`
+Registry SHA-256: `81f02acd265c77443175e8e353d5c5793dddb9fad6e45f5dea2402d2968ea11e`
 
 ## Profiles
 
@@ -13,7 +13,7 @@ Registry SHA-256: `5c528388a642f111aacb9182249168b48d7d391520e5eeaaeaaaba5bb338e
 | `docs` | Documentation structure and local integrity. | 1 |
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
 | `formal-model` | Bounded external formal-model execution contracts. | 1 |
-| `github-actions` | GitHub Actions integrity and permissions. | 3 |
+| `github-actions` | GitHub Actions integrity, trust transitions and permissions. | 3 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
 | `rust` | Rust dependency-integrity baseline. | 1 |
@@ -122,18 +122,18 @@ GitHub Actions references use complete commit SHAs.
 - Exception policy: Local actions are exempt; remote mutable refs are not.
 - Standards: SLSA-BUILD
 
-### AWQ-GHA-002: Workflow permissions
+### AWQ-GHA-002: Workflow trust boundaries
 
-Each workflow declares explicit least-privilege permissions and job deadlines.
+Each workflow declares bounded event, runner, checkout, permission and publication trust transitions with finite fail-closed jobs.
 
 - Profiles: `github-actions`
 - Tier: `pr`
 - Evidence: `mechanical`
 - Deterministic: `true`
 - Network: `false`
-- Limitation: Static inspection cannot prove hosted repository settings.
-- Remediation: Add explicit permissions and timeout-minutes.
-- Exception policy: No silent omission.
+- Limitation: Static inspection cannot prove hosted settings, runner isolation, branch protection or runtime grants.
+- Remediation: Repair the named trust transition in the repository-owned workflow trust policy and workflow.
+- Exception policy: No unclassified event, runner, privilege, credential, expression or fail-open transition.
 - Standards: NIST-SSDF-PS.1
 
 ### AWQ-GHA-003: Valid workflow-local paths

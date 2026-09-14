@@ -40,9 +40,11 @@ The helper additionally enforces conditions beyond JSON Schema:
 - Gradle cannot consume global properties, init scripts, credentials, or inherited home state; and
 - original and copied lockfiles retain their reviewed digests.
 
-Tasks preserve each consumer's native Gradle semantics. Agent Relay mappings include spotlessCheck,
-detekt, test, koverXmlReport, koverVerify, buildHealth, checkKotlinAbi, lintDebug, and assembleDebug;
-the exact lists remain repository-owned.
+Tasks preserve each consumer's native Gradle semantics. The AWQ-owned Android/JVM fixture demonstrates
+representative mappings such as formatting, static analysis, host tests, coverage, dependency health,
+ABI, lint, and an Android build; each consumer owns the exact task lists and must review its native
+mapping before accepting evidence. The fixture is descriptive input for contract tests only, never a
+runtime dependency or acceptance of any named downstream repository.
 
 ## Device evidence boundary
 

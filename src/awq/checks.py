@@ -20,6 +20,7 @@ from urllib.parse import unquote, urlsplit
 
 from awq.adapters import run_adapter
 from awq.project import ProjectError, tracked_files
+from awq.workflow_trust import WorkflowTrustError, evaluate_workflow, load_policy
 
 TEXT_SUFFIXES = {
     ".cfg",
@@ -258,6 +259,20 @@ def action_pins(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[F
 def workflow_policy(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
     del policy
     findings: list[Finding] = []
+    workflows = [
+        path
+        for path in paths
+        if _relative(root, path).startswith(".github/workflows/")
+        and path.suffix in {".yml", ".yaml"}
+    ]
+    trust_policy: dict[str, Any] | None = None
+    if workflows:
+        try:
+            trust_policy = load_policy(root)
+        except WorkflowTrustError as error:
+            findings.append(
+                Finding("workflow-trust-policy", "quality/workflow-trust.json", str(error))
+            )
     for path in paths:
         relative = _relative(root, path)
         if relative.startswith(".github/workflows/") and path.suffix in {".yml", ".yaml"}:
@@ -273,6 +288,12 @@ def workflow_policy(root: Path, paths: list[Path], policy: dict[str, Any]) -> li
             if "timeout-minutes:" not in text:
                 findings.append(
                     Finding("missing-timeout", relative, "workflow has no finite job timeout")
+                )
+            if trust_policy is not None:
+                findings.extend(
+                    Finding(code, relative, message)
+                    for code, message in evaluate_workflow(relative, text, trust_policy)
+                    if code != "missing-permissions"
                 )
     return findings
 

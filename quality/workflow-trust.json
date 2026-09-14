@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "events": {
+    "untrusted": ["pull_request"],
+    "environmental": ["schedule"],
+    "trusted": ["push", "workflow_call", "workflow_dispatch"],
+    "prohibited": ["pull_request_target"]
+  },
+  "runners": {
+    "disposable": ["ubuntu-24.04", "macos-14", "windows-2022"],
+    "trusted": ["trusted-linux"],
+    "persistent": ["persistent-linux"]
+  },
+  "protected_branches": ["main"],
+  "publication_events": ["push-tags"],
+  "required_gate_workflows": [
+    ".github/workflows/onboarding.yml",
+    ".github/workflows/verify.yml"
+  ],
+  "publication_workflows": [".github/workflows/release-attestation.yml"]
+}

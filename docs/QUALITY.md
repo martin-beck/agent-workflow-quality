@@ -14,6 +14,11 @@ Coverage is a regression constraint, not correctness proof. The initial producti
 branch floor is 95 percent. Exclusions cover only the console guard. Every shared gate family has an
 intentionally broken fixture which the production checker must reject.
 
+Workflow trust tests independently mutate event, runner, checkout, permission, secret, expression,
+container, required-gate and publication boundaries. Valid disposable pull-request, scheduled and
+protected manual trusted-runner examples remain deterministic, while findings exclude runner labels
+and expression values.
+
 ## Evidence classes
 
 - `mechanical`: deterministic observation of the checked tree.
