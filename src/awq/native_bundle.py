@@ -130,8 +130,10 @@ def _elf(value: object, policy: dict[str, Any], size: int, artifact_sha256: str)
         _fail("elf-policy")
     for field in ("readelf_sha256", "nm_sha256", "observation_sha256"):
         _digest(item[field], "elf-evidence")
-    _tool_identity(item["readelf_tool"], "readelf-tool")
-    _tool_identity(item["nm_tool"], "nm-tool")
+    readelf_tool = _tool_identity(item["readelf_tool"], "readelf-tool")
+    nm_tool = _tool_identity(item["nm_tool"], "nm-tool")
+    if item["readelf_sha256"] != readelf_tool["output_sha256"] or item["nm_sha256"] != nm_tool["output_sha256"]:
+        _fail("elf-output-binding")
     observed = dict(item)
     observed.pop("observation_sha256")
     observed["artifact_sha256"] = artifact_sha256

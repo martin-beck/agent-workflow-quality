@@ -13,7 +13,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from awq import native_bundle
 from awq.cli import main
@@ -99,11 +99,12 @@ class NativeBundleTests(unittest.TestCase):
             )
         for entry in inventory:
             if entry["elf"] is not None:
-                observed = dict(entry["elf"])
+                elf = cast(dict[str, Any], entry["elf"])
+                observed = dict(elf)
                 observed.pop("observation_sha256")
                 observed["artifact_sha256"] = entry["sha256"]
                 observed["size"] = entry["size"]
-                entry["elf"]["observation_sha256"] = hashlib.sha256(
+                elf["observation_sha256"] = hashlib.sha256(
                     canonical_bytes(observed)
                 ).hexdigest()
 
@@ -200,7 +201,7 @@ class NativeBundleTests(unittest.TestCase):
         }
 
     def test_native_package_and_runtime_bundle_are_complete_and_deterministic(self) -> None:
-        validate(self.document, "native-bundle-assurance.schema.json")
+        validate(self.document, "native-bundle-assurance-v2.schema.json")
         first = native_bundle.evaluate(self.root, self.document)
         second = native_bundle.evaluate(self.root, copy.deepcopy(self.document))
         self.assertEqual(first, second)
