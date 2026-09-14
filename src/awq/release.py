@@ -80,6 +80,7 @@ SBOM_SCHEMA_ASSETS = frozenset(
     }
 )
 REQUIRED_DATA = frozenset({"adapter_catalog.json"}) | CONTRACT_CATALOG_DATA_ASSETS
+VERSIONED_ADAPTER_DATA = frozenset({"adapter_catalog_v2.json"})
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 GIT_ID = re.compile(r"^[0-9a-f]{40}$")
 VERSION = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
@@ -93,7 +94,7 @@ ARTIFACT_MEDIA = {
     "signature": "application/octet-stream",
 }
 REGISTRY_PATHS = {
-    "adapter_catalog": "src/awq/data/adapter_catalog.json",
+    "adapter_catalog": "src/awq/data/adapter_catalog_v2.json",
     "profiles": "src/awq/data/profiles.json",
     "requirements": "src/awq/data/requirements.json",
     "standards_mappings": "src/awq/data/requirement_mappings.json",
@@ -310,6 +311,7 @@ def inspect_archive(
     require_test_report_assets: bool = True,
     require_execution_assets: bool = True,
     require_evidence_lifecycle_assets: bool = True,
+    require_versioned_adapter_catalog: bool = False,
 ) -> list[str]:
     """Return bounded archive findings without extracting any member."""
     required_schemas = _required_schemas(
@@ -334,6 +336,8 @@ def inspect_archive(
         if require_contract_catalog_assets
         else REQUIRED_DATA - CONTRACT_CATALOG_DATA_ASSETS
     )
+    if require_versioned_adapter_catalog:
+        required_data |= VERSIONED_ADAPTER_DATA
     required_data = (
         required_data | ONBOARDING_DATA_ASSETS if require_onboarding_assets else required_data
     )
@@ -829,6 +833,8 @@ def _verify_artifact(
                 >= (0, 32, 0),
                 require_evidence_lifecycle_assets=tuple(int(part) for part in version.split("."))
                 >= (0, 33, 0),
+                require_versioned_adapter_catalog=tuple(int(part) for part in version.split("."))
+                >= (0, 35, 0),
             )
         except DistributionError as error:
             raise ReleaseError(f"artifact {name} is not a valid distribution") from error

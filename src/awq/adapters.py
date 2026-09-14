@@ -317,9 +317,9 @@ _validate_adapter_catalog = validate_adapter_catalog
 
 
 def load_adapter_catalog() -> tuple[dict[str, dict[str, Any]], str]:
-    """Load reviewed adapter families and their canonical digest."""
+    """Load the current versioned adapter catalog and its canonical digest."""
     document = json.loads(
-        resource_files("awq.data").joinpath("adapter_catalog.json").read_text(encoding="utf-8")
+        resource_files("awq.data").joinpath("adapter_catalog_v2.json").read_text(encoding="utf-8")
     )
     families = validate_adapter_catalog(document)
     return families, hashlib.sha256(canonical_bytes(document)).hexdigest()

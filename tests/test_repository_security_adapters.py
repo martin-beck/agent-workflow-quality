@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,21 @@ from scripts import install_repository_security_tools as installer
 
 
 class RepositorySecurityAdapterTests(unittest.TestCase):
+    def test_versioned_catalog_loader_preserves_v1_history(self) -> None:
+        data = Path(__file__).parents[1] / "src/awq/data"
+        historical = json.loads((data / "adapter_catalog.json").read_bytes())
+        current = json.loads((data / "adapter_catalog_v2.json").read_bytes())
+        self.assertNotIn("repository-security", {item["id"] for item in historical["families"]})
+        self.assertIn("repository-security", {item["id"] for item in current["families"]})
+        loaded, digest = adapters.load_adapter_catalog()
+        self.assertEqual(current["families"], list(loaded.values()))
+        self.assertEqual(
+            digest,
+            __import__("hashlib").sha256(adapters.canonical_bytes(current)).hexdigest(),
+        )
+        with self.assertRaises(adapters.AdapterError):
+            adapters.validate_adapter_catalog({**historical, "schema_version": 2})
+
     def test_catalog_has_ordered_pinned_offline_contracts(self) -> None:
         families, _ = adapters.load_adapter_catalog()
         family = families["repository-security"]

@@ -39,6 +39,8 @@ INPUT_PATHS = (
     "schemas/agent-runtime-replay.schema.json",
     SCHEMA_PATH,
     "src/awq/agent_replay.py",
+    "src/awq/data/adapter_catalog.json",
+    "src/awq/data/adapter_catalog_v2.json",
 )
 MAX_BYTES = 2_000_000
 MAX_PACKAGES = 100

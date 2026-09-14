@@ -313,7 +313,11 @@ def _distributions(directory: Path, version: str) -> dict[str, Path]:
     for path in result.values():
         if path.is_symlink() or not path.is_file() or path.stat().st_size > 50_000_000:
             raise BuildError("distribution output is unsafe or exceeds its bound")
-        if inspect_archive(path):
+        if inspect_archive(
+            path,
+            require_versioned_adapter_catalog=tuple(int(part) for part in version.split("."))
+            >= (0, 35, 0),
+        ):
             raise BuildError("distribution output fails bounded archive verification")
     return result
 

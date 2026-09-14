@@ -37,6 +37,10 @@ repository policy; they are never enabled automatically. See the
 [repository-security adapter family](REPOSITORY_SECURITY_ADAPTERS.md) for exact pins and
 configuration contracts.
 
+The current adapter data is loaded from the versioned `src/awq/data/adapter_catalog_v2.json`
+contract. The original `adapter_catalog.json` remains packaged and immutable for historical
+release verification; it is not silently rewritten when a catalog family evolves.
+
 ## Contract
 
 Each object conforms to `schemas/adapter-contract.schema.json` and contains:

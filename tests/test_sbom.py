@@ -375,6 +375,7 @@ class SbomTests(unittest.TestCase):
         )
         entries = {f"awq/schemas/{name}": packaged_schema_bytes(name) for name in REQUIRED_SCHEMAS}
         entries["awq/data/adapter_catalog.json"] = b"{}\n"
+        entries["awq/data/adapter_catalog_v2.json"] = b"{}\n"
         entries["awq/data/contract_catalog.json"] = b"{}\n"
         entries["awq/data/compatibility.json"] = b"{}\n"
         entries["awq/data/agent_recipes.json"] = b"{}\n"
