@@ -55,3 +55,21 @@ class CapabilityClaimsTests(unittest.TestCase):
         item["claims"][0]["supported_surfaces"] = ["documentation"]
         with self.assertRaises(ProjectError):
             capability_claims.validate_registry(item, now=self.now)
+
+    def test_strict_runtime_bounds_and_normalization(self) -> None:
+        mutations: tuple[Callable[[Any], Any], ...] = (
+            lambda x: x["claims"][0]["evidence"][0].update(observed_at="2027-01-01T00:00:00Z"),
+            lambda x: x["claims"][0]["evidence"][0].update(freshness_seconds=True),
+            lambda x: x["claims"][0]["evidence"].append(
+                copy.deepcopy(x["claims"][0]["evidence"][0])
+            ),
+            lambda x: x["claims"][0]["source_scope"].update(path="src//awq/registry.py"),
+            lambda x: x["claims"][0]["transition"].update({"from": "none"}),
+            lambda x: x["claims"][3]["supported_surfaces"].append("cli"),
+            lambda x: x["claims"][0]["limitations"].extend(["bounded limitation text"] * 16),
+        )
+        for mutate in mutations:
+            item = copy.deepcopy(self.value)
+            mutate(item)
+            with self.assertRaises(ProjectError):
+                capability_claims.validate_registry(item, now=self.now)

@@ -142,6 +142,7 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
         if (
             not isinstance(limitations, list)
             or not limitations
+            or len(limitations) > 16
             or any(not isinstance(x, str) or not 10 <= len(x) <= 300 for x in limitations)
         ):
             _fail("limitations")
@@ -207,6 +208,8 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
             _fail("environment-surface")
         if maturity == "integrated" and not {"cli", "python-api"} & set(surfaces):
             _fail("integration-surface")
+        if maturity in ("unsupported", "deprecated") and set(surfaces) != {"documentation"}:
+            _fail("nonclaim-surface")
         if maturity in ("unsupported", "deprecated") and not any(
             any(word in x.casefold() for word in ("rationale", "unsupported", "deprecated"))
             for x in limitations
