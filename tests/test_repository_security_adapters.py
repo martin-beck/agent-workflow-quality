@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -188,7 +189,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
                 kwargs = {"base_revision": base, "head_revision": head}
             with (
                 self.subTest(tool=contract["tool"]),
-                mock.patch.object(adapters.shutil, "which", return_value=None),
+                mock.patch.object(shutil, "which", return_value=None),
             ):
                 result = adapters.run_adapter(ROOT, contract, **kwargs)
                 self.assertEqual("adapter-tool-unavailable", result["findings"][0]["code"])
@@ -217,7 +218,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
         ).strip()
         with (
-            mock.patch.object(adapters.shutil, "which", return_value=sys.executable),
+            mock.patch.object(shutil, "which", return_value=sys.executable),
             mock.patch.object(adapters, "_security_contract", return_value=(contract, None)),
         ):
             result = adapters.run_adapter(ROOT, contract, base_revision=base, head_revision=head)
@@ -246,7 +247,7 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             ["git", "rev-parse", f"{head}^"], cwd=ROOT, text=True
         ).strip()
         with (
-            mock.patch.object(adapters.shutil, "which", return_value=sys.executable),
+            mock.patch.object(shutil, "which", return_value=sys.executable),
             mock.patch.object(adapters, "_security_contract", return_value=(contract, None)),
         ):
             result = adapters.run_adapter(ROOT, contract, base_revision=base, head_revision=head)
