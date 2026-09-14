@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -184,3 +185,14 @@ class SignReleaseTests(unittest.TestCase):
         rendered = "".join(call.args[0] for call in stderr.write.call_args_list)
         self.assertIn("Release signing stopped: candidate is not ready.", rendered)
         self.assertIn("No manifest signature, tag, or push was authorized.", rendered)
+
+    def test_run_kills_descendant_holding_stdout(self) -> None:
+        code = (
+            "import subprocess,sys; "
+            "subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(5)'])"
+        )
+        with (
+            mock.patch.object(sign_release, "TIMEOUT", 1),
+            self.assertRaisesRegex(sign_release.SigningError, "timed out"),
+        ):
+            sign_release._run([sys.executable, "-c", code])

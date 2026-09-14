@@ -39,8 +39,6 @@ class SigningError(ValueError):
 
 def _terminate(process: subprocess.Popen[bytes]) -> None:
     """Terminate the bounded command and any child processes it spawned."""
-    if process.poll() is not None:
-        return
     with contextlib.suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGKILL)
     with contextlib.suppress(OSError):
@@ -82,8 +80,8 @@ def _run(  # noqa: C901 - bounded process lifecycle is intentionally explicit
                 output.extend(chunk)
                 if len(output) > MAX_OUTPUT:
                     raise SigningError(f"{argv[0]} produced too much output")
-            elif process.poll() is not None:
-                break
+            # A descendant may inherit stdout after the direct child exits.  Keep
+            # draining until EOF so the process-group deadline cannot be bypassed.
         return process.wait(timeout=1), bytes(output)
     except SigningError:
         if process is not None:
