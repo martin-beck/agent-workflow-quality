@@ -105,6 +105,14 @@ class WorkflowTrustTests(unittest.TestCase):
         )
         self.assertEqual(set(), self.codes(release, ".github/workflows/release.yml"))
 
+    def test_native_observations_are_optional_and_non_authorizing(self) -> None:
+        documentation = (ROOT / "docs/WORKFLOW_TRUST.md").read_text(encoding="utf-8")
+        self.assertIn("optional environmental inputs", documentation)
+        self.assertIn("non-authorizing", documentation)
+        self.assertIn("never turn an AWQ result into a certification", documentation)
+        self.assertIn("retained native gate", documentation)
+        self.assertNotIn("native evidence authorizes", documentation.casefold())
+
     def test_policy_unknowns_overlaps_paths_and_bounds_fail_closed(self) -> None:
         cases: list[dict[str, object]] = []
         unknown = copy.deepcopy(policy())

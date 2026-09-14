@@ -17,3 +17,13 @@ Findings contain only a stable code, the repository-relative workflow path, and 
 message. Runner labels and expression values are never copied into evidence. This static offline
 classification does not inspect GitHub settings, prove branch protection, administer runners or
 secrets, or establish that a declared label has the claimed runtime isolation.
+
+## Evidence and acceptance boundary
+
+AWQ implementation acceptance is established by this bounded policy contract and its deterministic
+positive and hostile tests. Live downstream observations, including consumer device lifecycle,
+Rust vulnerability reports, and other native reports, are optional environmental inputs for the
+consumer's own review. They are non-authorizing: they never turn an AWQ result into a certification,
+replace a retained native gate, or block acceptance of the AWQ implementation when unavailable.
+The Android/JVM and Rust adapter contracts still validate their exact native invocations and fail
+closed when a consumer elects to run them.
