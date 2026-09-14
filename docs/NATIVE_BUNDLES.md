@@ -9,6 +9,7 @@ and member or aggregate size overruns.
 An optional ELF policy constrains class, machine, architecture, dynamic dependencies, hardening,
 executable stack, text relocations, features, strings, symbols, alignment and size. Executable
 records bind content-minimized observations from checksum-pinned offline readelf and nm setup;
+Each executable ELF record must also carry separate `readelf_tool` and `nm_tool` identities, including stable version, executable digest, and pinned output digest. The existing executable content digest remains the source binding, while declared ELF fields and the observation digest remain policy evidence; none of these fields authorizes execution.
 tool diagnostics and source or host paths are not evidence. Consumers choose the policy values and
 retain their native build, test and package gates.
 

@@ -69,6 +69,18 @@ class NativeBundleTests(unittest.TestCase):
                     "nm_sha256": "b" * 64,
                     "observation_sha256": "c" * 64,
                     "readelf_sha256": "a" * 64,
+                    "readelf_tool": {
+                        "id": "TOOL-READELF",
+                        "version": "2.45.1",
+                        "sha256": "d" * 64,
+                        "output_sha256": "a" * 64,
+                    },
+                    "nm_tool": {
+                        "id": "TOOL-NM",
+                        "version": "2.45.1",
+                        "sha256": "e" * 64,
+                        "output_sha256": "b" * 64,
+                    },
                     "strings": [],
                     "symbols": ["main"],
                     "text_relocations": False,
@@ -234,6 +246,16 @@ class NativeBundleTests(unittest.TestCase):
         unsafe, _ = self._archive("unsafe.tar.gz", [("../escape", b"x", 0o644)])
         value = copy.deepcopy(self.document)
         value["packages"][0]["archive"] = unsafe
+        with self.assertRaises(ProjectError):
+            native_bundle.evaluate(self.root, value)
+
+    def test_elf_tool_identity_and_pinned_output_fail_closed(self) -> None:
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][1]["elf"]["readelf_tool"]["version"] = "latest"
+        with self.assertRaises(ProjectError):
+            native_bundle.evaluate(self.root, value)
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][1]["elf"]["nm_tool"]["output_sha256"] = "bad"
         with self.assertRaises(ProjectError):
             native_bundle.evaluate(self.root, value)
 

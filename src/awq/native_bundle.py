@@ -89,12 +89,22 @@ def _sorted_strings(
     return result
 
 
+def _tool_identity(value: object, label: str) -> dict[str, str]:
+    item = _object(value, "id version sha256 output_sha256", label)
+    _identifier(item["id"], "TOOL", label)
+    if not isinstance(item["version"], str) or TOKEN.fullmatch(item["version"]) is None:
+        _fail(label)
+    _digest(item["sha256"], label)
+    _digest(item["output_sha256"], label)
+    return item
+
+
 def _elf(value: object, policy: dict[str, Any], size: int) -> dict[str, Any]:
     item = _object(
         value,
         "class machine architecture dynamic_dependencies hardening executable_stack "
         "text_relocations features strings symbols max_alignment readelf_sha256 nm_sha256 "
-        "observation_sha256",
+        "observation_sha256 readelf_tool nm_tool",
         "elf-fields",
     )
     dependencies = _sorted_strings(item["dynamic_dependencies"], TOKEN, 0, 128, "elf-dependencies")
@@ -120,6 +130,8 @@ def _elf(value: object, policy: dict[str, Any], size: int) -> dict[str, Any]:
         _fail("elf-policy")
     for field in ("readelf_sha256", "nm_sha256", "observation_sha256"):
         _digest(item[field], "elf-evidence")
+    _tool_identity(item["readelf_tool"], "readelf-tool")
+    _tool_identity(item["nm_tool"], "nm-tool")
     return item
 
 
