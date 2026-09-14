@@ -212,12 +212,18 @@ def _state_release_ready(state_repo: Path) -> str:
     if task.get("status") != "open" or task.get("owner") or task.get("claim_expires"):
         raise SigningError("AR-0054 is not open and ownerless for external release signing")
     expected = task.get("observed_head")
-    if not isinstance(expected, str) or len(expected) != 40:
+    if (
+        not isinstance(expected, str)
+        or len(expected) != 40
+        or any(character not in "0123456789abcdef" for character in expected)
+    ):
         raise SigningError("release state has no exact candidate commit")
     if task.get("observed_dirty") != 0:
         raise SigningError("release state records a dirty candidate tree")
     next_action = task.get("next_action")
-    if not isinstance(next_action, str) or "sign" not in next_action.lower():
+    if not isinstance(next_action, str) or not next_action.lower().startswith(
+        "authorized external signer"
+    ):
         raise SigningError("release state does not authorize signing")
     return expected
 
@@ -247,7 +253,14 @@ def _check_key(source: Path, private_key: Path, public_key: Path, allowed_signer
     _authorized_github_key(public, allowed_signers)
     fingerprint = _fingerprint(public)
     ordinary = _ordinary_commit_key(source)
-    if ordinary == fingerprint or ordinary == str(public_key) or ordinary == str(private_key):
+    code, output = _git(source, "show", "-s", "--format=%GK", "HEAD")
+    commit_key = output.decode("ascii", errors="ignore").strip() if not code else None
+    if (
+        ordinary == fingerprint
+        or commit_key == fingerprint
+        or ordinary == str(public_key)
+        or ordinary == str(private_key)
+    ):
         raise SigningError("release key is also configured for ordinary commits")
     return fingerprint
 
@@ -358,26 +371,35 @@ def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-cl
         with contextlib.suppress(OSError):
             signature.unlink()
         raise SigningError("release changed during signing; nothing was tagged")
-    code, _ = _run(
-        [
-            "/usr/bin/git",
-            "-c",
-            "gpg.format=ssh",
-            "-c",
-            f"user.signingKey={private_key}",
-            "tag",
-            "-s",
-            "-a",
-            observed_tag,
-            commit,
-            "-m",
-            f"AWQ {observed_tag}",
-        ],
-        cwd=source,
-    )
+    try:
+        code, _ = _run(
+            [
+                "/usr/bin/git",
+                "-c",
+                "gpg.format=ssh",
+                "-c",
+                f"user.signingKey={private_key}",
+                "tag",
+                "-s",
+                "-a",
+                observed_tag,
+                commit,
+                "-m",
+                f"AWQ {observed_tag}",
+            ],
+            cwd=source,
+        )
+    except SigningError as error:
+        with contextlib.suppress(OSError):
+            signature.unlink()
+        with contextlib.suppress(SigningError):
+            _run(["/usr/bin/git", "tag", "-d", observed_tag], cwd=source)
+        raise SigningError("annotated SSH tag creation failed") from error
     if code:
         with contextlib.suppress(OSError):
             signature.unlink()
+        with contextlib.suppress(SigningError):
+            _run(["/usr/bin/git", "tag", "-d", observed_tag], cwd=source)
         raise SigningError("annotated SSH tag creation failed")
     return result
 

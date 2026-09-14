@@ -58,7 +58,7 @@ class SignReleaseTests(unittest.TestCase):
             "claim_expires": "",
             "observed_head": "",
             "observed_dirty": 0,
-            "next_action": "Authorized signer must sign the release",
+            "next_action": "Authorized external signer must sign the release",
         }
         subprocess.run(["git", "-C", str(self.source), "add", "config/allowed_signers"], check=True)
         subprocess.run(
