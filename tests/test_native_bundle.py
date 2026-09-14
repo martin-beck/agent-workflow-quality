@@ -97,6 +97,16 @@ class NativeBundleTests(unittest.TestCase):
                     "target": TARGET,
                 }
             )
+        for entry in inventory:
+            if entry["elf"] is not None:
+                observed = dict(entry["elf"])
+                observed.pop("observation_sha256")
+                observed["artifact_sha256"] = entry["sha256"]
+                observed["size"] = entry["size"]
+                entry["elf"]["observation_sha256"] = hashlib.sha256(
+                    canonical_bytes(observed)
+                ).hexdigest()
+
         return (
             {
                 "format": "tar-gzip",
@@ -246,6 +256,12 @@ class NativeBundleTests(unittest.TestCase):
         unsafe, _ = self._archive("unsafe.tar.gz", [("../escape", b"x", 0o644)])
         value = copy.deepcopy(self.document)
         value["packages"][0]["archive"] = unsafe
+        with self.assertRaises(ProjectError):
+            native_bundle.evaluate(self.root, value)
+
+    def test_elf_observation_binding_rejects_arbitrary_digest(self) -> None:
+        value = copy.deepcopy(self.document)
+        value["packages"][0]["inventory"][1]["elf"]["machine"] = "other-machine"
         with self.assertRaises(ProjectError):
             native_bundle.evaluate(self.root, value)
 

@@ -99,7 +99,7 @@ def _tool_identity(value: object, label: str) -> dict[str, str]:
     return item
 
 
-def _elf(value: object, policy: dict[str, Any], size: int) -> dict[str, Any]:
+def _elf(value: object, policy: dict[str, Any], size: int, artifact_sha256: str) -> dict[str, Any]:
     item = _object(
         value,
         "class machine architecture dynamic_dependencies hardening executable_stack "
@@ -132,6 +132,13 @@ def _elf(value: object, policy: dict[str, Any], size: int) -> dict[str, Any]:
         _digest(item[field], "elf-evidence")
     _tool_identity(item["readelf_tool"], "readelf-tool")
     _tool_identity(item["nm_tool"], "nm-tool")
+    observed = dict(item)
+    observed.pop("observation_sha256")
+    observed["artifact_sha256"] = artifact_sha256
+    observed["size"] = size
+    expected = hashlib.sha256(canonical_bytes(observed)).hexdigest()
+    if item["observation_sha256"] != expected:
+        _fail("elf-observation-binding")
     return item
 
 
@@ -346,7 +353,7 @@ def evaluate(root: Path, value: Any) -> dict[str, Any]:  # noqa: C901
             if entry["elf"] is not None:
                 if elf_policy is None:
                     _fail("inventory-elf")
-                _elf(entry["elf"], elf_policy, size)
+                _elf(entry["elf"], elf_policy, size, entry["sha256"])
             normalized.append({"path": path, "mode": mode, "size": size, "sha256": entry["sha256"]})
             paths.append(path)
         if paths != sorted(set(paths)) or normalized != observed:
