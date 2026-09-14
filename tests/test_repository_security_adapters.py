@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -69,6 +70,54 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
             result = adapters.run_adapter(root, contract, base_revision=base, head_revision=head)
         self.assertEqual("adapter-failed", result["findings"][0]["code"])
         self.assertNotIn("synthetic", json.dumps(result))
+
+    def test_real_git_range_scanner_reports_clean_defect_and_removed_cases(self) -> None:
+        for label, status in (("clean", 0), ("introduced", 1), ("later-removed", 1)):
+            temporary, root, base, head = self._git_fixture()
+            families, _ = adapters.load_adapter_catalog()
+            contract = copy.deepcopy(
+                next(
+                    item
+                    for item in families["repository-security"]["contracts"]
+                    if item["tool"] == "gitleaks"
+                )
+            )
+            tool = Path(sys.executable).name
+            contract.update(
+                tool=tool,
+                version=sys.version.split()[0],
+                version_argv=[tool, "--version"],
+                version_output=f"Python {sys.version.split()[0]}",
+                argv=[tool, "-c", f"import sys; print('case={label}'); raise SystemExit({status})"],
+                config_paths=[],
+            )
+            with mock.patch.object(
+                shutil,
+                "which",
+                side_effect=lambda name, **_: "/usr/bin/git" if name == "git" else sys.executable,
+            ):
+                result = adapters.run_adapter(
+                    root, contract, base_revision=base, head_revision=head
+                )
+            temporary.cleanup()
+            self.assertEqual(
+                "pass" if status == 0 else "adapter-failed",
+                result["status"] if status == 0 else result["findings"][0]["code"],
+            )
+            self.assertNotIn("case=", json.dumps(result))
+
+    def test_shallow_history_is_rejected_before_scanner(self) -> None:
+        temporary, root, base, head = self._git_fixture()
+        self.addCleanup(temporary.cleanup)
+        (root / ".git" / "shallow").write_text(f"{base}\n", encoding="utf-8")
+        families, _ = adapters.load_adapter_catalog()
+        contract = next(
+            item
+            for item in families["repository-security"]["contracts"]
+            if item["tool"] == "gitleaks"
+        )
+        result = adapters.run_adapter(root, contract, base_revision=base, head_revision=head)
+        self.assertEqual("adapter-range-shallow", result["findings"][0]["code"])
 
     def test_versioned_catalog_loader_preserves_v1_history(self) -> None:
         data = Path(__file__).parents[1] / "src/awq/data"
@@ -312,6 +361,20 @@ class RepositorySecurityAdapterTests(unittest.TestCase):
         )
         self.assertTrue(overflow)
         self.assertLessEqual(len(output), adapters.MAX_RESULT_BYTES)
+        with tempfile.NamedTemporaryFile() as marker:
+            script = (
+                "import pathlib,subprocess,time,sys; "
+                "p=subprocess.Popen([sys.executable,'-c','import time; time.sleep(20)']); "
+                "pathlib.Path(sys.argv[1]).write_text(str(p.pid)); time.sleep(20)"
+            )
+            _, _, timed_out, _ = adapters._bounded_execution(
+                [sys.executable, "-c", script, marker.name], Path.cwd(), environment, 1
+            )
+            self.assertTrue(timed_out)
+            marker.seek(0)
+            child = int(marker.read().decode())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(child, 0)
 
 
 if __name__ == "__main__":
