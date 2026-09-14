@@ -96,14 +96,17 @@ class SignReleaseTests(unittest.TestCase):
             ["git", "-C", str(self.source), "config", "user.signingkey", str(self.key) + ".pub"],
             check=True,
         )
-        with self.assertRaisesRegex(
-            sign_release.SigningError, "ordinary commits"
-        ), mock.patch.object(sign_release, "_verify_manifest"):
-                sign_release.sign_release(
-                    self.source, self.bundle, self.key,
-                    state_repo=self.state,
-                    allowed_signers=self.source / "config/allowed_signers",
-                )
+        with (
+            self.assertRaisesRegex(sign_release.SigningError, "ordinary commits"),
+            mock.patch.object(sign_release, "_verify_manifest"),
+        ):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+            )
 
     def test_rejects_non_github_ssh_key_type(self) -> None:
         rsa = self.root / "rsa-key"
@@ -114,23 +117,27 @@ class SignReleaseTests(unittest.TestCase):
             stderr=subprocess.DEVNULL,
         )
         if rsa.exists():
-            with self.assertRaisesRegex(
-                sign_release.SigningError, "accepted by GitHub"
-            ), mock.patch.object(sign_release, "_verify_manifest"):
-                    sign_release.sign_release(
-                        self.source, self.bundle, rsa,
-                        state_repo=self.state,
-                        allowed_signers=self.source / "config/allowed_signers",
-                    )
+            with (
+                self.assertRaisesRegex(sign_release.SigningError, "accepted by GitHub"),
+                mock.patch.object(sign_release, "_verify_manifest"),
+            ):
+                sign_release.sign_release(
+                    self.source,
+                    self.bundle,
+                    rsa,
+                    state_repo=self.state,
+                    allowed_signers=self.source / "config/allowed_signers",
+                )
 
     def test_rejects_key_not_in_reviewed_github_policy(self) -> None:
         other = self.root / "other-key"
         subprocess.run(
             ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(other)], check=True
         )
-        with self.assertRaisesRegex(
-            sign_release.SigningError, "reviewed GitHub signing key"
-        ), mock.patch.object(sign_release, "_verify_manifest"):
+        with (
+            self.assertRaisesRegex(sign_release.SigningError, "reviewed GitHub signing key"),
+            mock.patch.object(sign_release, "_verify_manifest"),
+        ):
             sign_release.sign_release(
                 self.source,
                 self.bundle,
@@ -152,21 +159,27 @@ class SignReleaseTests(unittest.TestCase):
     def test_refuses_existing_tag_or_signature(self) -> None:
         signature = self.manifest.with_name(self.manifest.name + ".sig")
         signature.write_bytes(b"existing")
-        with self.assertRaisesRegex(
-            sign_release.SigningError, "signature already exists"
-        ), mock.patch.object(sign_release, "_verify_manifest"):
-                sign_release.sign_release(
-                    self.source, self.bundle, self.key,
-                    state_repo=self.state,
-                    allowed_signers=self.source / "config/allowed_signers",
-                )
+        with (
+            self.assertRaisesRegex(sign_release.SigningError, "signature already exists"),
+            mock.patch.object(sign_release, "_verify_manifest"),
+        ):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+            )
 
     def test_cli_failure_explains_safe_next_step(self) -> None:
-        with mock.patch.object(
-            sign_release,
-            "sign_release",
-            side_effect=sign_release.SigningError("candidate is not ready"),
-        ), mock.patch("sys.stderr") as stderr:
+        with (
+            mock.patch.object(
+                sign_release,
+                "sign_release",
+                side_effect=sign_release.SigningError("candidate is not ready"),
+            ),
+            mock.patch("sys.stderr") as stderr,
+        ):
             self.assertEqual(sign_release.main([]), 1)
         rendered = "".join(call.args[0] for call in stderr.write.call_args_list)
         self.assertIn("Release signing stopped: candidate is not ready.", rendered)

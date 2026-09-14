@@ -234,17 +234,14 @@ def _authorized_github_key(public: str, allowed_signers: Path) -> None:
     except (OSError, UnicodeError) as error:
         raise SigningError("reviewed allowed-signers policy is unreadable") from error
     if not any(
-        line.split()[1:3] == fields[:2]
-        and line.split()[0].endswith("@users.noreply.github.com")
+        line.split()[1:3] == fields[:2] and line.split()[0].endswith("@users.noreply.github.com")
         for line in policy_lines
         if len(line.split()) >= 3 and not line.startswith("#")
     ):
         raise SigningError("release key is not the reviewed GitHub signing key")
 
 
-def _check_key(
-    source: Path, private_key: Path, public_key: Path, allowed_signers: Path
-) -> str:
+def _check_key(source: Path, private_key: Path, public_key: Path, allowed_signers: Path) -> str:
     public = _public_key(private_key, public_key)
     _key_type(public)
     _authorized_github_key(public, allowed_signers)
@@ -299,8 +296,10 @@ def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-cl
     public_key = (public_key or Path(str(private_key) + ".pub")).expanduser().resolve()
     state_repo = (state_repo or source.parent / "agent-workflow-quality-state").resolve()
     allowed_signers = (
-        allowed_signers or source.parent / "awq-release-trust" / "allowed_signers"
-    ).expanduser().resolve()
+        (allowed_signers or source.parent / "awq-release-trust" / "allowed_signers")
+        .expanduser()
+        .resolve()
+    )
     state_commit = _state_release_ready(state_repo)
     commit = _require_clean_source(source)
     if commit != state_commit:
@@ -415,8 +414,7 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help=(
-            "external reviewed allowed-signers file "
-            "(default: ../awq-release-trust/allowed_signers)"
+            "external reviewed allowed-signers file (default: ../awq-release-trust/allowed_signers)"
         ),
     )
     parser.add_argument(
