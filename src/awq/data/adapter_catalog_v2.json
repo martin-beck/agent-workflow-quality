@@ -1,0 +1,1390 @@
+{
+  "schema_version": 1,
+  "families": [
+    {
+      "id": "android-jvm",
+      "title": "Android and JVM assurance adapters",
+      "description": "Reviewed offline Gradle contracts with pinned JDK, Gradle, AGP, Kotlin, integrity, ABI, coverage, and device-evidence boundaries.",
+      "assumptions": [
+        "Android SDK and project dependencies are acquired separately into isolated caches before runtime; every adapter invocation is offline.",
+        "Device execution is external environmental evidence and is accepted only through fresh canonical observations bound to source and report digests.",
+        "JDK 17.0.20.1+1, Gradle 9.1.0, AGP 9.0.1, and Kotlin 2.3.20 are exact reviewed versions.",
+        "Project tasks, integrity digests, lockfiles, repository allowlists, resource limits, and device plans are canonical in quality/android-jvm.json.",
+        "The project installs the checksum-pinned AWQ Android/JVM wrapper before invoking adapters; AWQ never installs during a check."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-ANDROID-JVM-ABI",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "abi"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "ABI checking enforces only the project-owned binary compatibility task and baseline.",
+          "remediation": "Review intentional API changes or restore compatibility, then rerun the exact ABI task.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-ANDROID-BUILD",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "android-build"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "The configured build task proves compilation only for the declared Android variant and cached dependencies.",
+          "remediation": "Repair the declared Android build or reviewed toolchain inputs, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-ANDROID-LINT",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "android-lint"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Android lint covers only enabled project-owned rules and the declared variant.",
+          "remediation": "Repair lint findings or narrowly review project lint policy, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-CONNECTED-TESTS",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "connected-tests"
+          ],
+          "timeout_seconds": 3600,
+          "tier": "scheduled",
+          "evidence": "environmental",
+          "limitation": "Connected-test evidence is time-bound environmental evidence for one exact device plan, source revision, and report set.",
+          "remediation": "Recreate the pinned device, rerun connected tests, and regenerate the canonical observation.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-COVERAGE",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "coverage"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Coverage enforces only the project-owned Kover task and thresholds.",
+          "remediation": "Add meaningful tests or intentionally review the coverage policy, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-DEPENDENCY",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "dependency"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Dependency analysis reports only the project-owned Gradle graph and configured rules.",
+          "remediation": "Repair dependency declarations or intentionally review the project-owned dependency policy.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-DEVICE-PLAN",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "device-plan"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "A validated device plan proves configuration integrity, not that a device or test run existed.",
+          "remediation": "Provision the exact reviewed device and produce fresh connected-test evidence.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-FORMAT",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "format"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "Formatting checks deterministic layout only for the configured Gradle task.",
+          "remediation": "Apply the project formatter, review changes, and rerun the exact offline task.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-INTEGRITY",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "integrity"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Integrity validates declared files, locks, repositories, wrapper, and metadata but not artifact semantics.",
+          "remediation": "Restore reviewed digests and declarations or intentionally update the canonical policy.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-STATIC",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "static"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Static analysis covers only project-configured Detekt and related tasks.",
+          "remediation": "Repair findings or narrowly review the project-owned static-analysis policy.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        },
+        {
+          "id": "ADAPTER-ANDROID-JVM-TEST",
+          "tool": "awq-android-jvm-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-android-jvm-check",
+            "--version"
+          ],
+          "version_output": "awq-android-jvm-check 1.0.0 (Temurin 17.0.20.1+1; Gradle 9.1.0; AGP 9.0.1; Kotlin 2.3.20; Linux x86-64)",
+          "argv": [
+            "awq-android-jvm-check",
+            "test"
+          ],
+          "timeout_seconds": 1800,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Host tests cover only the project-owned JVM test tasks and fixtures.",
+          "remediation": "Repair failing tests or add missing behavioral coverage, then rerun offline.",
+          "formats": [
+            ".gradle",
+            ".gradle.kts",
+            ".java",
+            ".kt",
+            ".kts"
+          ],
+          "config_paths": [
+            "quality/android-jvm.json"
+          ],
+          "result_protocol": "awq-bindings-v1"
+        }
+      ]
+    },
+    {
+      "id": "documentation",
+      "title": "Documentation quality adapters",
+      "description": "Reviewed offline commands for Markdown structure, local links, and repository-owned prose rules.",
+      "assumptions": [
+        "Documentation inputs are Git-tracked Markdown or text files; declared fixture trees are excluded.",
+        "The project keeps Markdown structure and local-link policy in .rumdl.toml.",
+        "Vale configuration, styles, vocabularies, and accepted terminology are fully repository-owned.",
+        "rumdl link rules are filesystem-only; external URL availability is not checked or claimed.",
+        "The project installs the exact reviewed tools before invoking AWQ; AWQ never installs them."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-DOCUMENTATION-RUMDL-LINKS",
+          "tool": "rumdl",
+          "version": "0.2.68",
+          "version_argv": [
+            "rumdl",
+            "--version"
+          ],
+          "version_output": "rumdl 0.2.68",
+          "argv": [
+            "rumdl",
+            "check",
+            "--config",
+            ".rumdl.toml",
+            "--no-cache",
+            "--no-code-block-tools",
+            "--color",
+            "never",
+            "--enable",
+            "MD051,MD057"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Filesystem-only rules validate relative file targets and fragments; they skip external URL availability and absolute site routes unless project policy configures them.",
+          "remediation": "Rerun the exact rumdl link contract, then repair the local target, fragment, or reviewed project link configuration.",
+          "formats": [
+            ".md",
+            ".markdown"
+          ],
+          "config_paths": [
+            ".rumdl.toml"
+          ],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-DOCUMENTATION-RUMDL-STYLE",
+          "tool": "rumdl",
+          "version": "0.2.68",
+          "version_argv": [
+            "rumdl",
+            "--version"
+          ],
+          "version_output": "rumdl 0.2.68",
+          "argv": [
+            "rumdl",
+            "check",
+            "--config",
+            ".rumdl.toml",
+            "--no-cache",
+            "--no-code-block-tools",
+            "--color",
+            "never",
+            "--extend-disable",
+            "MD051,MD057,MD074"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Markdown structure and style rules cannot establish factual correctness, rendering equivalence, link availability, or prose quality.",
+          "remediation": "Rerun the exact rumdl style contract, repair the finding, and review any narrow project suppression.",
+          "formats": [
+            ".md",
+            ".markdown"
+          ],
+          "config_paths": [
+            ".rumdl.toml"
+          ],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-DOCUMENTATION-VALE",
+          "tool": "vale",
+          "version": "3.20.0",
+          "version_argv": [
+            "vale",
+            "--version"
+          ],
+          "version_output": "vale version 3.20.0",
+          "argv": [
+            "vale",
+            "--no-global",
+            "--config=.vale.ini",
+            "--no-color"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Vale enforces only checked-in rules and vocabularies; it cannot judge truth, completeness, intent, or overall writing quality.",
+          "remediation": "Rerun Vale with the repository configuration, then repair the prose or narrowly review the owning rule and vocabulary.",
+          "formats": [
+            ".md",
+            ".markdown",
+            ".txt"
+          ],
+          "config_paths": [
+            ".vale.ini"
+          ],
+          "input_mode": "tracked-formats"
+        }
+      ]
+    },
+    {
+      "id": "formal-model",
+      "title": "Bounded formal-model adapter",
+      "description": "A reviewed direct TLC command with explicit worker, depth, model, configuration, version, and deadline bounds.",
+      "assumptions": [
+        "The separately installed tlc launcher is pinned to TLA+ Tools 1.8.0 and its version probe has the exact reviewed output.",
+        "The checked-in configuration names every invariant and finite constant required for the selected model.",
+        "A completed bounded exploration is evidence about the declared TLA+ model only, not proof that an implementation refines it.",
+        "The adapter invokes the reviewed command offline and never retains TLC output in AWQ evidence."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-FORMAL-MODEL-TLC",
+          "tool": "tlc",
+          "version": "1.8.0",
+          "version_argv": [
+            "tlc",
+            "--version"
+          ],
+          "version_output": "TLC 1.8.0",
+          "argv": [
+            "tlc",
+            "-workers",
+            "1",
+            "-depth",
+            "1000",
+            "-J-Xmx512m",
+            "-config",
+            "formal/Model.cfg",
+            "formal/Model.tla"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "bounded-model",
+          "limitation": "TLC explores only the declared model within one worker, depth 1000, its finite constants, and a 300 second deadline; this does not prove implementation refinement.",
+          "remediation": "Rerun the exact native TLC argv for private diagnostics, then repair the model, configuration, bound, or implementation correspondence outside AWQ evidence.",
+          "formats": [
+            ".cfg",
+            ".tla"
+          ],
+          "config_paths": [
+            "formal/Model.cfg",
+            "formal/Model.tla"
+          ],
+          "input_mode": "explicit",
+          "admission": {
+            "boundary": "shared-tla-admission-v1",
+            "queue_limit": 1,
+            "cancel_timeout_seconds": 30,
+            "restart_limit": 1,
+            "memory_max_mib": 1024,
+            "swap_max_mib": 0,
+            "jvm_heap_mib": 512,
+            "launcher": "awq-tla-admit",
+            "queue_state": "formal/admission-state.json"
+          }
+        }
+      ]
+    },
+    {
+      "id": "python",
+      "title": "Python quality adapters",
+      "description": "Reviewed offline commands for Python formatting, linting, strict typing, tests, and branch-aware coverage.",
+      "assumptions": [
+        "The repository supports Python 3.12 and declares authoritative tool settings in pyproject.toml.",
+        "Unit tests are discoverable below tests with filenames matching test_*.py.",
+        "The project installs official wheels for the exact reviewed Ruff, compiled mypy, and C-extension coverage releases before invoking AWQ; AWQ never installs them.",
+        "Coverage run executes before coverage report when both contracts are selected."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-PYTHON-COVERAGE-01-RUN",
+          "tool": "coverage",
+          "version": "7.16.0",
+          "version_argv": [
+            "coverage",
+            "--version"
+          ],
+          "version_output": "Coverage.py, version 7.16.0 with C extension\nFull documentation is at https://coverage.readthedocs.io/en/7.16.0",
+          "argv": [
+            "coverage",
+            "run",
+            "--branch",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_*.py"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Coverage execution shows only code reached by the configured unittest discovery suite and does not prove behavioral completeness.",
+          "remediation": "Repair failing tests or the project-owned coverage configuration, then rerun the native command.",
+          "formats": [
+            ".py"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-PYTHON-COVERAGE-02-REPORT",
+          "tool": "coverage",
+          "version": "7.16.0",
+          "version_argv": [
+            "coverage",
+            "--version"
+          ],
+          "version_output": "Coverage.py, version 7.16.0 with C extension\nFull documentation is at https://coverage.readthedocs.io/en/7.16.0",
+          "argv": [
+            "coverage",
+            "report"
+          ],
+          "timeout_seconds": 120,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "The report enforces project-owned thresholds against the existing coverage data file and is meaningful only after a matching coverage run.",
+          "remediation": "Run the coverage execution contract first, add meaningful tests, and satisfy the checked-in threshold.",
+          "formats": [
+            ".py"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-PYTHON-MYPY",
+          "tool": "mypy",
+          "version": "2.3.1",
+          "version_argv": [
+            "mypy",
+            "--version"
+          ],
+          "version_output": "mypy 2.3.1 (compiled: yes)",
+          "argv": [
+            "mypy",
+            "--config-file",
+            "pyproject.toml"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Static typing covers only files and strictness declared by the repository and cannot prove runtime behavior.",
+          "remediation": "Correct typing findings or explicitly refine the reviewed project-owned mypy configuration.",
+          "formats": [
+            ".py",
+            ".pyi"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-PYTHON-RUFF-FORMAT",
+          "tool": "ruff",
+          "version": "0.16.5",
+          "version_argv": [
+            "ruff",
+            "--version"
+          ],
+          "version_output": "ruff 0.16.5",
+          "argv": [
+            "ruff",
+            "format",
+            "--check",
+            "--config",
+            "pyproject.toml",
+            "."
+          ],
+          "timeout_seconds": 120,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "Formatting checks deterministic layout only and does not establish correctness or lint cleanliness.",
+          "remediation": "Run ruff format with the checked-in pyproject.toml and review the resulting source changes.",
+          "formats": [
+            ".py",
+            ".pyi"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-PYTHON-RUFF-LINT",
+          "tool": "ruff",
+          "version": "0.16.5",
+          "version_argv": [
+            "ruff",
+            "--version"
+          ],
+          "version_output": "ruff 0.16.5",
+          "argv": [
+            "ruff",
+            "check",
+            "--config",
+            "pyproject.toml",
+            "."
+          ],
+          "timeout_seconds": 120,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Lint rules detect configured static patterns but cannot prove runtime correctness or complete security.",
+          "remediation": "Repair Ruff findings under the checked-in configuration and review any suppression narrowly.",
+          "formats": [
+            ".py",
+            ".pyi"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-PYTHON-UNITTEST",
+          "tool": "python",
+          "version": "3.12",
+          "version_argv": [
+            "python",
+            "-c",
+            "import sys; print(f'Python {sys.version_info.major}.{sys.version_info.minor}')"
+          ],
+          "version_output": "Python 3.12",
+          "argv": [
+            "python",
+            "-m",
+            "unittest",
+            "discover",
+            "-s",
+            "tests",
+            "-p",
+            "test_*.py"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Discovery executes the repository's unittest suite but cannot establish that all intended behaviors or environments are covered.",
+          "remediation": "Repair the failing test or implementation and extend project tests when the behavior lacks coverage.",
+          "formats": [
+            ".py"
+          ],
+          "config_paths": [
+            "pyproject.toml"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "python-refactoring",
+      "title": "Bounded Python refactoring",
+      "description": "Native restricted CPython characterization, differential, property and explicit mutation observations.",
+      "assumptions": [
+        "Only the reviewed pure integer-function subset is supported on Linux x86-64.",
+        "CPython 3.12.14 and its standard library are independently provisioned and trusted.",
+        "Case domains, expected values and explicit mutants are reviewed; finite agreement is not universal behavior preservation."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-PYTHON-REFACTORING-COLLECT",
+          "tool": "awq-refactor-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-refactor-check",
+            "--version"
+          ],
+          "version_output": "awq-refactor-check 1.0.0 (CPython 3.12.14; integer-function-v1)",
+          "argv": [
+            "awq-refactor-check",
+            "collect"
+          ],
+          "timeout_seconds": 45,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Executed bounded CPython integer-function observations, not general Python equivalence, a theorem, complete mutation coverage or authenticated review. Explicit mutants and finite cases may omit defects. The provisioned interpreter, standard library and host are trusted; AST restrictions and process limits are not a general hostile-code sandbox. Native gates retained.",
+          "remediation": "Review normalized source commitments and bounded cases, repair mismatches or strengthen tests that leave a retained mutant alive.",
+          "formats": [
+            ".json",
+            ".py"
+          ],
+          "config_paths": [
+            "quality/python-refactor.json"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1"
+        }
+      ]
+    },
+    {
+      "id": "repository-security",
+      "title": "Repository security assurance adapters",
+      "description": "Reviewed offline workflow syntax, security analysis, and introduced-history secret scanning with checksum-pinned setup artifacts.",
+      "assumptions": [
+        "actionlint, zizmor, and gitleaks are acquired separately into an isolated checksum-verified prefix before runtime; every adapter invocation is offline.",
+        "The project supplies an exact 40-hex base and head revision for introduced-range scanning and retains sufficient local history.",
+        "Diagnostics and matches are discarded by the runner; evidence contains only stable classifications, bounded paths, and digests.",
+        "Native downstream or device evidence is optional and non-authorizing; hosted runners or pinned containers and VMs provide portable execution.",
+        "The project installs the checksum-pinned repository-security wrappers before invoking adapters; AWQ never installs tools during a check."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-REPOSITORY-SECURITY-ACTIONLINT",
+          "tool": "actionlint",
+          "version": "1.7.7",
+          "version_argv": ["actionlint", "-version"],
+          "version_output": "1.7.7",
+          "argv": ["actionlint", "-color=false"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Workflow syntax analysis covers the selected repository workflows but cannot prove provider-side execution semantics.",
+          "remediation": "Repair the reported workflow syntax or policy issue and rerun the pinned offline actionlint command.",
+          "formats": [".yaml", ".yml"],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-REPOSITORY-SECURITY-GITLEAKS",
+          "tool": "gitleaks",
+          "version": "8.28.0",
+          "version_argv": ["gitleaks", "version"],
+          "version_output": "8.28.0",
+          "argv": ["gitleaks", "detect", "--no-banner", "--redact", "--log-opts={base}..{head}"],
+          "timeout_seconds": 600,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Secret scanning reports only configured introduced-history matches and cannot replace provider-side scanning or rotation procedures.",
+          "remediation": "Rotate any exposed credential, remove it from the introduced range, and rerun with exact reviewed base and head revisions.",
+          "formats": [".git"],
+          "config_paths": [".gitleaks.toml"]
+        },
+        {
+          "id": "ADAPTER-REPOSITORY-SECURITY-ZIZMOR",
+          "tool": "zizmor",
+          "version": "1.30.1",
+          "version_argv": ["zizmor", "--version"],
+          "version_output": "zizmor 1.30.1",
+          "argv": ["zizmor", "--pedantic"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Pedantic workflow security analysis is bounded static evidence and cannot prove action implementation safety or hosted policy settings.",
+          "remediation": "Address the reported workflow security finding or document a narrowly reviewed project exception, then rerun offline.",
+          "formats": [".yaml", ".yml"],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        }
+      ]
+    },
+    {
+      "id": "rust",
+      "title": "Rust stable, supply-chain, and advanced evidence adapters",
+      "description": "Reviewed offline Rust 1.93.0 and dated-nightly formatting, lint, test, build, dependency, API, coverage, fixed-run fuzz, and mutation-sentinel commands.",
+      "assumptions": [
+        "Execution is limited to Linux x86-64 with the exact checksum-reviewed Rust 1.93.0 toolchain and Rust supply bundle installed separately.",
+        "The workspace owns exact Cargo.toml, Cargo.lock, rust-toolchain.toml and .cargo/config.toml files plus each enabled contract's declared policy snapshot.",
+        "The toolchain declaration uses the minimal profile and lists Clippy then rustfmt exactly.",
+        "Third-party dependencies are already present in the isolated Cargo home from a separate reviewed acquisition step; runtime is locked and offline.",
+        "Registry yank observations, the RustSec advisory database and public API baselines are digest-bound and expire or fail closed independently.",
+        "AWQ invokes direct regular binaries with isolated target, home, cache and temporary directories; runtime never invokes rustup, a shell, package installation, advisory updates, registry lookups or lockfile updates.",
+        "Advanced evidence uses the separate checksum-pinned AWQ bundle with stable LLVM tools, nightly-2026-09-01, cargo-llvm-cov 0.9.1, cargo-fuzz 0.13.2 and cargo-mutants 27.1.0.",
+        "Coverage is PR-bounded; fuzz regression is scheduled; mutation sentinels require a trusted host. Open-ended fuzz and broad mutation campaigns are not adapter operations.",
+        "Advanced contracts require clean tracked state, exact repository-owned policies, target lists, seed digests and mutation filters; all generated artifacts and build outputs are external and discarded."
+      ],
+      "contracts": [
+        {
+          "tool": "awq-rust-supply-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-supply-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-supply-check 1.0.0 (cargo-deny 0.20.2; cargo-audit 0.22.2; cargo-semver-checks 0.50.0; Rust 1.93.0; advisory-db bf25f6575a93a35f30796c65c0ed91bee7fa19fd)",
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-ADVISORY",
+          "argv": [
+            "awq-rust-supply-check",
+            "audit"
+          ],
+          "evidence": "environmental",
+          "limitation": "The exact Cargo.lock is checked against a digest-pinned RustSec snapshot valid through 2026-12-07; the result does not cover unpublished advisories, registry yank state, runtime exploitability or other targets.",
+          "remediation": "Update vulnerable dependencies or explicitly review the repository-owned advisory policy; refresh the pinned database through an AWQ release before its expiry.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-advisory-policy.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-RUST-BUILD",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "build"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "A successful optimized host build proves compilation only for the selected workspace and Linux x86-64 host; it does not prove runtime behavior, other features, targets or profiles.",
+          "remediation": "Repair compiler failures or the reviewed workspace and lock configuration, then rerun the exact offline release-build contract.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "id": "ADAPTER-RUST-CLIPPY",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "clippy"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Clippy with warnings denied covers the selected workspace and all host targets under the pinned lint implementation; it does not prove absence of defects.",
+          "remediation": "Repair the lint or narrowly review project-owned lint policy without weakening the pinned command, then rerun Clippy.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "tool": "awq-rust-advanced-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-advanced-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-advanced-check 1.0.0 (cargo-llvm-cov 0.9.1; cargo-fuzz 0.13.2; cargo-mutants 27.1.0; Rust 1.93.0; nightly-2026-09-01)",
+          "timeout_seconds": 900,
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-COVERAGE",
+          "argv": [
+            "awq-rust-advanced-check",
+            "coverage"
+          ],
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Aggregate line reachability for reviewed packages and default features on Linux x86-64 does not prove assertion quality, branch coverage, other features, targets or behavioral completeness.",
+          "remediation": "Add focused tests or intentionally review the repository-owned line floor and package selection, then rerun the exact offline coverage contract.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-advanced.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-RUST-DOC",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "doc"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Warning-free no-dependency documentation checks local rustdoc generation only; it does not validate prose truth, external links or dependency documentation.",
+          "remediation": "Repair rustdoc warnings or source documentation and rerun the exact offline no-dependency documentation contract.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "id": "ADAPTER-RUST-FMT",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "fmt"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "rustfmt checks deterministic source layout only and does not establish compilation, lint cleanliness, tests or runtime correctness.",
+          "remediation": "Run the pinned formatter on the workspace, review the source changes and rerun the formatting check.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        },
+        {
+          "tool": "awq-rust-advanced-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-advanced-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-advanced-check 1.0.0 (cargo-llvm-cov 0.9.1; cargo-fuzz 0.13.2; cargo-mutants 27.1.0; Rust 1.93.0; nightly-2026-09-01)",
+          "timeout_seconds": 900,
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-FUZZ",
+          "argv": [
+            "awq-rust-advanced-check",
+            "fuzz"
+          ],
+          "tier": "scheduled",
+          "evidence": "property-or-fuzz",
+          "limitation": "This dated-nightly regression executes only the digest-bound seed corpus and fixed run, time, input-length and Linux x86-64 sanitizer bounds; it is not an open-ended campaign or proof of defect absence.",
+          "remediation": "Repair the crashing target, review and add a minimized non-sensitive seed, or deliberately revise the bounded target and resource policy.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "fuzz/Cargo.lock",
+            "fuzz/Cargo.toml",
+            "fuzz/rust-toolchain.toml",
+            "quality/rust-advanced.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "tool": "awq-rust-advanced-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-advanced-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-advanced-check 1.0.0 (cargo-llvm-cov 0.9.1; cargo-fuzz 0.13.2; cargo-mutants 27.1.0; Rust 1.93.0; nightly-2026-09-01)",
+          "timeout_seconds": 900,
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-MUTATION",
+          "argv": [
+            "awq-rust-advanced-check",
+            "mutation"
+          ],
+          "tier": "trusted-host",
+          "evidence": "contract-test",
+          "limitation": "The result covers only the repository-selected packages, files, regex filters and mutation genres under finite single-worker time and resource bounds; surviving unselected mutants and equivalent mutants remain outside the claim.",
+          "remediation": "Strengthen tests to catch each retained sentinel or intentionally review the exact package, file, operator, filter and expected-count policy.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-advanced.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "tool": "awq-rust-supply-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-supply-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-supply-check 1.0.0 (cargo-deny 0.20.2; cargo-audit 0.22.2; cargo-semver-checks 0.50.0; Rust 1.93.0; advisory-db bf25f6575a93a35f30796c65c0ed91bee7fa19fd)",
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-POLICY",
+          "argv": [
+            "awq-rust-supply-check",
+            "policy"
+          ],
+          "evidence": "environmental",
+          "limitation": "cargo-deny evaluates the locked graph against repository-owned license, duplicate and source policy plus a time-bounded crates.io yank snapshot; it does not establish legal advice or future registry state.",
+          "remediation": "Repair the dependency graph or narrowly review deny.toml, then regenerate the exact Cargo.lock registry snapshot through the bounded setup command.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "deny.toml",
+            "quality/rust-registry-snapshot.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "tool": "awq-rust-supply-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-supply-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-supply-check 1.0.0 (cargo-deny 0.20.2; cargo-audit 0.22.2; cargo-semver-checks 0.50.0; Rust 1.93.0; advisory-db bf25f6575a93a35f30796c65c0ed91bee7fa19fd)",
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "formats": [
+            ".json",
+            ".rs",
+            ".toml"
+          ],
+          "input_mode": "explicit",
+          "result_protocol": "awq-bindings-v1",
+          "id": "ADAPTER-RUST-SEMVER",
+          "argv": [
+            "awq-rust-supply-check",
+            "semver"
+          ],
+          "evidence": "contract-test",
+          "limitation": "The comparison covers the selected library's public rustdoc API for default features on Linux x86-64 against one digest-bound baseline; it does not prove behavioral compatibility, private API stability or other feature and target combinations.",
+          "remediation": "Restore the documented public API, select the correct release type, or intentionally regenerate and review the pinned baseline from the release being superseded.",
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "quality/rust-semver-baseline.lock.json",
+            "rust-toolchain.toml"
+          ]
+        },
+        {
+          "id": "ADAPTER-RUST-TEST",
+          "tool": "awq-rust-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-rust-check",
+            "--version"
+          ],
+          "version_output": "awq-rust-check 1.0.0 (Rust 1.93.0; Cargo 1.93.0; rustfmt 1.8.0-stable; Clippy 0.1.93)",
+          "argv": [
+            "awq-rust-check",
+            "test"
+          ],
+          "timeout_seconds": 900,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "The pinned host test suite covers only tests and features selected by the workspace defaults; passing does not prove behavioral completeness or cross-target behavior.",
+          "remediation": "Repair failing tests or reviewed workspace configuration, then rerun the exact locked offline host test contract.",
+          "formats": [
+            ".rs",
+            ".toml"
+          ],
+          "config_paths": [
+            ".cargo/config.toml",
+            "Cargo.lock",
+            "Cargo.toml",
+            "rust-toolchain.toml"
+          ],
+          "input_mode": "explicit"
+        }
+      ]
+    },
+    {
+      "id": "schema",
+      "title": "Schema and structured-data adapters",
+      "description": "Reviewed offline checks for strict JSON, restricted YAML, JSON Schema metaschemas, and project-owned instance mappings.",
+      "assumptions": [
+        "JSON and YAML inputs are Git-tracked and declared fixture trees are excluded.",
+        "The strict YAML profile intentionally rejects flow collections, explicit tags, anchors, aliases, and duplicate keys.",
+        "Every JSON Schema uses the .schema.json suffix, declares a supported $schema dialect, and uses fragment-only or repository-relative .schema.json references.",
+        "The project replaces the example schema path and compound instance suffixes with one reviewed mapping per contract identifier.",
+        "The checksum-pinned wrapper verifies its bundled parser and validator before running; runtime execution never enables HTTP or installs tools."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-SCHEMA-JSONSCHEMA-INSTANCE",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "validate",
+            "quality/schemas/project.schema.json"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "One copied contract validates only its reviewed schema path and compound instance suffixes; format assertions are implementation-defined beyond supported standard formats.",
+          "remediation": "Repair the instance or schema, or review a separate uniquely identified mapping for another schema and suffix set.",
+          "formats": [
+            ".instance.json",
+            ".instance.yaml",
+            ".instance.yml"
+          ],
+          "config_paths": [
+            "quality/schemas/project.schema.json"
+          ],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-SCHEMA-JSONSCHEMA-METASCHEMA",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "metaschema"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Metaschema and format-assertion checks validate declared schema structure and a confined local reference graph, not instance behavior or schema design quality.",
+          "remediation": "Declare a supported dialect, repair the schema or local reference, and keep every referenced schema below the repository root.",
+          "formats": [
+            ".schema.json"
+          ],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-SCHEMA-STRICT-JSON",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "json"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Strict parsing rejects duplicate keys and non-finite constants but does not establish application semantics or JSON Schema conformance.",
+          "remediation": "Repair invalid or ambiguous JSON, then run the owning schema mapping where one exists.",
+          "formats": [
+            ".json"
+          ],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        },
+        {
+          "id": "ADAPTER-SCHEMA-STRICT-YAML",
+          "tool": "awq-schema-check",
+          "version": "1.0.0",
+          "version_argv": [
+            "awq-schema-check",
+            "--version"
+          ],
+          "version_output": "awq-schema-check 1.0.0 (StrictYAML 1.7.3; JSON Schema CLI 16.3.0)",
+          "argv": [
+            "awq-schema-check",
+            "yaml"
+          ],
+          "timeout_seconds": 180,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "The restricted YAML subset trades compatibility for unambiguous parsing and does not establish application semantics or schema conformance.",
+          "remediation": "Remove disallowed YAML features or choose a separately reviewed parser contract for a required broader dialect.",
+          "formats": [
+            ".yaml",
+            ".yml"
+          ],
+          "config_paths": [],
+          "input_mode": "tracked-formats"
+        }
+      ]
+    },
+    {
+      "id": "shell",
+      "title": "Shell quality adapters",
+      "description": "Reviewed offline commands for ShellCheck analysis, shfmt formatting, and Bats tests.",
+      "assumptions": [
+        "Shell source uses .sh suffixes or executable POSIX-style shell shebangs and is tracked by Git.",
+        "The project declares ShellCheck policy in .shellcheckrc and shfmt policy plus ignored fixture trees in .editorconfig.",
+        "Bats tests are stored below tests with .bats suffixes and may use Bash-specific test syntax.",
+        "The project installs the exact reviewed tools before invoking AWQ; AWQ never installs them."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-SHELL-BATS",
+          "tool": "bats",
+          "version": "1.14.0",
+          "version_argv": [
+            "bats",
+            "--version"
+          ],
+          "version_output": "Bats 1.14.0",
+          "argv": [
+            "bats",
+            "--recursive",
+            "tests"
+          ],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "Bats executes the repository test suite under Bash but cannot prove portability, complete behavior coverage, or compatibility with other shells.",
+          "remediation": "Rerun the native Bats command for details, then repair the failing test or implementation.",
+          "formats": [
+            ".bats"
+          ],
+          "config_paths": []
+        },
+        {
+          "id": "ADAPTER-SHELL-SHELLCHECK",
+          "tool": "shellcheck",
+          "version": "0.11.0",
+          "version_argv": [
+            "shellcheck",
+            "--version"
+          ],
+          "version_output": "ShellCheck - shell script analysis tool\nversion: 0.11.0\nlicense: GNU General Public License, version 3\nwebsite: https://www.shellcheck.net",
+          "argv": [
+            "shellcheck",
+            "--rcfile=.shellcheckrc",
+            "--external-sources",
+            "--source-path=SCRIPTDIR"
+          ],
+          "timeout_seconds": 120,
+          "tier": "pr",
+          "evidence": "mechanical",
+          "limitation": "Static analysis follows each file's declared shell dialect and configured rules but cannot prove runtime behavior or platform portability.",
+          "remediation": "Rerun ShellCheck natively for findings, repair the source, and review any project suppression narrowly.",
+          "formats": [
+            ".sh"
+          ],
+          "config_paths": [
+            ".shellcheckrc"
+          ],
+          "input_mode": "tracked-shell"
+        },
+        {
+          "id": "ADAPTER-SHELL-SHFMT",
+          "tool": "shfmt",
+          "version": "3.14.1",
+          "version_argv": [
+            "shfmt",
+            "--version"
+          ],
+          "version_output": "v3.14.1",
+          "argv": [
+            "shfmt",
+            "--diff",
+            "--apply-ignore"
+          ],
+          "timeout_seconds": 120,
+          "tier": "local",
+          "evidence": "mechanical",
+          "limitation": "Formatting validates deterministic layout under EditorConfig but cannot establish shell correctness, safety, or cross-shell behavior.",
+          "remediation": "Run shfmt with the checked-in EditorConfig, review the formatting changes, and rerun the adapter.",
+          "formats": [
+            ".sh"
+          ],
+          "config_paths": [
+            ".editorconfig"
+          ],
+          "input_mode": "tracked-shell"
+        }
+      ]
+    }
+  ]
+}

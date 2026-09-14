@@ -127,6 +127,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/adapter_catalog_v2.json", b"{}\n"),
                 ("awq/data/contract_catalog.json", b"{}\n"),
             ],
         )
@@ -135,6 +136,7 @@ class DistributionVerificationTests(unittest.TestCase):
             [
                 ("awq/src/awq/__init__.py", b""),
                 ("awq/src/awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/src/awq/data/adapter_catalog_v2.json", b"{}\n"),
                 ("awq/src/awq/data/contract_catalog.json", b"{}\n"),
                 ("awq/schemas/adapter-catalog.schema.json", b"{}\n"),
                 ("awq/schemas/contract-catalog.schema.json", b"{}\n"),
@@ -211,6 +213,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/adapter_catalog_v2.json", b"{}\n"),
                 ("awq/data/contract_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",
@@ -250,6 +253,7 @@ class DistributionVerificationTests(unittest.TestCase):
                     packaged_schema_bytes("spdx-3.0.1.schema.zip"),
                 ),
                 ("awq/data/adapter_catalog.json", b"{}\n"),
+                ("awq/data/adapter_catalog_v2.json", b"{}\n"),
                 ("awq/data/contract_catalog.json", b"{}\n"),
             ],
             symlink="awq/link",

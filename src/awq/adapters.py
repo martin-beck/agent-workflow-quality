@@ -56,6 +56,7 @@ BINDING_KINDS = {
 }
 BINDING_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@+-]{0,199}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+REVISION = re.compile(r"^[0-9a-f]{40}$")
 MAX_RESULT_BYTES = 4096
 MAX_SELECTED_INPUTS = 10_000
 MAX_SELECTED_INPUT_BYTES = 1_000_000
@@ -317,9 +318,9 @@ _validate_adapter_catalog = validate_adapter_catalog
 
 
 def load_adapter_catalog() -> tuple[dict[str, dict[str, Any]], str]:
-    """Load reviewed adapter families and their canonical digest."""
+    """Load the current versioned adapter catalog and its canonical digest."""
     document = json.loads(
-        resource_files("awq.data").joinpath("adapter_catalog.json").read_text(encoding="utf-8")
+        resource_files("awq.data").joinpath("adapter_catalog_v2.json").read_text(encoding="utf-8")
     )
     families = validate_adapter_catalog(document)
     return families, hashlib.sha256(canonical_bytes(document)).hexdigest()
@@ -710,6 +711,73 @@ def _execution_result(
     return _result(contract, started, "fail" if failure else "pass", failure or [])
 
 
+def _security_contract(
+    root: Path, contract: dict[str, Any], base: str | None, head: str | None
+) -> tuple[dict[str, Any] | None, list[dict[str, str]] | None]:
+    """Substitute caller-supplied immutable revisions for the gitleaks template."""
+    if contract["id"] != "ADAPTER-REPOSITORY-SECURITY-GITLEAKS":
+        return contract, None
+    if (
+        base is None
+        or head is None
+        or not REVISION.fullmatch(base)
+        or not REVISION.fullmatch(head)
+        or base == head
+    ):
+        return None, _finding(
+            "adapter-range-invalid",
+            "",
+            "introduced-history range requires two distinct 40-hex revisions",
+        )
+    if (root / ".git" / "shallow").is_file():
+        return None, _finding(
+            "adapter-range-shallow", "", "introduced-history range requires complete local history"
+        )
+    git = shutil.which("git")
+    if git is None:
+        return None, _finding(
+            "adapter-tool-unavailable", "", "Git is unavailable for range validation"
+        )
+    for revision in (base, head):
+        probe = subprocess.run(  # noqa: S603 - fixed git argv and validated revision
+            [git, "rev-parse", "--verify", f"{revision}^{{commit}}"],
+            cwd=root,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+        if probe.returncode:
+            return None, _finding(
+                "adapter-range-invalid", "", "introduced-history revision is unavailable"
+            )
+    ancestry = subprocess.run(  # noqa: S603 - fixed git argv and validated revisions
+        [git, "merge-base", "--is-ancestor", base, head],
+        cwd=root,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=10,
+        check=False,
+    )
+    if ancestry.returncode:
+        return None, _finding(
+            "adapter-range-ambiguous", "", "introduced-history revisions are not an ordered range"
+        )
+    updated = dict(contract)
+    updated["argv"] = [
+        item.replace("{base}", base).replace("{head}", head) for item in contract["argv"]
+    ]
+    if any("{" in item or "}" in item for item in updated["argv"]):
+        return None, _finding(
+            "adapter-range-invalid",
+            "",
+            "introduced-history range contains an unresolved placeholder",
+        )
+    return updated, None
+
+
 def _tlc_execution_result(
     root: Path,
     contract: dict[str, Any],
@@ -779,10 +847,25 @@ def _tlc_execution_result(
     return _result(contract, started, "fail" if failure else "pass", failure or [])
 
 
-def run_adapter(root: Path, contract: dict[str, Any]) -> dict[str, Any]:
+def run_adapter(  # noqa: C901 - bounded adapter lifecycle branches
+    root: Path,
+    contract: dict[str, Any],
+    *,
+    base_revision: str | None = None,
+    head_revision: str | None = None,
+) -> dict[str, Any]:
     """Run one validated adapter with exact version and content-minimized evidence."""
     validate_adapter(contract)
     started = time.monotonic()
+    original_contract = contract
+    substituted_contract, range_failure = _security_contract(
+        root, contract, base_revision, head_revision
+    )
+    if range_failure:
+        return _result(original_contract, started, "fail", range_failure)
+    if substituted_contract is None:
+        raise AdapterError("security contract substitution unexpectedly failed")
+    contract = substituted_contract
     failure = _config_failure(root, contract)
     if failure:
         return _result(contract, started, "fail", failure)
