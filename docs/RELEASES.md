@@ -82,18 +82,21 @@ the exact hosted build outputs; offline verification does not claim to validate 
 
 ## Operator signing helper
 
-After the candidate is reviewed and the deterministic bundle is in `./release`, an authorized
+After the candidate is reviewed and the deterministic bundle is in `../awq-release`, an authorized
 operator can use the bounded local helper from a clean clone:
 
 ```sh
 uv run python scripts/sign_release.py
 ```
 
-The helper fills in the current project version, `vVERSION` tag, `./release` bundle directory and
-`~/.ssh/awq-release-signing` key. It first checks the exact clean source commit, structural release
-verification, an accepted GitHub SSH-signing key type, and that the release key differs from the
-ordinary Git commit-signing key. The local format check cannot prove that a public key is uploaded
-to GitHub; the operator must independently confirm that registration. Review the JSON preview, then
-repeat the command with `--yes` to write the detached `MANIFEST.release.json.sig` and create the
-annotated SSH-signed tag. Existing signatures and tags are never replaced. The helper never pushes,
-uploads, attests, or creates a release; continue with the authenticated publication recipe above.
+The helper fills in the current project version, `vVERSION` tag, external bundle directory,
+`~/.ssh/awq-release-signing` key, sibling state clone and sibling external trust policy. It checks
+that AR-0054 is open and ownerless, the state-authorized exact commit is clean, the manifest matches
+that commit/version, the dedicated key matches the reviewed GitHub SSH-signing policy and differs
+from the candidate commit signer, and that no tag/signature already exists. The local format check
+cannot prove that a public key is uploaded to GitHub; the operator must independently confirm that
+registration. Review the JSON preview, then repeat the command with `--yes` to perform a detached
+checkout if needed, write the detached `MANIFEST.release.json.sig` and create the annotated
+SSH-signed tag. Any mismatch aborts before signing. Existing signatures and tags are never replaced.
+The helper never pushes, uploads, attests, or creates a release; continue with the authenticated
+publication recipe above.
