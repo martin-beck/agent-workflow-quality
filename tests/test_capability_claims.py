@@ -30,8 +30,25 @@ class CapabilityClaimsTests(unittest.TestCase):
             lambda x: x["claims"][0]["evidence"][0].update(source_commit="f" * 40),
             lambda x: x["claims"][0]["evidence"][0].update(observed_at="2020-01-01T00:00:00Z"),
             lambda x: x["claims"][0].update(supported_surfaces=[]),
+            lambda x: x["claims"][0]["source_scope"].update(path="../private.json"),
+            lambda x: x["claims"][0]["evidence"][0].update(origin="synthetic"),
+            lambda x: x["claims"][0]["transition"].update(reviewed=False),
+            lambda x: x["claims"][0]["transition"].update({"from": "planned"}),
         ):
             item = copy.deepcopy(self.value)
             mutate(item)
             with self.assertRaises(ProjectError):
                 capability_claims.validate_registry(item, now=self.now)
+
+    def test_incremental_maturity_and_nonclaims_are_explicit(self):
+        planned = self.value["claims"][2]
+        self.assertEqual(
+            ("none", "planned"), (planned["transition"]["from"], planned["transition"]["to"])
+        )
+        self.assertEqual("synthetic", planned["evidence"][0]["origin"])
+        item = copy.deepcopy(self.value)
+        item["claims"][0]["maturity"] = "integrated"
+        item["claims"][0]["transition"]["to"] = "integrated"
+        item["claims"][0]["supported_surfaces"] = ["documentation"]
+        with self.assertRaises(ProjectError):
+            capability_claims.validate_registry(item, now=self.now)

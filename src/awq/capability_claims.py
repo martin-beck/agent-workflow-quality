@@ -26,6 +26,8 @@ MATURITY = (
 )
 EVIDENCE = ("mechanical", "contract-test", "property-or-fuzz", "bounded-model", "environmental")
 SURFACES = ("cli", "python-api", "schema", "release", "native-gate", "documentation")
+ORIGINS = ("live", "synthetic")
+_MATURITY_ORDER = ("planned", "foundation", "implemented", "integrated", "environment-verified")
 _ID = re.compile(r"^AWQ-CAP-[A-Z0-9]+(?:-[A-Z0-9]+)*$")
 _COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _HASH = re.compile(r"^[0-9a-f]{64}$")
@@ -49,13 +51,21 @@ def _timestamp(value: Any) -> datetime:
 
 
 def _source(value: Any) -> dict[str, str]:
-    if not isinstance(value, dict) or set(value) != {"repository", "commit", "tree"}:
+    if not isinstance(value, dict) or set(value) != {"repository", "path", "commit", "tree"}:
         _fail("source")
     if not all(isinstance(value[k], str) and value[k] for k in value):
         _fail("source")
     if _COMMIT.fullmatch(value["commit"]) is None or _HASH.fullmatch(value["tree"]) is None:
         _fail("source")
     if "/" not in value["repository"] or value["repository"].startswith(("http", "/")):
+        _fail("source")
+    if (
+        not isinstance(value["path"], str)
+        or not value["path"]
+        or value["path"].startswith(("/", "~"))
+        or ".." in value["path"].split("/")
+        or "\\" in value["path"]
+    ):
         _fail("source")
     return dict(value)
 
@@ -77,6 +87,7 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
         required = {
             "id",
             "maturity",
+            "transition",
             "source_scope",
             "supported_surfaces",
             "owner",
@@ -93,6 +104,21 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
         maturity = claim["maturity"]
         if maturity not in MATURITY:
             _fail("maturity")
+        transition = claim["transition"]
+        if (
+            not isinstance(transition, dict)
+            or set(transition) != {"from", "to", "reviewed"}
+            or transition["from"] not in ("none", *MATURITY)
+            or transition["to"] != maturity
+            or transition["reviewed"] is not True
+            or (transition["from"] == maturity and maturity not in ("planned", "foundation"))
+            or (
+                transition["from"] in _MATURITY_ORDER
+                and maturity in _MATURITY_ORDER
+                and _MATURITY_ORDER.index(maturity) != _MATURITY_ORDER.index(transition["from"]) + 1
+            )
+        ):
+            _fail("transition")
         source = _source(claim["source_scope"])
         surfaces = claim["supported_surfaces"]
         if (
@@ -134,6 +160,7 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
                 "observed_at",
                 "freshness_seconds",
                 "source_commit",
+                "origin",
             }:
                 _fail("evidence-fields")
             if not isinstance(item["id"], str) or not re.fullmatch(
@@ -146,6 +173,10 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
                 or _COMMIT.fullmatch(str(item["source_commit"])) is None
             ):
                 _fail("evidence-values")
+            if item["origin"] not in ORIGINS or (
+                item["origin"] == "synthetic" and maturity not in ("planned", "foundation")
+            ):
+                _fail("evidence-origin")
             observed = _timestamp(item["observed_at"])
             if (
                 item["source_commit"] != source["commit"]
@@ -159,6 +190,10 @@ def validate_registry(value: Any, *, now: datetime | None = None) -> dict[str, A
             x["class"] == "environmental" for x in evidence
         ):
             _fail("environment-evidence")
+        if maturity == "environment-verified" and "native-gate" not in surfaces:
+            _fail("environment-surface")
+        if maturity == "integrated" and not {"cli", "python-api"} & set(surfaces):
+            _fail("integration-surface")
         if maturity in ("unsupported", "deprecated") and not any(
             any(word in x.casefold() for word in ("rationale", "unsupported", "deprecated"))
             for x in limitations

@@ -18,6 +18,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-ASSURANCE-PLAN-V1` | 1 | `json-schema` | `schemas/assurance-plan.schema.json` | `awq.tests.assurance_plan.AssurancePlanTests` | [docs/ASSURANCE_PLANS.md](ASSURANCE_PLANS.md) |
 | `AWQ-CONTRACT-CAPABILITY-CLAIMS-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/capability_claims.json` | `awq.tests.capability_claims.CapabilityClaimsTests` | [docs/CAPABILITY_CLAIMS.md](CAPABILITY_CLAIMS.md) |
 | `AWQ-CONTRACT-CAPABILITY-CLAIMS-V1` | 1 | `json-schema` | `schemas/capability-claims.schema.json` | `awq.tests.capability_claims.CapabilityClaimsTests` | [docs/CAPABILITY_CLAIMS.md](CAPABILITY_CLAIMS.md) |
+| `AWQ-CONTRACT-CAPABILITY-CLAIMS-V2-V2` | 2 | `json-schema` | `schemas/capability-claims-v2.schema.json` | `awq.tests.capability_claims.CapabilityClaimsTests` | [docs/CAPABILITY_CLAIMS.md](CAPABILITY_CLAIMS.md) |
 | `AWQ-CONTRACT-COMPATIBILITY-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/compatibility.json` | `awq.tests.onboarding.OnboardingTests` | [docs/ONBOARDING.md](ONBOARDING.md) |
 | `AWQ-CONTRACT-CONSUMER-EQUIVALENCE-V1` | 1 | `json-schema` | `schemas/consumer-equivalence.schema.json` | `awq.tests.promotion.PromotionTests` | [docs/PROMOTION.md](PROMOTION.md) |
 | `AWQ-CONTRACT-CONTRACT-CATALOG-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/contract_catalog.json` | `awq.tests.contract_catalog.ContractCatalogTests` | [docs/CONTRACTS.md](CONTRACTS.md) |

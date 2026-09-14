@@ -108,6 +108,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_source_shape_versions_controls_and_urls_fail_closed",
         "docs/STANDARDS.md",
     ),
+    "capability-claims-v2": (
+        "capability_claims",
+        "CapabilityClaimsTests",
+        "test_registry_is_closed_deterministic_and_evidence_bound",
+        "test_maturity_evidence_and_claim_inflation_fail_closed",
+        "docs/CAPABILITY_CLAIMS.md",
+    ),
     "capability-claims": (
         "capability_claims",
         "CapabilityClaimsTests",
@@ -327,6 +334,7 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
     ),
 }
 VERSIONS = {
+    "capability-claims-v2": 2,
     "formal-execution-expectation": 1,
     "formal-execution-receipt": 2,
     "project-policy": 3,
