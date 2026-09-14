@@ -58,6 +58,8 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-TERMINOLOGY-REGISTRY-V1` | 1 | `json-schema` | `schemas/terminology-registry.schema.json` | `awq.tests.terminology.TerminologyTests` | [docs/TERMINOLOGY.md](TERMINOLOGY.md) |
 | `AWQ-CONTRACT-TEST-REPORT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/test-report-evidence.schema.json` | `awq.tests.test_reports.TestReportEvidenceTests` | [docs/TEST_REPORTS.md](TEST_REPORTS.md) |
 | `AWQ-CONTRACT-VULNERABILITY-SUPPLY-V1` | 1 | `json-schema` | `schemas/vulnerability-supply.schema.json` | `awq.tests.vulnerability_supply.VulnerabilitySupplyTests` | [docs/VULNERABILITY_SUPPLY.md](VULNERABILITY_SUPPLY.md) |
+| `AWQ-CONTRACT-WORKFLOW-CLAIMS-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/workflow_claims.json` | `awq.tests.workflow_claims.WorkflowClaimsTests` | [docs/WORKFLOW_CLAIMS.md](WORKFLOW_CLAIMS.md) |
+| `AWQ-CONTRACT-WORKFLOW-CLAIMS-V1` | 1 | `json-schema` | `schemas/workflow-claims.schema.json` | `awq.tests.workflow_claims.WorkflowClaimsTests` | [docs/WORKFLOW_CLAIMS.md](WORKFLOW_CLAIMS.md) |
 
 ## Compatibility policy
 
