@@ -124,6 +124,57 @@ class RustAdvancedHelperTests(unittest.TestCase):
         with self.assertRaises(helper.RustAdvancedError):
             helper._mutation({**mutation, "expected_caught": mutation["max_mutants"] + 1})
 
+    def test_collection_validator_uncovered_shapes_and_existing_runtime(self) -> None:
+        target = self.policy["fuzz"]["targets"][0]
+        cases = [
+            ["not-an-object"],
+            [
+                {"name": target["name"], "seeds": target["seeds"]},
+                {"name": "zulu", "seeds": target["seeds"]},
+            ],
+        ]
+        for value in cases:
+            with self.assertRaises(helper.RustAdvancedError):
+                helper._fuzz_targets(value)
+        unordered = [
+            {"name": "zulu", "seeds": [{"path": "fuzz/corpus/zulu/a.txt", "sha256": "a" * 64}]},
+            {"name": "alpha", "seeds": [{"path": "fuzz/corpus/alpha/a.txt", "sha256": "a" * 64}]},
+        ]
+        with self.assertRaisesRegex(helper.RustAdvancedError, "ordered"):
+            helper._fuzz_targets(unordered)
+        seed_order = [
+            {
+                "name": "classify",
+                "seeds": list(
+                    reversed(
+                        [
+                            {"path": "fuzz/corpus/classify/a.txt", "sha256": "a" * 64},
+                            {"path": "fuzz/corpus/classify/b.txt", "sha256": "b" * 64},
+                        ]
+                    )
+                ),
+            }
+        ]
+        with self.assertRaisesRegex(helper.RustAdvancedError, "ordered"):
+            helper._fuzz_targets(seed_order)
+        with self.assertRaisesRegex(helper.RustAdvancedError, "fuzz policy"):
+            helper._fuzz({"targets": []})
+        with self.assertRaisesRegex(helper.RustAdvancedError, "mutation policy"):
+            helper._mutation({"files": []})
+        prefix = self.root / "runtime-prefix"
+        (prefix / "runtime-cargo").mkdir(parents=True)
+        scratch = self.root / "runtime-scratch"
+        scratch.mkdir()
+        with mock.patch.object(helper, "_prefix", return_value=prefix):
+            existing = scratch / "existing"
+            (existing / "cargo").mkdir(parents=True)
+            self.assertEqual(existing / "cargo", helper._isolated_runtime_cargo(existing))
+            with self.assertRaisesRegex(helper.RustAdvancedError, "unsafe"):
+                bad = scratch / "bad"
+                bad.mkdir()
+                (bad / "cargo").write_text("file", encoding="utf-8")
+                helper._isolated_runtime_cargo(bad)
+
     def test_project_declarations_and_temporary_parent_are_exact(self) -> None:
         stable = (
             '[toolchain]\nchannel = "1.93.0"\nprofile = "minimal"\n'
@@ -158,6 +209,117 @@ class RustAdvancedHelperTests(unittest.TestCase):
             self.assertRaisesRegex(helper.RustAdvancedError, "temporary"),
         ):
             helper._temporary_parent()
+
+    def test_confined_directory_and_workspace_selection_fail_closed(self) -> None:
+        auxiliary = self.root / "auxiliary"
+        auxiliary.mkdir()
+        self.assertEqual(auxiliary, helper._confined_directory(self.root, "auxiliary"))
+        outside = self.root.parent / f"outside-{self.root.name}"
+        outside.mkdir()
+        linked = self.root / "linked"
+        linked.symlink_to(outside, target_is_directory=True)
+        for relative in ("", "../outside-awq", "linked", "missing"):
+            with self.subTest(relative=relative), self.assertRaises(helper.RustAdvancedError):
+                helper._confined_directory(self.root, relative)
+        config = {"workspaces": self.policy["workspaces"]}
+        with self.assertRaisesRegex(helper.RustAdvancedError, "not uniquely"):
+            helper._workspace_for_mode(self.root, config, "unknown")
+        duplicate = {"workspaces": [*config["workspaces"], config["workspaces"][0]]}
+        with self.assertRaisesRegex(helper.RustAdvancedError, "not uniquely"):
+            helper._workspace_for_mode(self.root, duplicate, "coverage")
+
+    def test_workspace_input_bindings_validate_files_and_digest(self) -> None:
+        workspace = self.policy["workspaces"][0]
+        for field in (
+            "manifest",
+            "lock",
+            "source_policy",
+            "license_policy",
+            "advisory_policy",
+            "advisory_snapshot",
+        ):
+            reference = workspace[field]
+            self.write(reference["path"], b"reviewed")
+            workspace[field] = {
+                "path": reference["path"],
+                "sha256": hashlib.sha256(b"reviewed").hexdigest(),
+            }
+        with mock.patch.object(helper, "_require_tracked") as tracked:
+            root, digest = helper._verify_workspace_inputs(
+                self.root, {"workspaces": [workspace]}, "coverage"
+            )
+        self.assertIs(root, self.root)
+        self.assertEqual(64, len(digest))
+        tracked.assert_called_once()
+        workspace["lock"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(helper.RustAdvancedError, "integrity"):
+            helper._verify_workspace_inputs(self.root, {"workspaces": [workspace]}, "coverage")
+
+    def test_workspace_and_project_validation_reject_hostile_declarations(self) -> None:
+        valid = self.policy["workspaces"][0]
+        invalid: list[dict[str, object]] = [
+            {**valid, "id": "bad id"},
+            {**valid, "root": "../escape"},
+            {**valid, "role": "unknown"},
+            {**valid, "operations": ["coverage", "unknown"]},
+            {**valid, "manifest": {**valid["manifest"], "path": "wrong.toml"}},
+            {**valid, "source_policy": {"path": "x", "sha256": "bad"}},
+            {**valid, "operations": ["coverage"]},
+        ]
+        for item in invalid:
+            with self.subTest(item=item), self.assertRaises(helper.RustAdvancedError):
+                helper._workspaces([item])
+        with self.assertRaisesRegex(helper.RustAdvancedError, "incomplete"):
+            helper._workspaces([{**valid, "operations": ["coverage", "fuzz", "mutation"]}, valid])
+
+    def test_coverage_summary_and_mutation_outcome_edge_paths(self) -> None:
+        output = self.root / "coverage.json"
+        for report in (
+            {"type": "llvm.coverage.json.export", "version": "1", "data": [{"totals": {}}]},
+            {
+                "type": "llvm.coverage.json.export",
+                "version": "1",
+                "data": [{"totals": {"lines": {"count": 1, "covered": 2}}}],
+            },
+        ):
+            output.write_text(json.dumps(report), encoding="utf-8")
+            with self.assertRaisesRegex(helper.RustAdvancedError, "invalid"):
+                helper._coverage_summary(output)
+        output.unlink()
+        output.symlink_to(self.write("coverage-target.json", b"{}"))
+        with self.assertRaisesRegex(helper.RustAdvancedError, "unavailable"):
+            helper._coverage_summary(output)
+        policy = self.policy["mutation"]
+        report_dir = self.root / "mutants"
+        report = report_dir / "mutants.out/outcomes.json"
+        report.parent.mkdir(parents=True)
+        base = {
+            "cargo_mutants_version": "27.1.0",
+            "caught": 1,
+            "missed": 0,
+            "timeout": 0,
+            "unviable": 0,
+            "total_mutants": 1,
+            "outcomes": [
+                {
+                    "scenario": {
+                        "Mutant": {
+                            "name": "x",
+                            "file": "src/lib.rs",
+                            "package": "awq_advanced_fixture",
+                            "genre": "BinaryOperator",
+                        }
+                    }
+                }
+            ],
+        }
+        report.write_text(json.dumps(base), encoding="utf-8")
+        with self.assertRaisesRegex(helper.RustAdvancedError, "selection"):
+            helper._mutation_report(report_dir, policy)
+        base["outcomes"] = [{"scenario": {"Mutant": "bad"}}]
+        report.write_text(json.dumps(base), encoding="utf-8")
+        with self.assertRaisesRegex(helper.RustAdvancedError, "outcome"):
+            helper._mutation_report(report_dir, policy)
 
     def test_installation_paths_environment_and_probes_fail_closed(self) -> None:
         prefix = self.root / "prefix"
