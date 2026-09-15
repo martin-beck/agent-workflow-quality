@@ -79,3 +79,26 @@ external trust, the local signed manifest and bundle, exact source and independe
 annotated tag-object pin. See [the trust and rotation procedure](PROVENANCE.md).
 Clone-local allowed_signers is not a bootstrap authority. Optional GitHub attestations describe only
 the exact hosted build outputs; offline verification does not claim to validate those online records.
+
+## Operator signing helper
+
+After the candidate is reviewed and the deterministic bundle is in `../awq-release`, an authorized
+operator can use the bounded local helper from a clean clone:
+
+```sh
+uv run python scripts/sign_release.py
+```
+
+The helper fills in the current project version, `vVERSION` tag, external bundle directory,
+`~/.ssh/awq-release-signing` key, sibling state clone and sibling external trust policy. It checks
+that AR-0054 is open and ownerless, the state-authorized exact commit is clean, the manifest matches
+that commit/version, the dedicated key matches the reviewed GitHub SSH-signing policy and differs
+from the candidate commit signer, and that an external
+`../awq-release-trust/github_key_registration.json` record binds the key fingerprint to an
+independently verified GitHub account registration. That record must be obtained out-of-band; the
+helper validates its schema and exact binding but does not contact GitHub. Review the JSON preview,
+then repeat the command with `--yes` to perform a detached checkout if needed, write the detached
+`MANIFEST.release.json.sig` and create the annotated SSH-signed tag. Any mismatch aborts before
+signing. Existing signatures and tags are never replaced.
+The helper never pushes, uploads, attests, or creates a release; continue with the authenticated
+publication recipe above.
