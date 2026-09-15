@@ -102,6 +102,7 @@ class ReleaseVerificationTests(unittest.TestCase):
             for schema in sorted(schemas):
                 write(archive, f"awq/schemas/{schema}", packaged_schema_bytes(schema))
             write(archive, "awq/data/adapter_catalog.json", b"{}\n")
+            write(archive, "awq/data/adapter_catalog_v2.json", b"{}\n")
             if include_contract_catalog:
                 write(archive, "awq/data/contract_catalog.json", b"{}\n")
             write(archive, "awq/data/compatibility.json", b"{}\n")
@@ -128,6 +129,7 @@ class ReleaseVerificationTests(unittest.TestCase):
                 f'[project]\nname = "agent-workflow-quality"\nversion = "{observed}"\n'
             ).encode(),
             f"{prefix}/src/awq/data/adapter_catalog.json": b"{}\n",
+            f"{prefix}/src/awq/data/adapter_catalog_v2.json": b"{}\n",
             f"{prefix}/src/awq/data/compatibility.json": b"{}\n",
             f"{prefix}/src/awq/data/agent_recipes.json": b"{}\n",
             **{

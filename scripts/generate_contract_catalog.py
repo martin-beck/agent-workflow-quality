@@ -378,6 +378,7 @@ VERSIONS = {
 }
 REGISTRIES = {
     "adapter_catalog": "adapter-catalog",
+    "adapter_catalog_v2": "adapter-catalog-v2",
     "agent_recipes": "onboarding",
     "compatibility": "onboarding",
     "capability_claims": "capability-claims-v2",

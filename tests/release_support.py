@@ -164,9 +164,8 @@ class SignedRelease:
             "awq/schemas/" + name: (self.source / "schemas" / name).read_bytes()
             for name in REQUIRED_SCHEMAS
         }
-        entries["awq/data/adapter_catalog.json"] = (
-            self.source / "src/awq/data/adapter_catalog.json"
-        ).read_bytes()
+        for name in ("adapter_catalog.json", "adapter_catalog_v2.json"):
+            entries[f"awq/data/{name}"] = (self.source / "src/awq/data" / name).read_bytes()
         for data_name in ("contract_catalog.json", "compatibility.json", "agent_recipes.json"):
             entries["awq/data/" + data_name] = (
                 self.source / "src/awq/data" / data_name

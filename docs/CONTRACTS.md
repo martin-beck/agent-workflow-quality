@@ -7,6 +7,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | --- | ---: | --- | --- | --- | --- |
 | `AWQ-CONTRACT-ADAPTER-CATALOG-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/adapter_catalog.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-CATALOG-V1` | 1 | `json-schema` | `schemas/adapter-catalog.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
+| `AWQ-CONTRACT-ADAPTER-CATALOG-V2-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/adapter_catalog_v2.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-CATALOG-V2-V1` | 1 | `json-schema` | `schemas/adapter-catalog-v2.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-CONTRACT-V1` | 1 | `json-schema` | `schemas/adapter-contract.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
 | `AWQ-CONTRACT-ADAPTER-CONTRACT-V2-V1` | 1 | `json-schema` | `schemas/adapter-contract-v2.schema.json` | `awq.tests.adapters.AdapterContractTests` | [docs/ADAPTERS.md](ADAPTERS.md) |
