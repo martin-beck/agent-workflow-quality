@@ -68,6 +68,7 @@ class SignedRelease:
                 "src/awq/data/contract_catalog.json",
                 "src/awq/data/compatibility.json",
                 "src/awq/data/agent_recipes.json",
+                "src/awq/data/adapter_catalog_v2.json",
             }
         )
         for name in names:
