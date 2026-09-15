@@ -37,6 +37,68 @@ class SigningError(ValueError):
     """A release signing precondition failed."""
 
 
+def _failure_guidance(message: str) -> str:
+    """Return a concise, actionable remedy without exposing command output."""
+    guidance = (
+        ("source checkout", "Use a clean reviewed clone; remove only intended local changes."),
+        (
+            "AR-0054 is not open",
+            "Wait for AR-0054 to be open, ownerless, with explicit signer authorization.",
+        ),
+        (
+            "state task",
+            "Check the state repository path and wait for an open, ownerless authorization.",
+        ),
+        (
+            "signature already exists",
+            "Preserve the existing signature and stop; do not overwrite release evidence.",
+        ),
+        (
+            "manifest signing failed",
+            "Check the dedicated key and SSH signing tool, then retry with the unchanged bundle.",
+        ),
+        ("manifest", "Use the externally built manifest for this exact version and source commit."),
+        (
+            "allowed-signers",
+            "Use the reviewed external allowlist entry matching the key fingerprint.",
+        ),
+        (
+            "release key is not",
+            "Use the reviewed external allowlist entry matching the key fingerprint.",
+        ),
+        ("release key", "Use the dedicated GitHub SSH-signing key and matching public key."),
+        (
+            "GitHub registration",
+            "Provide operator-verified registration JSON for the exact key fingerprint.",
+        ),
+        (
+            "annotated SSH tag",
+            "Verify git/ssh-keygen availability and rerun from the unchanged clean clone.",
+        ),
+        (
+            "tag",
+            "Preserve conflicting release evidence; only the exact authorized "
+            "version tag is permitted.",
+        ),
+        (
+            "signature",
+            "Use a new unsigned bundle and rerun after correcting the reported prerequisite.",
+        ),
+        (
+            "command unavailable",
+            "Install the reviewed git/ssh-keygen tool or correct the execution environment.",
+        ),
+        (
+            "too much output",
+            "Use the reviewed bounded tools; do not retry with unbounded subprocess output.",
+        ),
+    )
+    for marker, action in guidance:
+        if marker.lower() in message.lower():
+            return action
+    return "Correct the reported prerequisite and rerun from the clean reviewed clone."
+
+
 def _terminate(process: subprocess.Popen[bytes]) -> None:
     """Terminate the bounded command and any child processes it spawned."""
     with contextlib.suppress(ProcessLookupError):
@@ -534,6 +596,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except (OSError, SigningError) as error:
         print(f"Release signing stopped: {error}.", file=sys.stderr)
+        print(f"What to do: {_failure_guidance(str(error))}", file=sys.stderr)
         print(
             "No manifest signature, tag, or push was authorized. Correct the reported input "
             "and rerun this command from the clean reviewed clone.",

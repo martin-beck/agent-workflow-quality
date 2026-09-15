@@ -241,7 +241,27 @@ class SignReleaseTests(unittest.TestCase):
             self.assertEqual(sign_release.main([]), 1)
         rendered = "".join(call.args[0] for call in stderr.write.call_args_list)
         self.assertIn("Release signing stopped: candidate is not ready.", rendered)
+        self.assertIn("What to do: Correct the reported prerequisite", rendered)
         self.assertIn("No manifest signature, tag, or push was authorized.", rendered)
+
+    def test_failure_guidance_covers_specific_preconditions(self) -> None:
+        cases = {
+            "release key is not the reviewed GitHub signing key": "reviewed external allowlist",
+            "GitHub registration evidence is unreadable or malformed": "registration JSON",
+            "source checkout must be clean (including untracked files)": "clean reviewed clone",
+            "AR-0054 is not open and ownerless for external release signing": "open, ownerless",
+            "annotated SSH tag creation failed": "git/ssh-keygen",
+            "manifest signature already exists; refusing to replace it": (
+                "preserve the existing signature"
+            ),
+            "manifest signing failed": "dedicated key",
+            "release tag already exists; refusing to replace it": (
+                "preserve conflicting release evidence"
+            ),
+        }
+        for message, expected in cases.items():
+            with self.subTest(message=message):
+                self.assertIn(expected.lower(), sign_release._failure_guidance(message).lower())
 
     def test_run_kills_descendant_holding_stdout(self) -> None:
         code = (
