@@ -257,6 +257,49 @@ def _authorized_github_key(public: str, allowed_signers: Path) -> None:
         raise SigningError("release key is not the reviewed GitHub signing key")
 
 
+def _verified_github_registration(fingerprint: str, registration: Path) -> None:
+    """Bind the key to an external operator-verified GitHub registration record.
+
+    The record is deliberately supplied outside the product checkout.  AWQ checks
+    its shape and exact key binding, while the operator remains responsible for
+    obtaining it from an independent GitHub account review.
+    """
+    if not registration.is_file() or registration.is_symlink():
+        raise SigningError("independently verified GitHub registration evidence is unavailable")
+    try:
+        record = json.loads(registration.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise SigningError("GitHub registration evidence is unreadable or malformed") from error
+    if not isinstance(record, dict):
+        raise SigningError("GitHub registration evidence must be an object")
+    required = {
+        "schema_version",
+        "provider",
+        "account",
+        "key_fingerprint",
+        "registered",
+        "verified_at",
+        "verification_reference",
+    }
+    if set(record) != required:
+        raise SigningError("GitHub registration evidence has unknown or missing fields")
+    if (
+        record["schema_version"] != 1
+        or record["provider"] != "github"
+        or not isinstance(record["account"], str)
+        or not record["account"]
+        or record["key_fingerprint"] != fingerprint
+        or record["registered"] is not True
+        or not isinstance(record["verified_at"], str)
+        or len(record["verified_at"]) != 10
+        or record["verified_at"][4] != "-"
+        or record["verified_at"][7] != "-"
+        or not isinstance(record["verification_reference"], str)
+        or not record["verification_reference"].startswith("https://github.com/")
+    ):
+        raise SigningError("GitHub registration evidence does not bind the reviewed key")
+
+
 def _check_key(source: Path, private_key: Path, public_key: Path, allowed_signers: Path) -> str:
     public = _public_key(private_key, public_key)
     _key_type(public)
@@ -308,6 +351,7 @@ def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-cl
     public_key: Path | None = None,
     state_repo: Path | None = None,
     allowed_signers: Path | None = None,
+    registration: Path | None = None,
     version: str | None = None,
     tag: str | None = None,
     confirm: bool = False,
@@ -320,6 +364,11 @@ def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-cl
     state_repo = (state_repo or source.parent / "agent-workflow-quality-state").resolve()
     allowed_signers = (
         (allowed_signers or source.parent / "awq-release-trust" / "allowed_signers")
+        .expanduser()
+        .resolve()
+    )
+    registration = (
+        (registration or source.parent / "awq-release-trust" / "github_key_registration.json")
         .expanduser()
         .resolve()
     )
@@ -343,6 +392,7 @@ def sign_release(  # noqa: C901 - the bounded preflight is intentionally fail-cl
     before = _digest(manifest)
     _verify_manifest(source, manifest)
     fingerprint = _check_key(source, private_key, public_key, allowed_signers)
+    _verified_github_registration(fingerprint, registration)
     if _tag_exists(source, observed_tag):
         raise SigningError("release tag already exists; refusing to replace it")
     signature = manifest.with_name(manifest.name + ".sig")
@@ -450,6 +500,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--registration",
+        type=Path,
+        default=None,
+        help=(
+            "external operator-verified GitHub key registration evidence "
+            "(default: ../awq-release-trust/github_key_registration.json)"
+        ),
+    )
+    parser.add_argument(
         "--state-repo",
         type=Path,
         default=None,
@@ -467,6 +526,7 @@ def main(argv: list[str] | None = None) -> int:
             args.key,
             state_repo=args.state_repo,
             allowed_signers=args.allowed_signers,
+            registration=args.registration,
             public_key=args.public_key,
             version=args.version,
             tag=args.tag,

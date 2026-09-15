@@ -44,13 +44,35 @@ class SignReleaseTests(unittest.TestCase):
         subprocess.run(
             ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(self.key)], check=True
         )
-        self.state = self.root / "state"
+        self.state = self.root / "agent-workflow-quality-state"
         (self.state / "tasks").mkdir(parents=True)
         (self.source / "config").mkdir()
         public = (self.key.with_name(self.key.name + ".pub")).read_text(encoding="ascii").strip()
         key_type, key_blob = public.split()[:2]
         (self.source / "config" / "allowed_signers").write_text(
             f"24471267+martin-beck@users.noreply.github.com {key_type} {key_blob}\n",
+            encoding="ascii",
+        )
+        trust = self.root / "awq-release-trust"
+        trust.mkdir()
+        fingerprint = sign_release._fingerprint(public)
+        (trust / "github_key_registration.json").write_text(
+            __import__("json").dumps(
+                {
+                    "schema_version": 1,
+                    "provider": "github",
+                    "account": "martin-beck",
+                    "key_fingerprint": fingerprint,
+                    "registered": True,
+                    "verified_at": "2026-09-14",
+                    "verification_reference": "https://github.com/martin-beck.keys",
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        (trust / "allowed_signers").write_text(
+            (self.source / "config" / "allowed_signers").read_text(encoding="ascii"),
             encoding="ascii",
         )
         task = {
@@ -156,6 +178,40 @@ class SignReleaseTests(unittest.TestCase):
             ).stdout,
             "",
         )
+
+    def test_rejects_unbound_registration_evidence(self) -> None:
+        registration = self.root / "awq-release-trust" / "github_key_registration.json"
+        record = __import__("json").loads(registration.read_text(encoding="utf-8"))
+        record["key_fingerprint"] = "SHA256:not-the-release-key"
+        registration.write_text(__import__("json").dumps(record), encoding="utf-8")
+        with (
+            self.assertRaisesRegex(sign_release.SigningError, "does not bind"),
+            mock.patch.object(sign_release, "_verify_manifest"),
+        ):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+            )
+
+    def test_rejects_missing_registration_evidence(self) -> None:
+        registration = self.root / "awq-release-trust" / "github_key_registration.json"
+        registration.unlink()
+        with (
+            self.assertRaisesRegex(
+                sign_release.SigningError, "registration evidence is unavailable"
+            ),
+            mock.patch.object(sign_release, "_verify_manifest"),
+        ):
+            sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+            )
 
     def test_refuses_existing_tag_or_signature(self) -> None:
         signature = self.manifest.with_name(self.manifest.name + ".sig")
@@ -298,6 +354,53 @@ class SignReleaseTests(unittest.TestCase):
                 check=True,
                 stdout=subprocess.DEVNULL,
             )
+
+    def test_confirm_checks_out_state_commit_before_signing(self) -> None:
+        old_commit = subprocess.check_output(
+            ["git", "-C", str(self.source), "rev-parse", "HEAD"], text=True
+        ).strip()
+        (self.source / "later.txt").write_text("later\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(self.source), "add", "later.txt"], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.source), "-c", "commit.gpgsign=false", "commit", "-m", "later"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        task_path = self.state / "tasks" / "AR-0054.md"
+        task = __import__("json").loads(task_path.read_text(encoding="utf-8").split("---\n")[1])
+        task["observed_head"] = old_commit
+        task_path.write_text("---\n" + __import__("json").dumps(task) + "\n---\n", encoding="utf-8")
+        signature = self.manifest.with_name(self.manifest.name + ".sig")
+        with mock.patch.object(sign_release, "_verify_manifest"):
+            result = sign_release.sign_release(
+                self.source,
+                self.bundle,
+                self.key,
+                state_repo=self.state,
+                allowed_signers=self.source / "config/allowed_signers",
+                confirm=True,
+            )
+        try:
+            self.assertEqual(old_commit, result["commit"])
+            self.assertEqual(
+                old_commit,
+                subprocess.check_output(
+                    ["git", "-C", str(self.source), "rev-parse", "HEAD"], text=True
+                ).strip(),
+            )
+        finally:
+            signature.unlink(missing_ok=True)
+            subprocess.run(
+                ["git", "-C", str(self.source), "tag", "-d", "v0.35.0"],
+                check=True,
+                stdout=subprocess.DEVNULL,
+            )
+
+    def test_real_default_sibling_layout_runs_full_preflight(self) -> None:
+        with mock.patch.object(sign_release, "_verify_manifest") as verify:
+            result = sign_release.sign_release(self.source, self.bundle, self.key)
+        verify.assert_called_once_with(self.source, self.manifest)
+        self.assertEqual("v0.35.0", result["tag"])
 
     def test_cli_uses_trivial_default_paths(self) -> None:
         expected = {
