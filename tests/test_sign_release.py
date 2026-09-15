@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import importlib
 import subprocess
 import sys
 import tempfile
@@ -423,3 +424,59 @@ class SignReleaseTests(unittest.TestCase):
         self.assertEqual(Path("~/.ssh/awq-release-signing"), args[2])
         self.assertIsNone(kwargs["state_repo"])
         self.assertIsNone(kwargs["allowed_signers"])
+
+    def test_real_structural_verify_through_sibling_defaults(self) -> None:
+        """Exercise documented sibling defaults against a real release bundle."""
+        release = importlib.import_module("tests.release_support").SignedRelease()
+        try:
+            source, bundle, key = release.source, release.bundle, release.keys[0]
+            release.git("tag", "-d", "v0.35.1")
+            release.manifest_path.with_name(release.manifest_path.name + ".sig").unlink()
+            public = key.with_name(key.name + ".pub").read_text(encoding="ascii").strip()
+            key_type, key_blob = public.split()[:2]
+            trust = source.parent / "awq-release-trust"
+            trust.mkdir()
+            (trust / "allowed_signers").write_text(
+                f"24471267+martin-beck@users.noreply.github.com {key_type} {key_blob}\n",
+                encoding="ascii",
+            )
+            (trust / "github_key_registration.json").write_text(
+                __import__("json").dumps(
+                    {
+                        "schema_version": 1,
+                        "provider": "github",
+                        "account": "martin-beck",
+                        "key_fingerprint": sign_release._fingerprint(public),
+                        "registered": True,
+                        "verified_at": "2026-09-14",
+                        "verification_reference": "https://github.com/martin-beck.keys",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            state = source.parent / "agent-workflow-quality-state"
+            (state / "tasks").mkdir(parents=True)
+            head = subprocess.check_output(
+                ["git", "-C", str(source), "rev-parse", "HEAD"], text=True
+            ).strip()
+            (state / "tasks" / "AR-0054.md").write_text(
+                "---\n"
+                + __import__("json").dumps(
+                    {
+                        "status": "open",
+                        "owner": "",
+                        "claim_expires": "",
+                        "observed_head": head,
+                        "observed_dirty": 0,
+                        "next_action": "Authorized external signer must sign the release",
+                    }
+                )
+                + "\n---\n",
+                encoding="utf-8",
+            )
+            result = sign_release.sign_release(source, bundle, key)
+            self.assertEqual("v0.35.1", result["tag"])
+            self.assertEqual(head, result["commit"])
+        finally:
+            release.close()
