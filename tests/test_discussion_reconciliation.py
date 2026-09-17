@@ -124,8 +124,9 @@ class DiscussionReconciliationTests(unittest.TestCase):
         for field, replacement in mutations:
             value = copy.deepcopy(self.value)
             value[field] = replacement
-            with self.subTest(field=field, replacement=replacement), self.assertRaises(
-                ProjectError
+            with (
+                self.subTest(field=field, replacement=replacement),
+                self.assertRaises(ProjectError),
             ):
                 discussion_reconciliation.validate(value)
 
