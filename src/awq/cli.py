@@ -23,6 +23,7 @@ from awq import (
     evidence_lifecycle,
     execution_budget,
     formal_receipts,
+    interaction_gate,
     native_bundle,
     native_mapping,
     onboarding,
@@ -157,6 +158,9 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("agent-replay-evaluate")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("interaction-gate-evaluate")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -206,6 +210,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
             root, args.contract
         ),
         "agent-replay-evaluate": lambda: agent_replay.evaluate_file(root, args.contract),
+        "interaction-gate-evaluate": lambda: interaction_gate.evaluate_file(root, args.contract),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,

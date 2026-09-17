@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `81f02acd265c77443175e8e353d5c5793dddb9fad6e45f5dea2402d2968ea11e`
+Registry SHA-256: `8a74152ab0f3dea1126788edf96dbf9bb838a915c842ff7abb806c043f6ce6a8`
 
 ## Profiles
 
@@ -14,6 +14,7 @@ Registry SHA-256: `81f02acd265c77443175e8e353d5c5793dddb9fad6e45f5dea2402d2968ea
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
 | `formal-model` | Bounded external formal-model execution contracts. | 1 |
 | `github-actions` | GitHub Actions integrity, trust transitions and permissions. | 3 |
+| `interaction-gates` | Typed, privacy-safe oracle interaction-gate evidence. | 1 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
 | `rust` | Rust dependency-integrity baseline. | 1 |
@@ -163,6 +164,20 @@ Gradle projects commit dependency verification metadata.
 - Remediation: Review artifacts and regenerate strict SHA-256 verification metadata.
 - Exception policy: No unverified release dependency.
 - Standards: SLSA-BUILD
+
+### AWQ-ORACLE-001: Typed oracle interaction gates
+
+Typed interaction-gate records bind task revision, context, before/after artifacts, passing formal review, user disposition and a public-safe projection.
+
+- Profiles: `interaction-gates`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid record proves only bounded quality-contract completeness; it does not establish user intent, implementation correctness, or the truth of the recorded disposition.
+- Remediation: Add the missing typed interaction-gate evidence or keep the quality gate failed.
+- Exception policy: No exceptions for missing interaction, review, artifact digest, privacy projection, or unresolved status.
+- Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion
 

@@ -339,6 +339,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_public_schema_accepts_template_and_rejects_unknown_fields",
         "docs/TERMINOLOGY.md",
     ),
+    "interaction-gate": (
+        "interaction_gate",
+        "InteractionGateTests",
+        "test_positive_record_schema_runtime_and_cli_are_deterministic",
+        "test_missing_formal_review_and_private_projection_fail_closed",
+        "docs/ORACLE_INTERACTION_GATES.md",
+    ),
     "structural-refactoring": (
         "structural_refactoring",
         "StructuralRefactoringTests",

@@ -103,6 +103,13 @@ def _validate_terminology_fixtures() -> None:
         validate(json.loads((ROOT / name).read_bytes()), "terminology-registry.schema.json")
 
 
+def _validate_interaction_gate_fixtures() -> None:
+    validate(
+        json.loads((ROOT / "quality/interaction-gates/ar-0058-example.json").read_bytes()),
+        "interaction-gate.schema.json",
+    )
+
+
 def _validate_native_mapping_fixtures() -> None:
     for name in (
         "fixtures/conforming/native-gate-mapping.json",
@@ -335,6 +342,7 @@ def main() -> int:
     _validate_onboarding_fixtures()
     _validate_formal_evidence_fixtures()
     _validate_terminology_fixtures()
+    _validate_interaction_gate_fixtures()
     _validate_reliability_fixtures()
     validate(
         json.loads((ROOT / "fixtures/conforming/agent-runtime-replay.json").read_bytes()),
