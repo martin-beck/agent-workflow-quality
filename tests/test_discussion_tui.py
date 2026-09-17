@@ -62,3 +62,48 @@ class DiscussionTuiTests(unittest.TestCase):
         self.assertEqual(
             "missing-discussion-tui", discussion_tui.check(self.repo.root, [])[0]["code"]
         )
+
+    def test_validation_rejects_each_identity_boundary(self) -> None:
+        cases = [
+            ("__extra__", "unknown"),
+            ("task", None),
+            ("task", {"id": "AR-X", "revision": 1}),
+            ("event_refs", []),
+            ("event_refs", ["BAD"]),
+            (
+                "active_point",
+                {"id": "POINT-X", "kind": "bad", "document_sha256": "a" * 64, "unresolved": False},
+            ),
+            ("active_point", {**self.value["active_point"], "document_sha256": "bad"}),
+            ("left_anchor", {**self.value["left_anchor"], "offset": True}),
+            ("render", {**self.value["render"], "active_pane": "bad"}),
+            ("render", {**self.value["render"], "layout": "bad"}),
+            ("render", {**self.value["render"], "left_scroll": -1}),
+            ("render", {**self.value["render"], "narrow_terminal": "bad"}),
+            (
+                "privacy_projection",
+                {**self.value["privacy_projection"], "projection_sha256": "bad"},
+            ),
+            ("privacy_projection", {**self.value["privacy_projection"], "redacted_fields": [""]}),
+            ("limitations", []),
+        ]
+        for field, replacement in cases:
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            with self.subTest(field=field), self.assertRaises(ProjectError):
+                discussion_tui.validate(value)
+
+    def test_file_and_check_hostile_paths_fail_closed(self) -> None:
+        invalid = self.repo.root / "quality/discussion-tui/invalid.json"
+        invalid.parent.mkdir(parents=True)
+        invalid.write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            discussion_tui.evaluate_file(self.repo.root, "quality/discussion-tui/invalid.json")
+        canonical = self.repo.root / "quality/discussion-tui/noncanonical.json"
+        canonical.write_text(json.dumps(self.value, indent=2), encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            discussion_tui.evaluate_file(self.repo.root, "quality/discussion-tui/noncanonical.json")
+        self.assertEqual(
+            "invalid-discussion-tui",
+            discussion_tui.check(self.repo.root, [invalid])[0]["code"],
+        )
