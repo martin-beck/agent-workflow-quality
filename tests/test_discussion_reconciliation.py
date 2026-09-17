@@ -106,3 +106,34 @@ class DiscussionReconciliationTests(unittest.TestCase):
             "missing-discussion-reconciliation",
             discussion_reconciliation.check(self.repo.root, [])[0]["code"],
         )
+
+    def test_validator_rejects_each_hostile_context_and_identity_shape(self) -> None:
+        mutations: tuple[tuple[str, Any], ...] = (
+            ("prior_formal_result_sha256", "not-a-digest"),
+            ("before", {"plan_sha256": self.value["before"]["plan_sha256"]}),
+            ("task", {"id": self.value["task"]["id"]}),
+            ("task", {**self.value["task"], "id": "AR-nope"}),
+            ("formal_spec", {**self.value["formal_spec"], "status": "fail"}),
+            ("affected_ars", []),
+            ("affected_ars", [{"id": "AR-0036"}]),
+            ("discussion_id", "DISC"),
+            ("event_refs", ["EV-ONE", "EV-ONE"]),
+            ("changed_artifacts", []),
+            ("changed_artifacts", ["unknown"]),
+        )
+        for field, replacement in mutations:
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            with self.subTest(field=field, replacement=replacement), self.assertRaises(
+                ProjectError
+            ):
+                discussion_reconciliation.validate(value)
+
+    def test_check_reports_invalid_declared_records(self) -> None:
+        target = self.repo.root / "quality/discussion-reconciliation"
+        target.mkdir(parents=True)
+        invalid = target / "invalid.json"
+        invalid.write_text("{}\n", encoding="utf-8")
+        findings = discussion_reconciliation.check(self.repo.root, [invalid])
+        self.assertEqual("invalid-discussion-reconciliation", findings[0]["code"])
+        self.assertEqual("quality/discussion-reconciliation/invalid.json", findings[0]["path"])
