@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/discussion-tui.schema.json",
+  "title": "AWQ discussion TUI render-state contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task", "event_refs", "active_point", "left_anchor", "render", "privacy_projection", "limitations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "task": {"type": "object", "additionalProperties": false, "required": ["id", "revision"], "properties": {"id": {"pattern": "^AR-[0-9]{4}$", "type": "string"}, "revision": {"type": "integer", "minimum": 1, "maximum": 1000000}}},
+    "event_refs": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"type": "string", "pattern": "^EV-[A-Z0-9-]{1,63}$"}},
+    "active_point": {"$ref": "#/$defs/point"},
+    "left_anchor": {"type": "object", "additionalProperties": false, "required": ["point_id", "document_sha256", "offset"], "properties": {"point_id": {"type": "string", "pattern": "^POINT-[A-Z0-9-]+$"}, "document_sha256": {"$ref": "#/$defs/sha"}, "offset": {"type": "integer", "minimum": 0, "maximum": 1000000}}},
+    "render": {"type": "object", "additionalProperties": false, "required": ["active_pane", "layout", "highlighted_point_id", "highlighted_unresolved", "unresolved_point_ids", "left_scroll", "right_scroll", "narrow_terminal", "accessibility"], "properties": {"active_pane": {"enum": ["left", "right"]}, "layout": {"const": "two-pane"}, "highlighted_point_id": {"type": "string", "pattern": "^POINT-[A-Z0-9-]+$"}, "highlighted_unresolved": {"type": "boolean"}, "unresolved_point_ids": {"type": "array", "uniqueItems": true, "maxItems": 64, "items": {"type": "string", "pattern": "^POINT-[A-Z0-9-]+$"}}, "left_scroll": {"type": "integer", "minimum": 0, "maximum": 1000000}, "right_scroll": {"type": "integer", "minimum": 0, "maximum": 1000000}, "narrow_terminal": {"enum": ["full", "degraded"]}, "accessibility": {"const": "keyboard-navigable"}}},
+    "privacy_projection": {"type": "object", "additionalProperties": false, "required": ["public_safe", "projection_sha256", "redacted_fields"], "properties": {"public_safe": {"const": true}, "projection_sha256": {"$ref": "#/$defs/sha"}, "redacted_fields": {"type": "array", "uniqueItems": true, "maxItems": 64, "items": {"type": "string", "minLength": 1}}}},
+    "limitations": {"const": ["ui_behavior_not_proven", "user_intent_not_proven", "consumer_native_gates_remain_authoritative"]}
+  },
+  "$defs": {"sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "point": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "document_sha256", "unresolved"], "properties": {"id": {"type": "string", "pattern": "^POINT-[A-Z0-9-]+$"}, "kind": {"enum": ["discussion", "work-plan", "design", "specification"]}, "document_sha256": {"$ref": "#/$defs/sha"}, "unresolved": {"type": "boolean"}}}}
+}

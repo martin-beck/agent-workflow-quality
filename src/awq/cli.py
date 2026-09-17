@@ -21,6 +21,7 @@ from awq import (
     commands,
     contracts,
     discussion_reconciliation,
+    discussion_tui,
     evidence_lifecycle,
     execution_budget,
     formal_receipts,
@@ -165,6 +166,9 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("discussion-reconciliation-evaluate")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("discussion-tui-evaluate")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -218,6 +222,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "discussion-reconciliation-evaluate": lambda: discussion_reconciliation.evaluate_file(
             root, args.contract
         ),
+        "discussion-tui-evaluate": lambda: discussion_tui.evaluate_file(root, args.contract),
         "evidence": lambda: commands.evidence(root, args.tier),
         "explain": lambda: commands.explain(args.requirement),
         "standards": commands.standards,
