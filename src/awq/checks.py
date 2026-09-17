@@ -582,6 +582,16 @@ def interaction_gate(root: Path, paths: list[Path], policy: dict[str, Any]) -> l
     return [Finding(**item) for item in check(root, paths)]
 
 
+def discussion_reconciliation(
+    root: Path, paths: list[Path], policy: dict[str, Any]
+) -> list[Finding]:
+    """Validate completed discussion reconciliation records and fail closed."""
+    del policy
+    from awq.discussion_reconciliation import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -601,6 +611,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "gradle-integrity": gradle_integrity,
     "terminology-vocabulary": terminology_vocabulary,
     "interaction-gate": interaction_gate,
+    "discussion-reconciliation": discussion_reconciliation,
 }
 
 

@@ -346,6 +346,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_missing_formal_review_and_private_projection_fail_closed",
         "docs/ORACLE_INTERACTION_GATES.md",
     ),
+    "discussion-reconciliation": (
+        "discussion_reconciliation",
+        "DiscussionReconciliationTests",
+        "test_positive_schema_runtime_and_cli_are_deterministic",
+        "test_changed_artifacts_require_new_formal_result",
+        "docs/DISCUSSION_RECONCILIATION.md",
+    ),
     "structural-refactoring": (
         "structural_refactoring",
         "StructuralRefactoringTests",

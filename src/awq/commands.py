@@ -71,6 +71,11 @@ def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
         profiles.add("formal-evidence")
     if any(path.relative_to(root).as_posix() == "quality/terminology.json" for path in paths):
         profiles.add("terminology")
+    if any(
+        path.relative_to(root).as_posix().startswith("quality/discussion-reconciliation/")
+        for path in paths
+    ):
+        profiles.add("discussion-reconciliation")
     return sorted(profiles), dict(sorted(suffixes.items()))
 
 

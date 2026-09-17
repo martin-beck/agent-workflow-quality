@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `3d63114c4f6f7060dccb54bb9ef30a7cf4d8588572520cd88bd5a83f60a84631`
+Standards registry SHA-256: `4c9083abd3ef01a868d3a3edf829e9169b5ce161198606267a415996cf89272c`
 
 ## Pinned sources
 
@@ -35,6 +35,12 @@ Standards registry SHA-256: `3d63114c4f6f7060dccb54bb9ef30a7cf4d8588572520cd88bd
 | [AWQ-CORE-002](REQUIREMENTS.md) | [NIST-SSDF PS.1.1](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `mechanical` | It does not establish repository authorization or access controls. |
 | [AWQ-CORE-003](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `related` | `mechanical` | It does not identify security vulnerabilities generally. |
 | [AWQ-CORE-004](REQUIREMENTS.md) | [NIST-SSDF PO.1.1](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `mechanical` | Classification does not define all security requirements. |
+
+### `discussion-reconciliation`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-ORACLE-002](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, formal refinement, or consumer-native gate outcomes. |
 
 ### `docs`
 

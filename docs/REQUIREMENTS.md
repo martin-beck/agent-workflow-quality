@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `8a74152ab0f3dea1126788edf96dbf9bb838a915c842ff7abb806c043f6ce6a8`
+Registry SHA-256: `2044e7d9f6c9faa15eb3469f786100cbab66913f5236fc5e169ce2ea13fea7ac`
 
 ## Profiles
 
@@ -10,6 +10,7 @@ Registry SHA-256: `8a74152ab0f3dea1126788edf96dbf9bb838a915c842ff7abb806c043f6ce
 | --- | --- | --- |
 | `android-jvm` | Gradle and Android dependency-integrity baseline. | 1 |
 | `core` | Portable repository baseline. | 4 |
+| `discussion-reconciliation` | Before/after discussion artifact and formal-result consistency. | 1 |
 | `docs` | Documentation structure and local integrity. | 1 |
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
 | `formal-model` | Bounded external formal-model execution contracts. | 1 |
@@ -177,6 +178,20 @@ Typed interaction-gate records bind task revision, context, before/after artifac
 - Limitation: A valid record proves only bounded quality-contract completeness; it does not establish user intent, implementation correctness, or the truth of the recorded disposition.
 - Remediation: Add the missing typed interaction-gate evidence or keep the quality gate failed.
 - Exception policy: No exceptions for missing interaction, review, artifact digest, privacy projection, or unresolved status.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-002: Discussion reconciliation consistency
+
+Completed discussion records bind symmetric before/after artifacts, affected-AR dispositions, current formal results, and distinct guidance, quality, and implementation outcomes.
+
+- Profiles: `discussion-reconciliation`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid record proves only bounded reconciliation completeness; it does not prove user intent, implementation correctness, formal refinement, or replace consumer-native gates.
+- Remediation: Add a current, public-safe reconciliation record with a refreshed formal result or keep the quality gate failed.
+- Exception policy: No exceptions for stale artifacts, stale formal results, unresolved affected ARs, missing limitations, or collapsed acceptance dimensions.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion
