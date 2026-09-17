@@ -582,6 +582,14 @@ def interaction_gate(root: Path, paths: list[Path], policy: dict[str, Any]) -> l
     return [Finding(**item) for item in check(root, paths)]
 
 
+def discussion_tui(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+    """Validate discussion TUI render-state records and fail closed on absence."""
+    del policy
+    from awq.discussion_tui import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -601,6 +609,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "gradle-integrity": gradle_integrity,
     "terminology-vocabulary": terminology_vocabulary,
     "interaction-gate": interaction_gate,
+    "discussion-tui": discussion_tui,
 }
 
 

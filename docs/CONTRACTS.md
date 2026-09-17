@@ -26,6 +26,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-CONTRACT-CATALOG-V1` | 1 | `json-schema` | `schemas/contract-catalog.schema.json` | `awq.tests.contract_catalog.ContractCatalogTests` | [docs/CONTRACTS.md](CONTRACTS.md) |
 | `AWQ-CONTRACT-CONTROL-SOURCE-REGISTRY-V1` | 1 | `json-schema` | `schemas/control-source-registry.schema.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
 | `AWQ-CONTRACT-CONTROL-SOURCES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/control_sources.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
+| `AWQ-CONTRACT-DISCUSSION-TUI-V1` | 1 | `json-schema` | `schemas/discussion-tui.schema.json` | `awq.tests.discussion_tui.DiscussionTuiTests` | [docs/DISCUSSION_TUI.md](DISCUSSION_TUI.md) |
 | `AWQ-CONTRACT-EVIDENCE-IDENTITY-V1` | 1 | `json-schema` | `schemas/evidence-identity.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
 | `AWQ-CONTRACT-EVIDENCE-LIFECYCLE-V1` | 1 | `json-schema` | `schemas/evidence-lifecycle.schema.json` | `awq.tests.evidence_lifecycle.EvidenceLifecycleTests` | [docs/EVIDENCE_LIFECYCLE.md](EVIDENCE_LIFECYCLE.md) |
 | `AWQ-CONTRACT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/evidence.schema.json` | `awq.tests.commands_cli.CommandTests` | [docs/QUALITY.md](QUALITY.md) |
