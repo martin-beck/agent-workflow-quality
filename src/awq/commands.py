@@ -51,14 +51,14 @@ def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
     suffixes = Counter(path.suffix or path.name for path in paths)
     profiles = {"core", "privacy", "supply-chain"}
     names = {path.name for path in paths}
-    if suffixes[".py"]:
-        profiles.add("python")
-    if suffixes[".sh"]:
-        profiles.add("shell")
-    if suffixes[".md"]:
-        profiles.add("docs")
-    if suffixes[".json"]:
-        profiles.add("schemas")
+    for suffix, profile in (
+        (".py", "python"),
+        (".sh", "shell"),
+        (".md", "docs"),
+        (".json", "schemas"),
+    ):
+        if suffixes[suffix]:
+            profiles.add(profile)
     if any(path.relative_to(root).parts[0] == ".github" for path in paths):
         profiles.add("github-actions")
     if "Cargo.toml" in names:
