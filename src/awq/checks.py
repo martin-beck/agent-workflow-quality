@@ -574,6 +574,14 @@ def terminology_vocabulary(root: Path, paths: list[Path], policy: dict[str, Any]
     return [Finding(**item) for item in findings]
 
 
+def interaction_gate(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+    """Validate typed interaction-gate records and fail closed on missing gates."""
+    del policy
+    from awq.interaction_gate import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -592,6 +600,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "rust-lock": rust_lock,
     "gradle-integrity": gradle_integrity,
     "terminology-vocabulary": terminology_vocabulary,
+    "interaction-gate": interaction_gate,
 }
 
 

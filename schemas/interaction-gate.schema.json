@@ -1,0 +1,80 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/interaction-gate.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "after": {"$ref": "#/$defs/artifacts"},
+    "before": {"$ref": "#/$defs/artifacts"},
+    "context": {
+      "additionalProperties": false,
+      "properties": {
+        "constraints_sha256": {"$ref": "#/$defs/sha256"},
+        "implications_sha256": {"$ref": "#/$defs/sha256"},
+        "objective_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["objective_sha256", "constraints_sha256", "implications_sha256"],
+      "type": "object"
+    },
+    "event_refs": {
+      "items": {"pattern": "^EV-[A-Z0-9-]{1,63}$", "type": "string"},
+      "maxItems": 32,
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "formal_spec": {
+      "additionalProperties": false,
+      "properties": {
+        "result_sha256": {"$ref": "#/$defs/sha256"},
+        "specification_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"const": "pass"},
+        "review_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["specification_sha256", "result_sha256", "review_sha256", "status"],
+      "type": "object"
+    },
+    "gate_type": {"enum": ["clarification", "decision", "guidance", "review"]},
+    "privacy_projection": {
+      "additionalProperties": false,
+      "properties": {
+        "public_safe": {"const": true},
+        "redacted_fields": {
+          "items": {"pattern": "^[a-z][a-z0-9_]{0,63}$", "type": "string"},
+          "maxItems": 64,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "projection_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["public_safe", "projection_sha256", "redacted_fields"],
+      "type": "object"
+    },
+    "schema_version": {"const": 1},
+    "task": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {"pattern": "^AR-[0-9]{4}$", "type": "string"},
+        "revision": {"maximum": 1000000, "minimum": 1, "type": "integer"}
+      },
+      "required": ["id", "revision"],
+      "type": "object"
+    },
+    "unresolved": {"const": false},
+    "user_disposition": {"enum": ["accepted", "rejected"]}
+  },
+  "required": ["schema_version", "gate_type", "task", "event_refs", "context", "before", "after", "formal_spec", "user_disposition", "privacy_projection", "unresolved"],
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "artifacts": {
+      "additionalProperties": false,
+      "properties": {
+        "design_sha256": {"$ref": "#/$defs/sha256"},
+        "plan_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "required": ["plan_sha256", "design_sha256"],
+      "type": "object"
+    }
+  },
+  "title": "AWQ typed oracle interaction-gate record v1",
+  "type": "object"
+}
