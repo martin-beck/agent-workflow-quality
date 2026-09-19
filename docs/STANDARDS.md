@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `fc41d2ec2c1f4cb09c935ed2d893d810c1d5e992a31c00055bbbce01246bf989`
+Standards registry SHA-256: `d7a02dda66b846a4c42bd5d1b229f49855d555e88b3cbcb7b468757d603bcb6f`
 
 ## Pinned sources
 
@@ -85,6 +85,12 @@ Standards registry SHA-256: `fc41d2ec2c1f4cb09c935ed2d893d810c1d5e992a31c00055bb
 | Requirement | Source control | Relationship | Evidence | Limitation |
 | --- | --- | --- | --- | --- |
 | [AWQ-ORACLE-001](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, or certification. |
+
+### `oracle-workflow-integration`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-ORACLE-005](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, formal refinement, provider integration, or consumer-native gate outcomes. |
 
 ### `privacy`
 
