@@ -1,0 +1,23 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/martin-beck/agent-workflow-quality/schemas/discussion-batch.schema.json",
+  "title":"AWQ batched discussion proposal quality contract v1",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","kind","task","batch","points","responses","formal_spec","privacy_projection","limitations"],
+  "properties":{
+    "schema_version":{"const":1},"kind":{"const":"batched-discussion-quality"},
+    "task":{"type":"object","additionalProperties":false,"required":["id","revision"],"properties":{"id":{"type":"string","pattern":"^AR-[0-9]{4}$"},"revision":{"type":"integer","minimum":1,"maximum":1000000}}},
+    "batch":{"type":"object","additionalProperties":false,"required":["id","relation","query_count","point_ids"],"properties":{"id":{"type":"string","pattern":"^BATCH-[A-Z0-9-]{2,62}$"},"relation":{"enum":["independent","coupled"]},"query_count":{"const":1},"point_ids":{"type":"array","minItems":2,"maxItems":64,"uniqueItems":true,"items":{"type":"string","pattern":"^POINT-[A-Z0-9-]{1,63}$"}}}},
+    "points":{"type":"array","minItems":2,"maxItems":64,"items":{"$ref":"#/$defs/point"}},
+    "responses":{"type":"array","maxItems":64,"items":{"$ref":"#/$defs/response"}},
+    "formal_spec":{"type":"object","additionalProperties":false,"required":["specification_sha256","result_sha256","review_sha256","status"],"properties":{"specification_sha256":{"$ref":"#/$defs/sha"},"result_sha256":{"$ref":"#/$defs/sha"},"review_sha256":{"$ref":"#/$defs/sha"},"status":{"const":"pass"}}},
+    "privacy_projection":{"type":"object","additionalProperties":false,"required":["public_safe","projection_sha256","redacted_fields"],"properties":{"public_safe":{"const":true},"projection_sha256":{"$ref":"#/$defs/sha"},"redacted_fields":{"type":"array","maxItems":64,"uniqueItems":true,"items":{"type":"string","minLength":1}}}},
+    "limitations":{"const":["bounded_packet_quality_only","user_intent_not_proven","implementation_correctness_not_proven","consumer_native_gates_remain_authoritative"]}
+  },
+  "$defs":{
+    "sha":{"type":"string","pattern":"^[0-9a-f]{64}$"},
+    "evaluation":{"type":"object","additionalProperties":false,"required":["confidence","implications","evidence_limits","formal_refs"],"properties":{"confidence":{"type":"object","additionalProperties":false,"required":["applicability","outcome","downstream"],"properties":{"applicability":{"type":"number","minimum":0,"maximum":1},"outcome":{"type":"number","minimum":0,"maximum":1},"downstream":{"type":"number","minimum":0,"maximum":1}}},"implications":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"string","minLength":1}},"evidence_limits":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"string","minLength":1}},"formal_refs":{"type":"array","minItems":1,"maxItems":16,"items":{"type":"string","minLength":1}}}},
+    "point":{"type":"object","additionalProperties":false,"required":["id","proposals"],"properties":{"id":{"type":"string","pattern":"^POINT-[A-Z0-9-]{1,63}$"},"proposals":{"type":"array","minItems":2,"maxItems":16,"items":{"type":"object","additionalProperties":false,"required":["id","rank","summary","evaluation"],"properties":{"id":{"type":"string","pattern":"^PROP-[A-Z0-9-]{1,63}$"},"rank":{"type":"integer","minimum":1},"summary":{"type":"string","minLength":1},"evaluation":{"$ref":"#/$defs/evaluation"}}}}}},
+    "response":{"type":"object","additionalProperties":false,"required":["point_id","disposition","proposal_id","user_proposal","authorized"],"properties":{"point_id":{"type":"string","pattern":"^POINT-[A-Z0-9-]{1,63}$"},"disposition":{"enum":["select","reject","request-clarification"]},"proposal_id":{"type":["string","null"]},"user_proposal":{"anyOf":[{"type":"null"},{"type":"object","additionalProperties":false,"required":["id","summary","evaluation"],"properties":{"id":{"type":"string","pattern":"^USER-[A-Z0-9-]{1,59}$"},"summary":{"type":"string","minLength":1},"evaluation":{"$ref":"#/$defs/evaluation"}}}]},"authorized":{"type":"boolean"}}}
+  }
+}

@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `4527b6c8ea63148cd956f46096bd3d72948481ee667fe3b4216f2ccb519414e7`
+Registry SHA-256: `9a6928b779656eaad9ba52a7869bb7608ae769e11633b95388d54aba2c31b69a`
 
 ## Profiles
 
@@ -10,6 +10,7 @@ Registry SHA-256: `4527b6c8ea63148cd956f46096bd3d72948481ee667fe3b4216f2ccb51941
 | --- | --- | --- |
 | `android-jvm` | Gradle and Android dependency-integrity baseline. | 1 |
 | `core` | Portable repository baseline. | 4 |
+| `discussion-batch` | Batched proposal, implication, user-alternative and independent response quality. | 1 |
 | `discussion-reconciliation` | Before/after discussion artifact and formal-result consistency. | 1 |
 | `docs` | Documentation structure and local integrity. | 1 |
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
@@ -207,6 +208,20 @@ Ambiguous, contradictory, stale, or scope-changing guidance records an explicit 
 - Limitation: A valid record proves only transition-shape completeness; it does not establish user intent, implementation correctness, formal refinement, or the truth of a disposition.
 - Remediation: Record the explicit clarification, rejection, alternative, reconciliation, or reopen result with a fresh task revision and public-safe evidence.
 - Exception policy: No exceptions for unresolved guidance, stale responses, mismatched state/result pairs, unauthorized transitions, or private projections.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-004: Batched proposal and implication quality
+
+Batched discussion points retain ranked evaluated proposals, concise implications, evidence limits, formal references, evaluated user alternatives, and independent revision-bound response authorization.
+
+- Profiles: `discussion-batch`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid record proves only bounded packet quality and binding shape; it does not establish user intent, implementation correctness, or formal refinement.
+- Remediation: Add a complete public-safe batched discussion quality record or keep the quality gate failed.
+- Exception policy: No exceptions for missing proposal evaluation, implication limits, formal evidence, independent response binding, or cross-point authorization.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion
