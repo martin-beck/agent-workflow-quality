@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `2044e7d9f6c9faa15eb3469f786100cbab66913f5236fc5e169ce2ea13fea7ac`
+Registry SHA-256: `4527b6c8ea63148cd956f46096bd3d72948481ee667fe3b4216f2ccb519414e7`
 
 ## Profiles
 
@@ -15,6 +15,7 @@ Registry SHA-256: `2044e7d9f6c9faa15eb3469f786100cbab66913f5236fc5e169ce2ea13fea
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
 | `formal-model` | Bounded external formal-model execution contracts. | 1 |
 | `github-actions` | GitHub Actions integrity, trust transitions and permissions. | 3 |
+| `guidance-resolution` | Contradiction, clarification, rejection and reopen state transitions. | 1 |
 | `interaction-gates` | Typed, privacy-safe oracle interaction-gate evidence. | 1 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
@@ -192,6 +193,20 @@ Completed discussion records bind symmetric before/after artifacts, affected-AR 
 - Limitation: A valid record proves only bounded reconciliation completeness; it does not prove user intent, implementation correctness, formal refinement, or replace consumer-native gates.
 - Remediation: Add a current, public-safe reconciliation record with a refreshed formal result or keep the quality gate failed.
 - Exception policy: No exceptions for stale artifacts, stale formal results, unresolved affected ARs, missing limitations, or collapsed acceptance dimensions.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-003: Contradiction and guidance resolution
+
+Ambiguous, contradictory, stale, or scope-changing guidance records an explicit bounded state transition and remains non-authorizing until a fresh discussion and formal review reconcile it.
+
+- Profiles: `guidance-resolution`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid record proves only transition-shape completeness; it does not establish user intent, implementation correctness, formal refinement, or the truth of a disposition.
+- Remediation: Record the explicit clarification, rejection, alternative, reconciliation, or reopen result with a fresh task revision and public-safe evidence.
+- Exception policy: No exceptions for unresolved guidance, stale responses, mismatched state/result pairs, unauthorized transitions, or private projections.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion

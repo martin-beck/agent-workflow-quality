@@ -592,6 +592,14 @@ def discussion_reconciliation(
     return [Finding(**item) for item in check(root, paths)]
 
 
+def guidance_resolution(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+    """Validate contradiction, clarification and reopen state transitions."""
+    del policy
+    from awq.guidance_resolution import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 def discussion_tui(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
     """Validate discussion TUI render-state records and fail closed on absence."""
     del policy
@@ -620,6 +628,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "terminology-vocabulary": terminology_vocabulary,
     "interaction-gate": interaction_gate,
     "discussion-reconciliation": discussion_reconciliation,
+    "guidance-resolution": guidance_resolution,
     "discussion-tui": discussion_tui,
 }
 

@@ -16,5 +16,6 @@
     {"name":"terminology","description":"Consumer-owned canonical vocabulary and bounded lexical scope enforcement.","requirements":["AWQ-TERM-001"]}
     ,{"name":"interaction-gates","description":"Typed, privacy-safe oracle interaction-gate evidence.","requirements":["AWQ-ORACLE-001"]}
     ,{"name":"discussion-reconciliation","description":"Before/after discussion artifact and formal-result consistency.","requirements":["AWQ-ORACLE-002"]}
+    ,{"name":"guidance-resolution","description":"Contradiction, clarification, rejection and reopen state transitions.","requirements":["AWQ-ORACLE-003"]}
   ]
 }

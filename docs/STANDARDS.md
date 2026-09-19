@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `4c9083abd3ef01a868d3a3edf829e9169b5ce161198606267a415996cf89272c`
+Standards registry SHA-256: `3d1290422a5e0a0a8d14d10c45383ee5c19735760f1a7c9b2ffc54978c04c51a`
 
 ## Pinned sources
 
@@ -67,6 +67,12 @@ Standards registry SHA-256: `4c9083abd3ef01a868d3a3edf829e9169b5ce161198606267a4
 | [AWQ-GHA-001](REQUIREMENTS.md) | [SLSA build.producer.consistent-process](https://slsa.dev/spec/v1.2/build-requirements#follow-a-consistent-build-process) | `supports` | `mechanical` | Pinning actions does not establish a SLSA build level or trusted builder. |
 | [AWQ-GHA-002](REQUIREMENTS.md) | [OPENSSF-OSPS OSPS-AC-04.02](https://baseline.openssf.org/versions/2026-08-28#osps-ac-0402) | `aligned` | `mechanical` | Static workflow inspection cannot verify repository-level defaults or runtime grants. |
 | [AWQ-GHA-003](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `related` | `mechanical` | It does not review dynamically constructed paths or workflow behavior. |
+
+### `guidance-resolution`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-ORACLE-003](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, formal refinement, or consumer-native gate outcomes. |
 
 ### `interaction-gates`
 

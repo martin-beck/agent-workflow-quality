@@ -76,6 +76,11 @@ def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
         for path in paths
     ):
         profiles.add("discussion-reconciliation")
+    if any(
+        path.relative_to(root).as_posix().startswith("quality/guidance-resolution/")
+        for path in paths
+    ):
+        profiles.add("guidance-resolution")
     return sorted(profiles), dict(sorted(suffixes.items()))
 
 

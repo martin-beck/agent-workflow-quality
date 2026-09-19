@@ -39,6 +39,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-FORMAL-EVIDENCE-V1` | 1 | `json-schema` | `schemas/formal-evidence.schema.json` | `awq.tests.formal_adapters.FormalAdapterExecutionTests` | [docs/FORMAL_EVIDENCE.md](FORMAL_EVIDENCE.md) |
 | `AWQ-CONTRACT-FORMAL-EXECUTION-EXPECTATION-V1` | 1 | `json-schema` | `schemas/formal-execution-expectation.schema.json` | `awq.tests.formal_receipts.FormalExecutionReceiptTests` | [docs/FORMAL_RECEIPTS.md](FORMAL_RECEIPTS.md) |
 | `AWQ-CONTRACT-FORMAL-EXECUTION-RECEIPT-V2` | 2 | `json-schema` | `schemas/formal-execution-receipt.schema.json` | `awq.tests.formal_receipts.FormalExecutionReceiptTests` | [docs/FORMAL_RECEIPTS.md](FORMAL_RECEIPTS.md) |
+| `AWQ-CONTRACT-GUIDANCE-RESOLUTION-V1` | 1 | `json-schema` | `schemas/guidance-resolution.schema.json` | `awq.tests.guidance_resolution.GuidanceResolutionTests` | [docs/GUIDANCE_RESOLUTION.md](GUIDANCE_RESOLUTION.md) |
 | `AWQ-CONTRACT-HOSTING-OBSERVATION-V1` | 1 | `json-schema` | `schemas/hosting-observation.schema.json` | `awq.tests.governance.HostingObservationTests` | [docs/GOVERNANCE.md](GOVERNANCE.md) |
 | `AWQ-CONTRACT-INTERACTION-GATE-V1` | 1 | `json-schema` | `schemas/interaction-gate.schema.json` | `awq.tests.interaction_gate.InteractionGateTests` | [docs/ORACLE_INTERACTION_GATES.md](ORACLE_INTERACTION_GATES.md) |
 | `AWQ-CONTRACT-LIFECYCLE-MODEL-V1` | 1 | `json-schema` | `schemas/lifecycle-model.schema.json` | `awq.tests.lifecycle_model.LifecycleTests` | [docs/FORMAL_ASSURANCE.md](FORMAL_ASSURANCE.md) |
