@@ -35,7 +35,7 @@ class DiscussionPersistenceTests(unittest.TestCase):
         self.assertEqual(self.value, discussion_persistence.validate(copy.deepcopy(self.value)))
 
     def test_stale_resume_partial_save_and_unmapped_request_fail_closed(self) -> None:
-        cases = [
+        cases: list[tuple[str, object]] = [
             ("resume_revision", 1),
             ("safe_exit", {**self.value["safe_exit"], "complete": False}),
             ("future_requests", [{**self.value["future_requests"][0], "ar_ref": None}]),
@@ -75,7 +75,7 @@ class DiscussionPersistenceTests(unittest.TestCase):
         )
 
     def test_every_persistence_boundary_has_a_hostile_fixture(self) -> None:
-        cases = [
+        cases: list[tuple[str, object]] = [
             ("task", None),
             ("task", {"id": "AR-X", "revision": 1}),
             ("task", {"id": "AR-0064", "revision": 0}),
