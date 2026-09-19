@@ -134,8 +134,6 @@ def validate(value: Any) -> dict[str, Any]:  # noqa: C901
             _evaluation(proposal["evaluation"], f"proposal {proposal['id']}")
         if sorted(ranks) != list(range(1, len(ranks) + 1)):
             raise ProjectError("discussion-batch proposal ranks are not contiguous")
-    if point_ids != set(batch["point_ids"]):
-        raise ProjectError("discussion-batch point selection is incomplete")
     responses = value["responses"]
     if not isinstance(responses, list) or len(responses) > len(points):
         raise ProjectError("discussion-batch responses are invalid")

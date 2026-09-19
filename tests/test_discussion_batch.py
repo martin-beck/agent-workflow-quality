@@ -123,3 +123,199 @@ class DiscussionBatchTests(unittest.TestCase):
         self.assertEqual(
             "missing-discussion-batch", discussion_batch.check(self.repo.root, [])[0]["code"]
         )
+
+    def test_point_proposal_evaluation_and_response_boundaries_fail_closed(self) -> None:
+        cases: tuple[tuple[str, Any], ...] = (
+            ("task", None),
+            ("task", {"id": "bad", "revision": 1}),
+            ("task", {"id": "AR-0063", "revision": True}),
+            ("task", {"id": "AR-0063", "revision": 0}),
+            ("batch", {**self.value["batch"], "id": "bad"}),
+            ("batch", {**self.value["batch"], "relation": "coupled"}),
+            ("batch", {**self.value["batch"], "point_ids": ["POINT-AR0063-1"]}),
+            (
+                "batch",
+                {
+                    **self.value["batch"],
+                    "point_ids": [
+                        "POINT-AR0063-1",
+                        "POINT-AR0063-2",
+                        "POINT-AR0063-3",
+                    ],
+                },
+            ),
+            ("points", {"bad": True}),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "proposals": [
+                            {
+                                **self.value["points"][0]["proposals"][0],
+                                "evaluation": {
+                                    **self.value["points"][0]["proposals"][0]["evaluation"],
+                                    "confidence": {"applicability": 0.5},
+                                },
+                            },
+                            self.value["points"][0]["proposals"][1],
+                        ],
+                    },
+                    self.value["points"][1],
+                ],
+            ),
+            (
+                "points",
+                [{**self.value["points"][0], "id": "POINT-AR0063-2"}, self.value["points"][1]],
+            ),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "proposals": [{"bad": True}, self.value["points"][0]["proposals"][1]],
+                    },
+                    self.value["points"][1],
+                ],
+            ),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "proposals": [
+                            {**self.value["points"][0]["proposals"][0], "rank": 3},
+                            self.value["points"][0]["proposals"][1],
+                        ],
+                    },
+                    self.value["points"][1],
+                ],
+            ),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "proposals": [
+                            {
+                                **self.value["points"][0]["proposals"][0],
+                                "evaluation": {"bad": True},
+                            },
+                            self.value["points"][0]["proposals"][1],
+                        ],
+                    },
+                    self.value["points"][1],
+                ],
+            ),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "proposals": [
+                            {
+                                **self.value["points"][0]["proposals"][0],
+                                "evaluation": {
+                                    **self.value["points"][0]["proposals"][0]["evaluation"],
+                                    "confidence": {
+                                        "applicability": 2,
+                                        "outcome": 0,
+                                        "downstream": 0,
+                                    },
+                                },
+                            },
+                            self.value["points"][0]["proposals"][1],
+                        ],
+                    },
+                    self.value["points"][1],
+                ],
+            ),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "proposals": [
+                            {
+                                **self.value["points"][0]["proposals"][0],
+                                "evaluation": {
+                                    **self.value["points"][0]["proposals"][0]["evaluation"],
+                                    "implications": [],
+                                },
+                            },
+                            self.value["points"][0]["proposals"][1],
+                        ],
+                    },
+                    self.value["points"][1],
+                ],
+            ),
+            (
+                "responses",
+                [
+                    {**self.value["responses"][0], "disposition": "reject", "authorized": True},
+                    self.value["responses"][1],
+                ],
+            ),
+            (
+                "responses",
+                [
+                    {**self.value["responses"][0], "proposal_id": None, "user_proposal": None},
+                    self.value["responses"][1],
+                ],
+            ),
+            (
+                "responses",
+                [
+                    {**self.value["responses"][0], "user_proposal": {"bad": True}},
+                    self.value["responses"][1],
+                ],
+            ),
+            (
+                "responses",
+                [
+                    {
+                        **self.value["responses"][0],
+                        "user_proposal": {
+                            "id": "BAD",
+                            "summary": "x",
+                            "evaluation": self.value["points"][0]["proposals"][0]["evaluation"],
+                        },
+                    },
+                    self.value["responses"][1],
+                ],
+            ),
+            ("responses", [self.value["responses"][0], self.value["responses"][0]]),
+            ("responses", {"bad": True}),
+            ("formal_spec", None),
+            ("formal_spec", {**self.value["formal_spec"], "specification_sha256": "bad"}),
+            ("privacy_projection", {**self.value["privacy_projection"], "redacted_fields": [""]}),
+            ("limitations", ["bad"]),
+        )
+        for field, replacement in cases:
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            with (
+                self.subTest(field=field, replacement=repr(replacement)[:40]),
+                self.assertRaises(ProjectError),
+            ):
+                discussion_batch.validate(value)
+
+    def test_file_and_check_failures_are_bounded_and_content_minimized(self) -> None:
+        target = self.repo.root / "quality/discussion-batch"
+        target.mkdir(parents=True)
+        malformed = target / "malformed.json"
+        malformed.write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            discussion_batch.evaluate_file(
+                self.repo.root, "quality/discussion-batch/malformed.json"
+            )
+        noncanonical = target / "noncanonical.json"
+        noncanonical.write_text(json.dumps(self.value, indent=2), encoding="utf-8")
+        with self.assertRaisesRegex(ProjectError, "canonical"):
+            discussion_batch.evaluate_file(
+                self.repo.root, "quality/discussion-batch/noncanonical.json"
+            )
+        invalid = target / "invalid.json"
+        invalid.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+        findings = discussion_batch.check(self.repo.root, [malformed, noncanonical, invalid])
+        self.assertEqual(3, len(findings))
