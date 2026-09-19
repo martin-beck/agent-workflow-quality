@@ -26,7 +26,7 @@ from tests.support import Repository, base_policy
 class RegistryTests(unittest.TestCase):
     def test_registry_is_complete_and_stable(self) -> None:
         requirements, profiles, digest = load_registry()
-        self.assertEqual(21, len(requirements))
+        self.assertEqual(22, len(requirements))
         self.assertIn("core", profiles)
         self.assertIn("interaction-gates", profiles)
         self.assertIn("guidance-resolution", profiles)
