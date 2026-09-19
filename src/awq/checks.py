@@ -600,7 +600,9 @@ def guidance_resolution(root: Path, paths: list[Path], policy: dict[str, Any]) -
     return [Finding(**item) for item in check(root, paths)]
 
 
-def oracle_workflow_integration(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+def oracle_workflow_integration(
+    root: Path, paths: list[Path], policy: dict[str, Any]
+) -> list[Finding]:
     """Validate the cross-project Coordinator/AWG/AWQ synthetic trace."""
     del policy
     from awq.oracle_workflow_integration import check

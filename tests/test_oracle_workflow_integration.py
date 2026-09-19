@@ -19,19 +19,33 @@ from tests.support import Repository
 class OracleWorkflowIntegrationTests(unittest.TestCase):
     def setUp(self) -> None:
         self.repo = Repository()
-        self.value = json.loads((Path(__file__).parents[1] / "quality/oracle-workflow-integration/ar-0061-example.json").read_bytes())
+        self.value = json.loads(
+            (
+                Path(__file__).parents[1]
+                / "quality/oracle-workflow-integration/ar-0061-example.json"
+            ).read_bytes()
+        )
 
     def tearDown(self) -> None:
         self.repo.close()
 
     def test_positive_schema_runtime_and_deterministic_evaluation(self) -> None:
-        schema = json.loads((Path(__file__).parents[1] / "schemas/oracle-workflow-integration.schema.json").read_bytes())
+        schema = json.loads(
+            (
+                Path(__file__).parents[1] / "schemas/oracle-workflow-integration.schema.json"
+            ).read_bytes()
+        )
         jsonschema.Draft202012Validator(schema).validate(self.value)
         self.assertEqual(self.value, subject.validate(copy.deepcopy(self.value)))
         target = self.repo.root / "quality/oracle-workflow-integration/trace.json"
         target.parent.mkdir(parents=True)
-        target.write_bytes((json.dumps(self.value, sort_keys=True, separators=(",", ":")) + "\n").encode())
-        self.assertEqual(subject.evaluate_file(self.repo.root, "quality/oracle-workflow-integration/trace.json"), subject.evaluate_file(self.repo.root, "quality/oracle-workflow-integration/trace.json"))
+        target.write_bytes(
+            (json.dumps(self.value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+        )
+        self.assertEqual(
+            subject.evaluate_file(self.repo.root, "quality/oracle-workflow-integration/trace.json"),
+            subject.evaluate_file(self.repo.root, "quality/oracle-workflow-integration/trace.json"),
+        )
 
     def test_skipped_stale_quality_only_and_private_traces_fail_closed(self) -> None:
         cases = []
@@ -56,4 +70,6 @@ class OracleWorkflowIntegrationTests(unittest.TestCase):
         unknown["extra"] = True
         with self.assertRaises(ProjectError):
             subject.validate(unknown)
-        self.assertEqual("missing-oracle-workflow-integration", subject.check(self.repo.root, [])[0]["code"])
+        self.assertEqual(
+            "missing-oracle-workflow-integration", subject.check(self.repo.root, [])[0]["code"]
+        )
