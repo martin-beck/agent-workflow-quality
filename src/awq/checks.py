@@ -626,6 +626,14 @@ def discussion_batch(root: Path, paths: list[Path], policy: dict[str, Any]) -> l
     return [Finding(**item) for item in check(root, paths)]
 
 
+def discussion_persistence(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+    """Validate durable discussion journal and future-request mappings."""
+    del policy
+    from awq.discussion_persistence import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -650,6 +658,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "oracle-workflow-integration": oracle_workflow_integration,
     "discussion-tui": discussion_tui,
     "discussion-batch": discussion_batch,
+    "discussion-persistence": discussion_persistence,
 }
 
 

@@ -27,6 +27,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-CONTROL-SOURCE-REGISTRY-V1` | 1 | `json-schema` | `schemas/control-source-registry.schema.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
 | `AWQ-CONTRACT-CONTROL-SOURCES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/control_sources.json` | `awq.tests.standards.StandardsRegistryTests` | [docs/STANDARDS.md](STANDARDS.md) |
 | `AWQ-CONTRACT-DISCUSSION-BATCH-V1` | 1 | `json-schema` | `schemas/discussion-batch.schema.json` | `awq.tests.discussion_batch.DiscussionBatchTests` | [docs/DISCUSSION_BATCH.md](DISCUSSION_BATCH.md) |
+| `AWQ-CONTRACT-DISCUSSION-PERSISTENCE-V1` | 1 | `json-schema` | `schemas/discussion-persistence.schema.json` | `awq.tests.discussion_persistence.DiscussionPersistenceTests` | [docs/DISCUSSION_PERSISTENCE.md](DISCUSSION_PERSISTENCE.md) |
 | `AWQ-CONTRACT-DISCUSSION-RECONCILIATION-V1` | 1 | `json-schema` | `schemas/discussion-reconciliation.schema.json` | `awq.tests.discussion_reconciliation.DiscussionReconciliationTests` | [docs/DISCUSSION_RECONCILIATION.md](DISCUSSION_RECONCILIATION.md) |
 | `AWQ-CONTRACT-DISCUSSION-TUI-V1` | 1 | `json-schema` | `schemas/discussion-tui.schema.json` | `awq.tests.discussion_tui.DiscussionTuiTests` | [docs/DISCUSSION_TUI.md](DISCUSSION_TUI.md) |
 | `AWQ-CONTRACT-EVIDENCE-IDENTITY-V1` | 1 | `json-schema` | `schemas/evidence-identity.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |

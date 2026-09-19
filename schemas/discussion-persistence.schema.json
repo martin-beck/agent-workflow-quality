@@ -1,0 +1,19 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://github.com/martin-beck/agent-workflow-quality/schemas/discussion-persistence.schema.json",
+  "title":"AWQ discussion persistence and safe-exit contract v1",
+  "type":"object","additionalProperties":false,
+  "required":["schema_version","kind","task","journal_id","revision","status","points","safe_exit","resume_revision","reask","future_requests","formal_spec","privacy_projection","limitations"],
+  "properties":{
+    "schema_version":{"const":1},"kind":{"const":"discussion-persistence"},
+    "task":{"type":"object","additionalProperties":false,"required":["id","revision"],"properties":{"id":{"type":"string","pattern":"^AR-[0-9]{4}$"},"revision":{"type":"integer","minimum":1,"maximum":1000000}}},
+    "journal_id":{"type":"string","pattern":"^JOURNAL-[A-Z0-9-]{2,62}$"},"revision":{"type":"integer","minimum":1,"maximum":1000000},"status":{"enum":["saved","re-ask","resumed"]},
+    "points":{"type":"array","minItems":1,"maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["id","proposals","response","unresolved"],"properties":{"id":{"type":"string","pattern":"^POINT-[A-Z0-9-]{1,63}$"},"proposals":{"type":"array","minItems":1,"maxItems":64},"response":{"type":"object","additionalProperties":false,"required":["disposition","proposal_id","user_proposal"],"properties":{"disposition":{"enum":["select","reject","request-clarification"]},"proposal_id":{"type":["string","null"]},"user_proposal":{ "type":["string","null"]}}},"unresolved":{"type":"boolean"}}}},
+    "safe_exit":{"type":"object","additionalProperties":false,"required":["saved","atomic","complete","commit_sha256"],"properties":{"saved":{"const":true},"atomic":{"const":true},"complete":{"const":true},"commit_sha256":{"$ref":"#/$defs/sha"}}},
+    "resume_revision":{"type":["integer","null"],"minimum":1,"maximum":1000000},"reask":{"type":"object","additionalProperties":false,"required":["required","point_ids","reason"],"properties":{"required":{"type":"boolean"},"point_ids":{"type":"array","maxItems":64,"uniqueItems":true,"items":{"type":"string","pattern":"^POINT-[A-Z0-9-]{1,63}$"}},"reason":{"type":"string","minLength":1}}},
+    "future_requests":{"type":"array","maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["request_sha256","classification","ar_ref","reason"],"properties":{"request_sha256":{"$ref":"#/$defs/sha"},"classification":{"enum":["existing-ar","new-ar","rejected"]},"ar_ref":{"type":["string","null"],"pattern":"^AR-[0-9]{4}$"},"reason":{"type":"string","minLength":1}}}},
+    "formal_spec":{"type":"object","additionalProperties":false,"required":["specification_sha256","result_sha256","review_sha256","status"],"properties":{"specification_sha256":{"$ref":"#/$defs/sha"},"result_sha256":{"$ref":"#/$defs/sha"},"review_sha256":{"$ref":"#/$defs/sha"},"status":{"const":"pass"}}},
+    "privacy_projection":{"type":"object","additionalProperties":false,"required":["public_safe","projection_sha256","redacted_fields"],"properties":{"public_safe":{"const":true},"projection_sha256":{"$ref":"#/$defs/sha"},"redacted_fields":{"type":"array","maxItems":64,"uniqueItems":true,"items":{"type":"string","minLength":1}}}},
+    "limitations":{"const":["bounded_journal_shape_only","filesystem_crash_guarantees_not_proven","user_intent_not_proven","provider_and_network_execution_out_of_scope","consumer_native_gates_remain_authoritative"]}
+  },"$defs":{"sha":{"type":"string","pattern":"^[0-9a-f]{64}$"}}
+}
