@@ -353,6 +353,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_changed_artifacts_require_new_formal_result",
         "docs/DISCUSSION_RECONCILIATION.md",
     ),
+    "guidance-resolution": (
+        "guidance_resolution",
+        "GuidanceResolutionTests",
+        "test_reopen_record_matches_schema_runtime_and_is_deterministic",
+        "test_unresolved_states_are_never_authorizing",
+        "docs/GUIDANCE_RESOLUTION.md",
+    ),
     "discussion-tui": (
         "discussion_tui",
         "DiscussionTuiTests",

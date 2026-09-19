@@ -1,0 +1,28 @@
+{
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/guidance-resolution.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "type": "object",
+  "required": ["schema_version", "discussion_id", "task", "event_refs", "issue", "before_state", "after_state", "user_result", "formal_spec", "affected_ars", "authorization", "limitations", "privacy_projection"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "discussion_id": {"pattern": "^DISC-[A-Z0-9-]{2,68}$", "type": "string"},
+    "task": {"$ref": "#/$defs/task"},
+    "event_refs": {"items": {"pattern": "^EV-[A-Z0-9-]{1,63}$", "type": "string"}, "minItems": 1, "maxItems": 32, "uniqueItems": true, "type": "array"},
+    "issue": {"enum": ["no_op", "contradiction", "scope_change", "stale_response", "repeated_discussion"]},
+    "before_state": {"$ref": "#/$defs/state"},
+    "after_state": {"$ref": "#/$defs/state"},
+    "user_result": {"enum": ["clarification", "rejection", "alternative", "reconciliation", "reopen"]},
+    "formal_spec": {"additionalProperties": false, "type": "object", "required": ["specification_sha256", "result_sha256", "review_sha256", "task_revision", "status"], "properties": {"specification_sha256": {"$ref": "#/$defs/sha256"}, "result_sha256": {"$ref": "#/$defs/sha256"}, "review_sha256": {"$ref": "#/$defs/sha256"}, "task_revision": {"type": "integer", "minimum": 1, "maximum": 1000000}, "status": {"const": "pass"}}},
+    "affected_ars": {"items": {"$ref": "#/$defs/affected"}, "minItems": 1, "maxItems": 64, "type": "array"},
+    "authorization": {"enum": ["non_authorizing", "authorizing"]},
+    "limitations": {"items": {"enum": ["user_intent_not_proven", "implementation_correctness_not_proven", "formal_refinement_not_proven", "consumer_native_gates_remain_authoritative"]}, "minItems": 4, "maxItems": 4, "uniqueItems": true, "type": "array"},
+    "privacy_projection": {"additionalProperties": false, "type": "object", "required": ["public_safe", "projection_sha256", "redacted_fields"], "properties": {"public_safe": {"const": true}, "projection_sha256": {"$ref": "#/$defs/sha256"}, "redacted_fields": {"items": {"pattern": "^[a-z][a-z0-9_]{0,63}$", "type": "string"}, "maxItems": 64, "uniqueItems": true, "type": "array"}}}
+  },
+  "$defs": {
+    "sha256": {"pattern": "^[0-9a-f]{64}$", "type": "string"},
+    "state": {"enum": ["pending_clarification", "rejected_proposal", "user_added_alternative", "reconciled", "reopened"]},
+    "task": {"additionalProperties": false, "type": "object", "required": ["id", "revision"], "properties": {"id": {"pattern": "^AR-[0-9]{4}$", "type": "string"}, "revision": {"type": "integer", "minimum": 1, "maximum": 1000000}}},
+    "affected": {"additionalProperties": false, "type": "object", "required": ["id", "before_revision", "after_revision", "reopen"], "properties": {"id": {"pattern": "^AR-[0-9]{4}$", "type": "string"}, "before_revision": {"type": "integer", "minimum": 1}, "after_revision": {"type": "integer", "minimum": 1}, "reopen": {"type": "boolean"}}}
+  }
+}
