@@ -73,3 +73,94 @@ class OracleWorkflowIntegrationTests(unittest.TestCase):
         self.assertEqual(
             "missing-oracle-workflow-integration", subject.check(self.repo.root, [])[0]["code"]
         )
+
+    def test_each_identity_and_ownership_boundary_is_hostile(self) -> None:
+        cases = []
+        for field, replacement in (
+            ("trace_id", "bad"),
+            ("schema_version", 2),
+            ("task", None),
+            ("task", {"id": "AR-X", "revision": 1}),
+            ("task", {"id": "AR-0061", "revision": True}),
+            ("stages", None),
+            ("stages", self.value["stages"][:7]),
+        ):
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            cases.append(value)
+        for index, field, replacement in (
+            (0, "owner", "awg"),
+            (1, "name", "discussion"),
+            (2, "status", "pending"),
+            (3, "evidence_class", "quality"),
+            (4, "event_ref", "bad"),
+            (5, "task_revision", 1),
+            (6, "evidence_ref", "../private"),
+        ):
+            value = copy.deepcopy(self.value)
+            value["stages"][index][field] = replacement
+            cases.append(value)
+        for value in cases:
+            with self.subTest(value=value), self.assertRaises(ProjectError):
+                subject.validate(value)
+
+    def test_decision_quality_privacy_and_limitations_boundaries_are_hostile(self) -> None:
+        cases = []
+        for field, replacement in (
+            ("awg_decision", None),
+            (
+                "awg_decision",
+                {"disposition": "accepted", "packet_ref": "../x", "decision_sha256": "1" * 64},
+            ),
+            (
+                "awg_decision",
+                {"disposition": "accepted", "packet_ref": "trace/p", "decision_sha256": "bad"},
+            ),
+            ("awq_quality", None),
+            (
+                "awq_quality",
+                {"status": "failed", "evidence_ref": "trace/q", "requirement_sha256": "2" * 64},
+            ),
+            (
+                "awq_quality",
+                {"status": "passed", "evidence_ref": "../q", "requirement_sha256": "2" * 64},
+            ),
+            (
+                "awq_quality",
+                {"status": "passed", "evidence_ref": "trace/q", "requirement_sha256": "bad"},
+            ),
+            ("privacy_projection", None),
+            (
+                "privacy_projection",
+                {"public_safe": True, "projection_sha256": "3" * 64, "redacted_fields": [""]},
+            ),
+            (
+                "privacy_projection",
+                {"public_safe": True, "projection_sha256": "bad", "redacted_fields": ["x"]},
+            ),
+            ("limitations", []),
+        ):
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            cases.append(value)
+        for value in cases:
+            with self.subTest(value=value), self.assertRaises(ProjectError):
+                subject.validate(value)
+
+    def test_file_and_check_failures_are_content_minimized(self) -> None:
+        target = self.repo.root / "quality/oracle-workflow-integration"
+        target.mkdir(parents=True)
+        malformed = target / "malformed.json"
+        malformed.write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            subject.evaluate_file(
+                self.repo.root, "quality/oracle-workflow-integration/malformed.json"
+            )
+        noncanonical = target / "noncanonical.json"
+        noncanonical.write_text(json.dumps(self.value, indent=2), encoding="utf-8")
+        with self.assertRaisesRegex(ProjectError, "canonical"):
+            subject.evaluate_file(
+                self.repo.root, "quality/oracle-workflow-integration/noncanonical.json"
+            )
+        findings = subject.check(self.repo.root, [malformed, noncanonical])
+        self.assertEqual(2, len(findings))
