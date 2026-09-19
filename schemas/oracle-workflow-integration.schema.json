@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/martin-beck/agent-workflow-quality/schemas/oracle-workflow-integration.schema.json",
+  "title": "AWQ Coordinator/AWG/AWQ oracle workflow integration trace v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "trace_id", "task", "stages", "awg_decision", "awq_quality", "privacy_projection", "limitations"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "trace_id": {"type": "string", "pattern": "^TRACE-[A-Z0-9-]{1,63}$"},
+    "task": {"type": "object", "additionalProperties": false, "required": ["id", "revision"], "properties": {"id": {"type": "string", "pattern": "^AR-[0-9]{4}$"}, "revision": {"type": "integer", "minimum": 1, "maximum": 1000000}}},
+    "stages": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"$ref": "#/$defs/stage"}},
+    "awg_decision": {"type": "object", "additionalProperties": false, "required": ["disposition", "packet_ref", "decision_sha256"], "properties": {"disposition": {"enum": ["accepted", "rejected", "clarify"]}, "packet_ref": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"}, "decision_sha256": {"$ref": "#/$defs/sha"}}},
+    "awq_quality": {"type": "object", "additionalProperties": false, "required": ["status", "evidence_ref", "requirement_sha256"], "properties": {"status": {"enum": ["passed", "failed"]}, "evidence_ref": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"}, "requirement_sha256": {"$ref": "#/$defs/sha"}}},
+    "privacy_projection": {"type": "object", "additionalProperties": false, "required": ["public_safe", "projection_sha256", "redacted_fields"], "properties": {"public_safe": {"const": true}, "projection_sha256": {"$ref": "#/$defs/sha"}, "redacted_fields": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}},
+    "limitations": {"const": ["user_intent_not_proven", "implementation_correctness_not_proven", "formal_refinement_not_proven", "consumer_native_gates_remain_authoritative"]}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stage": {"type": "object", "additionalProperties": false, "required": ["name", "owner", "event_ref", "task_revision", "status", "evidence_class", "evidence_ref"], "properties": {"name": {"enum": ["intake", "planning-review", "discussion", "specification-review", "reconciliation", "implementation", "quality", "handoff"]}, "owner": {"enum": ["coordinator", "awg", "awq"]}, "event_ref": {"type": "string", "pattern": "^EV-[A-Z0-9-]{1,63}$"}, "task_revision": {"type": "integer", "minimum": 1, "maximum": 1000000}, "status": {"const": "complete"}, "evidence_class": {"enum": ["coordinator-event", "oracle-decision", "formal-review", "implementation", "quality"]}, "evidence_ref": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$"}}}
+  }
+}

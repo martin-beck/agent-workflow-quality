@@ -208,6 +208,15 @@ Ambiguous, contradictory, stale, or scope-changing guidance records an explicit 
 - Limitation: A valid record proves only transition-shape completeness; it does not establish user intent, implementation correctness, formal refinement, or the truth of a disposition.
 - Remediation: Record the explicit clarification, rejection, alternative, reconciliation, or reopen result with a fresh task revision and public-safe evidence.
 - Exception policy: No exceptions for unresolved guidance, stale responses, mismatched state/result pairs, unauthorized transitions, or private projections.
+
+### AWQ-ORACLE-004: Cross-project oracle workflow integration
+
+A bounded synthetic trace binds Coordinator task events, AWG decision semantics, and AWQ quality evidence across every mandatory lifecycle stage.
+
+- Profiles: `oracle-workflow-integration`
+- Evidence: `contract-test`
+- Limitation: The trace does not prove user intent, implementation correctness, formal refinement, provider integration, or consumer-native gates.
+- Exception policy: No exceptions for skipped stages, stale revisions, unresolved guidance, quality-only authorization, or private projections.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-ORACLE-004: Batched proposal and implication quality

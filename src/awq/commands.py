@@ -81,6 +81,11 @@ def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
         for path in paths
     ):
         profiles.add("guidance-resolution")
+    if any(
+        path.relative_to(root).as_posix().startswith("quality/oracle-workflow-integration/")
+        for path in paths
+    ):
+        profiles.add("oracle-workflow-integration")
     return sorted(profiles), dict(sorted(suffixes.items()))
 
 

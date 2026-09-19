@@ -600,6 +600,14 @@ def guidance_resolution(root: Path, paths: list[Path], policy: dict[str, Any]) -
     return [Finding(**item) for item in check(root, paths)]
 
 
+def oracle_workflow_integration(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+    """Validate the cross-project Coordinator/AWG/AWQ synthetic trace."""
+    del policy
+    from awq.oracle_workflow_integration import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 def discussion_tui(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
     """Validate discussion TUI render-state records and fail closed on absence."""
     del policy
@@ -637,6 +645,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "interaction-gate": interaction_gate,
     "discussion-reconciliation": discussion_reconciliation,
     "guidance-resolution": guidance_resolution,
+    "oracle-workflow-integration": oracle_workflow_integration,
     "discussion-tui": discussion_tui,
     "discussion-batch": discussion_batch,
 }

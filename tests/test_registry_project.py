@@ -30,6 +30,7 @@ class RegistryTests(unittest.TestCase):
         self.assertIn("core", profiles)
         self.assertIn("interaction-gates", profiles)
         self.assertIn("guidance-resolution", profiles)
+        self.assertIn("oracle-workflow-integration", profiles)
         self.assertEqual(64, len(digest))
         self.assertEqual(canonical_bytes({"b": 1, "a": 2}), b'{"a":2,"b":1}\n')
 
