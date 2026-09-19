@@ -113,3 +113,73 @@ class GuidanceResolutionTests(unittest.TestCase):
             guidance_resolution_model.transition(
                 "pending_clarification", "pending_clarification", "clarification", "contradiction"
             )
+
+    def test_each_boundary_rejects_bad_shape_or_stale_authority(self) -> None:
+        mutations: tuple[tuple[str, Any], ...] = (
+            ("discussion_id", "DISC"),
+            ("task", {}),
+            ("task", {"id": "AR-0060", "revision": True}),
+            ("event_refs", ["bad"]),
+            ("issue", "unknown"),
+            ("before_state", "unknown"),
+            ("user_result", "unknown"),
+            ("authorization", "maybe"),
+            ("formal_spec", {"status": "fail"}),
+            ("affected_ars", []),
+            ("affected_ars", [{"id": "AR-0060"}]),
+            ("limitations", []),
+            ("privacy_projection", {}),
+            ("formal_spec", {**self.value["formal_spec"], "result_sha256": "bad"}),
+            ("affected_ars", [{**self.value["affected_ars"][0], "after_revision": 1}]),
+        )
+        for field, replacement in mutations:
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            with (
+                self.subTest(field=field, replacement=replacement),
+                self.assertRaises(ProjectError),
+            ):
+                guidance_resolution.validate(value)
+        duplicate = copy.deepcopy(self.value)
+        duplicate["affected_ars"].append(copy.deepcopy(duplicate["affected_ars"][0]))
+        with self.assertRaises(ProjectError):
+            guidance_resolution.validate(duplicate)
+        authorizing = copy.deepcopy(self.value)
+        authorizing.update(
+            before_state="reopened",
+            after_state="reconciled",
+            user_result="reconciliation",
+            issue="repeated_discussion",
+            authorization="authorizing",
+        )
+        self.assertEqual(authorizing, guidance_resolution.validate(authorizing))
+
+    def test_file_errors_and_model_rejections_are_bounded(self) -> None:
+        target = self.repo.root / "quality/guidance-resolution"
+        target.mkdir(parents=True)
+        missing = target / "missing.json"
+        with self.assertRaises(ProjectError):
+            guidance_resolution.evaluate_file(
+                self.repo.root, missing.relative_to(self.repo.root).as_posix()
+            )
+        malformed = target / "malformed.json"
+        malformed.write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            guidance_resolution.evaluate_file(
+                self.repo.root, malformed.relative_to(self.repo.root).as_posix()
+            )
+        noncanonical = target / "noncanonical.json"
+        noncanonical.write_text(json.dumps(self.value, indent=2), encoding="utf-8")
+        with self.assertRaisesRegex(ProjectError, "canonical"):
+            guidance_resolution.evaluate_file(
+                self.repo.root, noncanonical.relative_to(self.repo.root).as_posix()
+            )
+        for args in (
+            ("bad", "reopened", "reopen", "contradiction"),
+            ("reopened", "bad", "reopen", "scope_change"),
+            ("reopened", "reconciled", "bad", "scope_change"),
+            ("reopened", "reopened", "reopen", "scope_change"),
+            ("pending_clarification", "reopened", "reopen", "no_op"),
+        ):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                guidance_resolution_model.transition(*args)
