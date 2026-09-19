@@ -45,7 +45,7 @@ def _git() -> str:
     return executable
 
 
-def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
+def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:  # noqa: C901
     """Detect applicable built-in profiles without mutating the project."""
     paths = tracked_files(root)
     suffixes = Counter(path.suffix or path.name for path in paths)
