@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `5be3d8fdab228723a887de7957a78d2e59f4ff3d593ac32299998fd947566588`
+Registry SHA-256: `ff3688f8ee7bc817d8f3eb8a9c4c1485129399add09c47463ce0b21231f2bcf4`
 
 ## Profiles
 
@@ -19,6 +19,7 @@ Registry SHA-256: `5be3d8fdab228723a887de7957a78d2e59f4ff3d593ac32299998fd947566
 | `github-actions` | GitHub Actions integrity, trust transitions and permissions. | 3 |
 | `guidance-resolution` | Contradiction, clarification, rejection and reopen state transitions. | 1 |
 | `interaction-gates` | Typed, privacy-safe oracle interaction-gate evidence. | 1 |
+| `oracle-workflow-integration` | Coordinator, AWG and AWQ synthetic oracle workflow integration trace. | 1 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
 | `rust` | Rust dependency-integrity baseline. | 1 |
@@ -225,7 +226,21 @@ Batched discussion points retain ranked evaluated proposals, concise implication
 - Exception policy: No exceptions for missing proposal evaluation, implication limits, formal evidence, independent response binding, or cross-point authorization.
 - Standards: NIST-SSDF-PW.7
 
-### AWQ-ORACLE-005: Discussion persistence and future-request mapping
+### AWQ-ORACLE-005: Cross-project oracle workflow integration
+
+A bounded synthetic trace proves that Coordinator task events, AWG decision semantics, and AWQ quality evidence remain ordered, revision-bound, and non-authorizing across the complete oracle workflow.
+
+- Profiles: `oracle-workflow-integration`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid trace proves only bounded public-contract composition; it does not prove user intent, implementation correctness, formal refinement, provider integration, or consumer-native gates.
+- Remediation: Provide the complete public-safe trace with every mandatory stage and distinct AWG/AWQ evidence, or keep the quality gate failed.
+- Exception policy: No exceptions for skipped stages, stale revisions, unresolved guidance, quality-only authorization, or private projections.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-006: Discussion persistence and future-request mapping
 
 Discussion journals atomically preserve every proposal and response, expose re-ask state, reject stale resumes, and classify every future request to an existing or new AR without retaining private text.
 

@@ -18,6 +18,7 @@
     ,{"name":"discussion-reconciliation","description":"Before/after discussion artifact and formal-result consistency.","requirements":["AWQ-ORACLE-002"]}
     ,{"name":"guidance-resolution","description":"Contradiction, clarification, rejection and reopen state transitions.","requirements":["AWQ-ORACLE-003"]}
     ,{"name":"discussion-batch","description":"Batched proposal, implication, user-alternative and independent response quality.","requirements":["AWQ-ORACLE-004"]}
-    ,{"name":"discussion-persistence","description":"Atomic discussion journal, safe exit, revision-bound resume, re-ask and future-request mapping.","requirements":["AWQ-ORACLE-005"]}
+    ,{"name":"discussion-persistence","description":"Atomic discussion journal, safe exit, revision-bound resume, re-ask and future-request mapping.","requirements":["AWQ-ORACLE-006"]},
+    {"name":"oracle-workflow-integration","description":"Coordinator, AWG and AWQ synthetic oracle workflow integration trace.","requirements":["AWQ-ORACLE-005"]}
   ]
 }

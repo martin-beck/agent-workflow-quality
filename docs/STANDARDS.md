@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `ba537118a7e9b1e191eab95b99052239adc0bf757b6d6df1bd91884a29e6c837`
+Standards registry SHA-256: `32f0345f550ffb5f617a8af718b7a7c0d4408b7dbfde4756bcedc238031992af`
 
 ## Pinned sources
 
@@ -46,7 +46,7 @@ Standards registry SHA-256: `ba537118a7e9b1e191eab95b99052239adc0bf757b6d6df1bd9
 
 | Requirement | Source control | Relationship | Evidence | Limitation |
 | --- | --- | --- | --- | --- |
-| [AWQ-ORACLE-005](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish filesystem crash guarantees, user intent, provider execution, network behavior, or consumer-native gate outcomes. |
+| [AWQ-ORACLE-006](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish filesystem crash guarantees, user intent, provider execution, network behavior, or consumer-native gate outcomes. |
 
 ### `discussion-reconciliation`
 
@@ -91,6 +91,12 @@ Standards registry SHA-256: `ba537118a7e9b1e191eab95b99052239adc0bf757b6d6df1bd9
 | Requirement | Source control | Relationship | Evidence | Limitation |
 | --- | --- | --- | --- | --- |
 | [AWQ-ORACLE-001](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, or certification. |
+
+### `oracle-workflow-integration`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-ORACLE-005](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, formal refinement, provider integration, or consumer-native gate outcomes. |
 
 ### `privacy`
 
