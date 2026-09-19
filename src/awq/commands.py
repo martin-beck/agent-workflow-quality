@@ -45,7 +45,7 @@ def _git() -> str:
     return executable
 
 
-def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
+def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:  # noqa: C901
     """Detect applicable built-in profiles without mutating the project."""
     paths = tracked_files(root)
     suffixes = Counter(path.suffix or path.name for path in paths)
@@ -81,6 +81,11 @@ def detected_profiles(root: Path) -> tuple[list[str], dict[str, int]]:
         for path in paths
     ):
         profiles.add("guidance-resolution")
+    if any(
+        path.relative_to(root).as_posix().startswith("quality/oracle-workflow-integration/")
+        for path in paths
+    ):
+        profiles.add("oracle-workflow-integration")
     return sorted(profiles), dict(sorted(suffixes.items()))
 
 

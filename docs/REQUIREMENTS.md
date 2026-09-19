@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `9a6928b779656eaad9ba52a7869bb7608ae769e11633b95388d54aba2c31b69a`
+Registry SHA-256: `e3efa11878a468d433fdfb3e5c285777ddfbd463b09317bd31ec6129542d7fee`
 
 ## Profiles
 
@@ -18,6 +18,7 @@ Registry SHA-256: `9a6928b779656eaad9ba52a7869bb7608ae769e11633b95388d54aba2c31b
 | `github-actions` | GitHub Actions integrity, trust transitions and permissions. | 3 |
 | `guidance-resolution` | Contradiction, clarification, rejection and reopen state transitions. | 1 |
 | `interaction-gates` | Typed, privacy-safe oracle interaction-gate evidence. | 1 |
+| `oracle-workflow-integration` | Coordinator, AWG and AWQ synthetic oracle workflow integration trace. | 1 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
 | `rust` | Rust dependency-integrity baseline. | 1 |
@@ -222,6 +223,20 @@ Batched discussion points retain ranked evaluated proposals, concise implication
 - Limitation: A valid record proves only bounded packet quality and binding shape; it does not establish user intent, implementation correctness, or formal refinement.
 - Remediation: Add a complete public-safe batched discussion quality record or keep the quality gate failed.
 - Exception policy: No exceptions for missing proposal evaluation, implication limits, formal evidence, independent response binding, or cross-point authorization.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-005: Cross-project oracle workflow integration
+
+A bounded synthetic trace proves that Coordinator task events, AWG decision semantics, and AWQ quality evidence remain ordered, revision-bound, and non-authorizing across the complete oracle workflow.
+
+- Profiles: `oracle-workflow-integration`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid trace proves only bounded public-contract composition; it does not prove user intent, implementation correctness, formal refinement, provider integration, or consumer-native gates.
+- Remediation: Provide the complete public-safe trace with every mandatory stage and distinct AWG/AWQ evidence, or keep the quality gate failed.
+- Exception policy: No exceptions for skipped stages, stale revisions, unresolved guidance, quality-only authorization, or private projections.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion

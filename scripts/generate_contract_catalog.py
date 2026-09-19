@@ -360,6 +360,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_unresolved_states_are_never_authorizing",
         "docs/GUIDANCE_RESOLUTION.md",
     ),
+    "oracle-workflow-integration": (
+        "oracle_workflow_integration",
+        "OracleWorkflowIntegrationTests",
+        "test_positive_schema_runtime_and_deterministic_evaluation",
+        "test_skipped_stale_quality_only_and_private_traces_fail_closed",
+        "docs/ORACLE_WORKFLOW_INTEGRATION.md",
+    ),
     "discussion-tui": (
         "discussion_tui",
         "DiscussionTuiTests",

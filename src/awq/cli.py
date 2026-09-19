@@ -31,6 +31,7 @@ from awq import (
     native_bundle,
     native_mapping,
     onboarding,
+    oracle_workflow_integration,
     promotion,
     refactor,
     reliability,
@@ -177,6 +178,9 @@ def parser() -> argparse.ArgumentParser:
     item = sub.add_parser("guidance-resolution-evaluate")
     item.add_argument("contract")
     _format_argument(item)
+    item = sub.add_parser("oracle-workflow-integration-evaluate")
+    item.add_argument("contract")
+    _format_argument(item)
     item = sub.add_parser("release-authenticate")
     _authenticated_arguments(item)
     _format_argument(item)
@@ -233,6 +237,9 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "discussion-tui-evaluate": lambda: discussion_tui.evaluate_file(root, args.contract),
         "discussion-batch-evaluate": lambda: discussion_batch.evaluate_file(root, args.contract),
         "guidance-resolution-evaluate": lambda: guidance_resolution.evaluate_file(
+            root, args.contract
+        ),
+        "oracle-workflow-integration-evaluate": lambda: oracle_workflow_integration.evaluate_file(
             root, args.contract
         ),
         "evidence": lambda: commands.evidence(root, args.tier),

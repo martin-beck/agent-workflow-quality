@@ -49,6 +49,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-NATIVE-BUNDLE-ASSURANCE-V2-V1` | 1 | `json-schema` | `schemas/native-bundle-assurance-v2.schema.json` | `awq.tests.native_bundle.NativeBundleTests` | [docs/NATIVE_BUNDLES.md](NATIVE_BUNDLES.md) |
 | `AWQ-CONTRACT-NATIVE-GATE-MAPPING-V1` | 1 | `json-schema` | `schemas/native-gate-mapping.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
 | `AWQ-CONTRACT-ONBOARDING-V1` | 1 | `json-schema` | `schemas/onboarding.schema.json` | `awq.tests.onboarding.OnboardingTests` | [docs/ONBOARDING.md](ONBOARDING.md) |
+| `AWQ-CONTRACT-ORACLE-WORKFLOW-INTEGRATION-V1` | 1 | `json-schema` | `schemas/oracle-workflow-integration.schema.json` | `awq.tests.oracle_workflow_integration.OracleWorkflowIntegrationTests` | [docs/ORACLE_WORKFLOW_INTEGRATION.md](ORACLE_WORKFLOW_INTEGRATION.md) |
 | `AWQ-CONTRACT-PROFILE-REGISTRY-V1` | 1 | `json-schema` | `schemas/profile-registry.schema.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
 | `AWQ-CONTRACT-PROFILES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/profiles.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
 | `AWQ-CONTRACT-PROJECT-POLICY-V3` | 3 | `json-schema` | `schemas/project-policy.schema.json` | `awq.tests.registry_project.ProjectTests` | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
