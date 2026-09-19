@@ -367,6 +367,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_stale_anchor_missing_highlight_and_unresolved_resolution_fail_closed",
         "docs/DISCUSSION_TUI.md",
     ),
+    "discussion-batch": (
+        "discussion_batch",
+        "DiscussionBatchTests",
+        "test_positive_schema_runtime_and_deterministic_evaluation",
+        "test_independent_binding_and_quality_fields_fail_closed",
+        "docs/DISCUSSION_BATCH.md",
+    ),
     "structural-refactoring": (
         "structural_refactoring",
         "StructuralRefactoringTests",
