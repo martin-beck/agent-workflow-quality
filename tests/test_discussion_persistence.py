@@ -73,3 +73,78 @@ class DiscussionPersistenceTests(unittest.TestCase):
             "missing-discussion-persistence",
             discussion_persistence.check(self.repo.root, [])[0]["code"],
         )
+
+    def test_every_persistence_boundary_has_a_hostile_fixture(self) -> None:
+        cases = [
+            ("task", None),
+            ("task", {"id": "AR-X", "revision": 1}),
+            ("task", {"id": "AR-0064", "revision": 0}),
+            ("journal_id", "bad"),
+            ("revision", 0),
+            ("status", "active"),
+            ("points", []),
+            ("points", [{"id": "POINT-X"}]),
+            ("points", [{**self.value["points"][0], "id": "bad"}]),
+            ("points", [{**self.value["points"][0], "proposals": []}]),
+            ("points", [{**self.value["points"][0], "response": {}}]),
+            (
+                "points",
+                [
+                    {
+                        **self.value["points"][0],
+                        "response": {**self.value["points"][0]["response"], "disposition": "bad"},
+                    }
+                ],
+            ),
+            ("points", [{**self.value["points"][0], "unresolved": "yes"}]),
+            ("safe_exit", {}),
+            ("safe_exit", {**self.value["safe_exit"], "commit_sha256": "bad"}),
+            ("reask", {}),
+            ("reask", {**self.value["reask"], "point_ids": ["POINT-NOPE"]}),
+            ("future_requests", [{}]),
+            ("future_requests", [{**self.value["future_requests"][0], "request_sha256": "bad"}]),
+            ("future_requests", [{**self.value["future_requests"][0], "reason": ""}]),
+            ("future_requests", [{**self.value["future_requests"][1], "ar_ref": "AR-0064"}]),
+            (
+                "future_requests",
+                [
+                    {
+                        **self.value["future_requests"][0],
+                        "classification": "existing-ar",
+                        "ar_ref": "bad",
+                    }
+                ],
+            ),
+            ("formal_spec", {}),
+            ("formal_spec", {**self.value["formal_spec"], "status": "fail"}),
+            ("formal_spec", {**self.value["formal_spec"], "result_sha256": "bad"}),
+            ("privacy_projection", {}),
+            (
+                "privacy_projection",
+                {**self.value["privacy_projection"], "redacted_fields": ["x", "x"]},
+            ),
+            ("privacy_projection", {**self.value["privacy_projection"], "redacted_fields": [""]}),
+            ("limitations", []),
+        ]
+        for field, replacement in cases:
+            value = copy.deepcopy(self.value)
+            value[field] = replacement
+            with self.subTest(field=field), self.assertRaises(ProjectError):
+                discussion_persistence.validate(value)
+
+    def test_file_parser_and_invalid_candidate_findings_are_bounded(self) -> None:
+        invalid = self.repo.root / "quality/discussion-persistence/invalid.json"
+        invalid.parent.mkdir(parents=True)
+        invalid.write_text("{", encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            discussion_persistence.evaluate_file(
+                self.repo.root, "quality/discussion-persistence/invalid.json"
+            )
+        findings = discussion_persistence.check(self.repo.root, [invalid])
+        self.assertEqual("invalid-discussion-persistence", findings[0]["code"])
+        noncanonical = self.repo.root / "quality/discussion-persistence/noncanonical.json"
+        noncanonical.write_text(json.dumps(self.value, indent=2), encoding="utf-8")
+        with self.assertRaises(ProjectError):
+            discussion_persistence.evaluate_file(
+                self.repo.root, "quality/discussion-persistence/noncanonical.json"
+            )
