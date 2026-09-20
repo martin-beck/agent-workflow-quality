@@ -633,10 +633,14 @@ def discussion_persistence(root: Path, paths: list[Path], policy: dict[str, Any]
 
     return [Finding(**item) for item in check(root, paths)]
 
-def discussion_tui_integration(root: Path, paths: list[Path], policy: dict[str, Any]) -> list[Finding]:
+
+def discussion_tui_integration(
+    root: Path, paths: list[Path], policy: dict[str, Any]
+) -> list[Finding]:
     """Validate the bounded end-to-end discussion TUI trace."""
     del policy
     from awq.discussion_tui_integration import check
+
     return [Finding(**item) for item in check(root, paths)]
 
 

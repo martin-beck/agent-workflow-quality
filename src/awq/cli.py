@@ -243,7 +243,9 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
             root, args.contract
         ),
         "discussion-tui-evaluate": lambda: discussion_tui.evaluate_file(root, args.contract),
-        "discussion-tui-integration-evaluate": lambda: discussion_tui_integration.evaluate_file(root, args.contract),
+        "discussion-tui-integration-evaluate": lambda: discussion_tui_integration.evaluate_file(
+            root, args.contract
+        ),
         "discussion-batch-evaluate": lambda: discussion_batch.evaluate_file(root, args.contract),
         "discussion-persistence-evaluate": lambda: discussion_persistence.evaluate_file(
             root, args.contract
