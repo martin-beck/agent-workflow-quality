@@ -381,6 +381,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_independent_binding_and_quality_fields_fail_closed",
         "docs/DISCUSSION_BATCH.md",
     ),
+    "discussion-persistence": (
+        "discussion_persistence",
+        "DiscussionPersistenceTests",
+        "test_positive_schema_runtime_and_cli_shape",
+        "test_stale_resume_partial_save_and_unmapped_request_fail_closed",
+        "docs/DISCUSSION_PERSISTENCE.md",
+    ),
     "structural-refactoring": (
         "structural_refactoring",
         "StructuralRefactoringTests",

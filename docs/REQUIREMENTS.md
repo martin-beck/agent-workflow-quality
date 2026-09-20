@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `e3efa11878a468d433fdfb3e5c285777ddfbd463b09317bd31ec6129542d7fee`
+Registry SHA-256: `ff3688f8ee7bc817d8f3eb8a9c4c1485129399add09c47463ce0b21231f2bcf4`
 
 ## Profiles
 
@@ -11,6 +11,7 @@ Registry SHA-256: `e3efa11878a468d433fdfb3e5c285777ddfbd463b09317bd31ec6129542d7
 | `android-jvm` | Gradle and Android dependency-integrity baseline. | 1 |
 | `core` | Portable repository baseline. | 4 |
 | `discussion-batch` | Batched proposal, implication, user-alternative and independent response quality. | 1 |
+| `discussion-persistence` | Atomic discussion journal, safe exit, revision-bound resume, re-ask and future-request mapping. | 1 |
 | `discussion-reconciliation` | Before/after discussion artifact and formal-result consistency. | 1 |
 | `docs` | Documentation structure and local integrity. | 1 |
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
@@ -237,6 +238,20 @@ A bounded synthetic trace proves that Coordinator task events, AWG decision sema
 - Limitation: A valid trace proves only bounded public-contract composition; it does not prove user intent, implementation correctness, formal refinement, provider integration, or consumer-native gates.
 - Remediation: Provide the complete public-safe trace with every mandatory stage and distinct AWG/AWQ evidence, or keep the quality gate failed.
 - Exception policy: No exceptions for skipped stages, stale revisions, unresolved guidance, quality-only authorization, or private projections.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-006: Discussion persistence and future-request mapping
+
+Discussion journals atomically preserve every proposal and response, expose re-ask state, reject stale resumes, and classify every future request to an existing or new AR without retaining private text.
+
+- Profiles: `discussion-persistence`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid record proves only bounded public journal shape; it does not prove filesystem crash guarantees, user intent, provider execution, or network behavior.
+- Remediation: Add a complete public-safe persistence record with revision-bound safe-exit and explicit future-request mappings or keep the quality gate failed.
+- Exception policy: No exceptions for partial saves, stale resume, hidden re-ask state, dropped requests, unmapped requests, or private projections.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion
