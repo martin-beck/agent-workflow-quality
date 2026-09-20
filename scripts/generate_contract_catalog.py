@@ -374,6 +374,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_stale_anchor_missing_highlight_and_unresolved_resolution_fail_closed",
         "docs/DISCUSSION_TUI.md",
     ),
+    "discussion-tui-integration": (
+        "discussion_tui_integration",
+        "DiscussionTuiIntegrationTests",
+        "test_positive_evaluation_is_deterministic",
+        "test_hostile_stage_pane_proposal_and_authorization_paths_fail",
+        "docs/DISCUSSION_TUI_INTEGRATION.md",
+    ),
     "discussion-batch": (
         "discussion_batch",
         "DiscussionBatchTests",

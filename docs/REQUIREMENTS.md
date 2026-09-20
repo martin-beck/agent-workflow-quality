@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `ff3688f8ee7bc817d8f3eb8a9c4c1485129399add09c47463ce0b21231f2bcf4`
+Registry SHA-256: `f2673939e03f094641d0a20608d4c69d53e30f4b5f9f3fe54c32dab5df8c23ca`
 
 ## Profiles
 
@@ -13,6 +13,7 @@ Registry SHA-256: `ff3688f8ee7bc817d8f3eb8a9c4c1485129399add09c47463ce0b21231f2b
 | `discussion-batch` | Batched proposal, implication, user-alternative and independent response quality. | 1 |
 | `discussion-persistence` | Atomic discussion journal, safe exit, revision-bound resume, re-ask and future-request mapping. | 1 |
 | `discussion-reconciliation` | Before/after discussion artifact and formal-result consistency. | 1 |
+| `discussion-tui-integration` | End-to-end discussion TUI trace across session, panes, proposals, persistence, reconciliation and handoff. | 1 |
 | `docs` | Documentation structure and local integrity. | 1 |
 | `formal-evidence` | Truthful bounded formal-evidence claims. | 1 |
 | `formal-model` | Bounded external formal-model execution contracts. | 1 |
@@ -252,6 +253,20 @@ Discussion journals atomically preserve every proposal and response, expose re-a
 - Limitation: A valid record proves only bounded public journal shape; it does not prove filesystem crash guarantees, user intent, provider execution, or network behavior.
 - Remediation: Add a complete public-safe persistence record with revision-bound safe-exit and explicit future-request mappings or keep the quality gate failed.
 - Exception policy: No exceptions for partial saves, stale resume, hidden re-ask state, dropped requests, unmapped requests, or private projections.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-ORACLE-007: End-to-end discussion TUI quality integration
+
+A bounded public-safe trace preserves session provenance, pane synchronization, candidate and custom proposal evaluation, persistence, reconciliation and non-authorizing future-AR handoff across the discussion TUI workflow.
+
+- Profiles: `discussion-tui-integration`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: A valid trace proves only bounded cross-contract composition; it does not prove UI behavior, user intent, implementation refinement, provider execution or consumer-native gates.
+- Remediation: Provide the complete public-safe integration trace with every required stage and explicit non-authorizing handoff, or keep the quality gate failed.
+- Exception policy: No exceptions for stale panes, skipped stages, unevaluated proposals, incomplete persistence, failed reconciliation, authorized UI selection or private projections.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion

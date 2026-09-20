@@ -634,6 +634,16 @@ def discussion_persistence(root: Path, paths: list[Path], policy: dict[str, Any]
     return [Finding(**item) for item in check(root, paths)]
 
 
+def discussion_tui_integration(
+    root: Path, paths: list[Path], policy: dict[str, Any]
+) -> list[Finding]:
+    """Validate the bounded end-to-end discussion TUI trace."""
+    del policy
+    from awq.discussion_tui_integration import check
+
+    return [Finding(**item) for item in check(root, paths)]
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -659,6 +669,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "discussion-tui": discussion_tui,
     "discussion-batch": discussion_batch,
     "discussion-persistence": discussion_persistence,
+    "discussion-tui-integration": discussion_tui_integration,
 }
 
 

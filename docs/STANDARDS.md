@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `32f0345f550ffb5f617a8af718b7a7c0d4408b7dbfde4756bcedc238031992af`
+Standards registry SHA-256: `8135ffd429bedb017e536224d2efb29472457a2f846411b251d6a0f807a0e811`
 
 ## Pinned sources
 
@@ -53,6 +53,12 @@ Standards registry SHA-256: `32f0345f550ffb5f617a8af718b7a7c0d4408b7dbfde4756bce
 | Requirement | Source control | Relationship | Evidence | Limitation |
 | --- | --- | --- | --- | --- |
 | [AWQ-ORACLE-002](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, formal refinement, or consumer-native gate outcomes. |
+
+### `discussion-tui-integration`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-ORACLE-007](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish UI behavior, user intent, implementation refinement, provider execution or consumer-native gates. |
 
 ### `docs`
 
