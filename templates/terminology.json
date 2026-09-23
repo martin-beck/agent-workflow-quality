@@ -4,14 +4,31 @@
   "formats": [".json", ".md", ".txt", ".yaml", ".yml"],
   "scope_rules": [
     {"scope": "generated", "paths": ["generated/**"]},
-    {"scope": "example", "paths": ["fixtures/**"]}
+    {"scope": "example", "paths": ["fixtures/**"]},
+    {"scope": "quotation", "paths": ["quotes/**"]}
   ],
   "terms": [
     {
-      "id": "TERM-0001",
-      "canonical": "canonical term",
-      "aliases": ["deprecated synonym"],
-      "scopes": ["normative"],
+      "id": "TERM-ROLE",
+      "canonical": "role",
+      "aliases": ["persona"],
+      "scopes": ["normative", "example"],
+      "severity": "error",
+      "case_policy": "casefold"
+    },
+    {
+      "id": "TERM-DIRECTIVE",
+      "canonical": "directive",
+      "aliases": ["instruction"],
+      "scopes": ["normative", "example"],
+      "severity": "error",
+      "case_policy": "casefold"
+    },
+    {
+      "id": "TERM-SESSION",
+      "canonical": "session",
+      "aliases": ["conversation"],
+      "scopes": ["normative", "example"],
       "severity": "error",
       "case_policy": "casefold"
     }

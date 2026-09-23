@@ -93,6 +93,33 @@ class TerminologyTests(unittest.TestCase):
         with self.assertRaises(jsonschema.ValidationError):
             jsonschema.Draft202012Validator(schema).validate({**template, "unknown": True})
 
+        self.assertEqual(
+            {"TERM-ROLE", "TERM-DIRECTIVE", "TERM-SESSION"},
+            {term["id"] for term in template["terms"]},
+        )
+        self.assertEqual(
+            {"normative", "example"},
+            {scope for term in template["terms"] for scope in term["scopes"]},
+        )
+        self.assertEqual(
+            {"example", "generated", "quotation"},
+            {rule["scope"] for rule in template["scope_rules"]},
+        )
+
+    def test_template_role_directive_session_terms_cover_example_scope(self) -> None:
+        template = json.loads((ROOT / "templates/terminology.json").read_text())
+        self.repo.json("quality/terminology.json", template)
+        document = self.repo.write(
+            "fixtures/vocabulary.md",
+            "persona instruction conversation\n",
+        )
+        findings, used = terminology.evaluate(self.repo.root, [document])
+        self.assertEqual(
+            ["TERM-DIRECTIVE", "TERM-ROLE", "TERM-SESSION"],
+            sorted(item["term"] for item in findings),
+        )
+        self.assertEqual([], used)
+
     def test_unicode_casefold_boundaries_and_minimized_finding(self) -> None:
         self.repo.write("README.md", "Use MASTER, CAFE\u0301, and masterful.\n")
         findings, _ = self.evaluate("README.md")
