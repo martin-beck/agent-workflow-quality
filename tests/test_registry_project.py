@@ -19,7 +19,13 @@ from awq.project import (
     validate_policy,
     write_initialization,
 )
-from awq.registry import RegistryError, canonical_bytes, expand_profiles, load_registry
+from awq.registry import (
+    ROLE_PROFILES,
+    RegistryError,
+    canonical_bytes,
+    expand_profiles,
+    load_registry,
+)
 from tests.support import Repository, base_policy
 
 
@@ -38,6 +44,20 @@ class RegistryTests(unittest.TestCase):
         self.assertIn("AWQ-CORE-001", expand_profiles(["core"]))
         with self.assertRaisesRegex(RegistryError, "unknown profiles"):
             expand_profiles(["missing"])
+
+    def test_role_profiles_are_deterministic_and_closed(self) -> None:
+        security_policy, security_lock = make_policy(["python"], "security")
+        self.assertEqual("security", security_policy["role"])
+        self.assertEqual("security", security_lock["role"])
+        self.assertEqual(
+            sorted(set(ROLE_PROFILES["security"]) | {"python"}), security_lock["profiles"]
+        )
+        with self.assertRaisesRegex(ProjectError, "role selection is unknown"):
+            make_policy(["core"], "unknown")
+
+    def test_policy_rejects_unknown_role(self) -> None:
+        with self.assertRaisesRegex(ProjectError, "role selection is unknown"):
+            validate_policy({**base_policy(), "role": "unknown"})
 
 
 class ProjectTests(unittest.TestCase):

@@ -429,6 +429,7 @@ def lock_integrity(root: Path, paths: list[Path], policy: dict[str, Any]) -> lis
             lock["registry_sha256"] != digest
             or lock["requirements"] != expected
             or lock["profiles"] != sorted(project["profiles"])
+            or lock.get("role", "default") != project.get("role", "default")
         ):
             return [
                 Finding(
