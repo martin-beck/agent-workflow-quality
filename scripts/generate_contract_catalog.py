@@ -220,6 +220,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "test_runtime_validators_reject_unknown_shapes",
         "docs/ARCHITECTURE.md",
     ),
+    "lock-v3": (
+        "registry_project",
+        "ProjectTests",
+        "test_policy_generation_loading_and_collision",
+        "test_runtime_validators_reject_unknown_shapes",
+        "docs/ARCHITECTURE.md",
+    ),
     "native-gate-mapping": (
         "native_mapping",
         "NativeMappingTests",
@@ -263,6 +270,13 @@ FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
         "docs/REQUIREMENTS.md",
     ),
     "project-policy": (
+        "registry_project",
+        "ProjectTests",
+        "test_policy_generation_loading_and_collision",
+        "test_runtime_validators_reject_unknown_shapes",
+        "docs/ARCHITECTURE.md",
+    ),
+    "project-policy-v4": (
         "registry_project",
         "ProjectTests",
         "test_policy_generation_loading_and_collision",
@@ -429,7 +443,9 @@ VERSIONS = {
     "formal-execution-expectation": 1,
     "formal-execution-receipt": 2,
     "project-policy": 3,
+    "project-policy-v4": 4,
     "lock": 2,
+    "lock-v3": 3,
     "release-manifest": 3,
 }
 REGISTRIES = {
@@ -451,7 +467,9 @@ def _entry(identifier: str, path: str, family: str, kind: str) -> dict[str, Any]
     module, klass, positive, hostile, documentation = FAMILIES[family]
     version = VERSIONS.get(family, 1)
     fixture_path = f"tests/test_{module}.py"
-    slug = identifier.upper().replace("_", "-")
+    slug = {"lock-v3": "LOCK", "project-policy-v4": "PROJECT-POLICY"}.get(
+        identifier, identifier.upper().replace("_", "-")
+    )
     return {
         "id": f"AWQ-CONTRACT-{slug}-V{version}",
         "version": version,
