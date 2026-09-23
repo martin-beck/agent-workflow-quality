@@ -34,7 +34,8 @@ repository policy; they are never enabled automatically. See the
 [schema adapter family](SCHEMA_ADAPTERS.md), [Rust adapter family](RUST_ADAPTERS.md),
 [Android/JVM adapter family](ANDROID_JVM_ADAPTERS.md), and
 [formal-model adapter family](FORMAL_ADAPTERS.md), and
-[repository-security adapter family](REPOSITORY_SECURITY_ADAPTERS.md) for exact pins and
+[repository-security adapter family](REPOSITORY_SECURITY_ADAPTERS.md), and
+[acceptance specification adapter family](SPECIFICATION_ADAPTERS.md) for exact pins and
 configuration contracts.
 
 The current adapter data is loaded from the versioned `src/awq/data/adapter_catalog_v2.json`

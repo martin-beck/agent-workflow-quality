@@ -1385,6 +1385,34 @@
           "input_mode": "tracked-shell"
         }
       ]
+    },
+    {
+      "id": "specification",
+      "title": "Acceptance specification adapters",
+      "description": "Reviewed offline execution of repository-owned acceptance predicates with exact tool pins and bounded results.",
+      "assumptions": [
+        "Acceptance specifications are repository-owned JSON and the checked wrapper evaluates only the declared predicate set.",
+        "The project installs the exact reviewed specification checker before invoking AWQ; AWQ never installs tools or evaluates predicates itself.",
+        "A predicate result is a contract-test observation and does not replace the consumer's native acceptance gates."
+      ],
+      "contracts": [
+        {
+          "id": "ADAPTER-SPECIFICATION-ACCEPTANCE",
+          "tool": "awq-spec-check",
+          "version": "1.0.0",
+          "version_argv": ["awq-spec-check", "--version"],
+          "version_output": "awq-spec-check 1.0.0",
+          "argv": ["awq-spec-check", "acceptance", "quality/acceptance-spec.json"],
+          "timeout_seconds": 300,
+          "tier": "pr",
+          "evidence": "contract-test",
+          "limitation": "The pinned checker evaluates only the repository-owned acceptance predicates named by one specification file; it does not prove native gate behavior, completeness of the specification, or implementation refinement.",
+          "remediation": "Repair the acceptance specification or predicate implementation, rerun the exact pinned checker, and retain the consumer's native acceptance gates.",
+          "formats": [".json"],
+          "config_paths": ["quality/acceptance-spec.json"],
+          "input_mode": "explicit"
+        }
+      ]
     }
   ]
 }
