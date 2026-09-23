@@ -116,7 +116,7 @@ class TerminologyTests(unittest.TestCase):
         findings, used = terminology.evaluate(self.repo.root, [document])
         self.assertEqual(
             ["TERM-DIRECTIVE", "TERM-ROLE", "TERM-SESSION"],
-            sorted(item["term"] for item in findings),
+            sorted(item["message"].split(" ", 1)[0] for item in findings),
         )
         self.assertEqual([], used)
 
