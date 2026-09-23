@@ -401,8 +401,7 @@ def validate_lock(value: dict[str, Any]) -> None:
     """Validate the exact lock shape."""
     expected = LOCK_KEYS | ({"receipt"} if value.get("schema_version") == 2 else set())
     if set(value) not in (expected, expected | {"role"}) or (
-        type(value.get("schema_version")) is not int
-        or value.get("schema_version") not in {1, 2}
+        type(value.get("schema_version")) is not int or value.get("schema_version") not in {1, 2}
     ):
         raise ProjectError("policy lock has unknown, missing or unsupported fields")
     if "role" in value and (
