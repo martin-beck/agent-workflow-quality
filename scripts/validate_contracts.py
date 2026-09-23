@@ -379,6 +379,8 @@ def main() -> int:
     validate({**policy, "adapters": [adapter]}, "project-policy.schema.json")
     validate(policy, "project-policy.schema.json")
     validate(lock, "lock.schema.json")
+    validate(policy, "project-policy-v4.schema.json")
+    validate(lock, "lock-v3.schema.json")
     validate(adapter, "adapter-contract.schema.json")
     validate(adapter_result, "adapter-result.schema.json")
     validate(release, "release-manifest.schema.json")

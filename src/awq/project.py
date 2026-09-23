@@ -17,7 +17,14 @@ from urllib.parse import urlsplit
 
 from awq import __version__
 from awq.adapters import AdapterError, validate_adapter
-from awq.registry import EVIDENCE_CLASSES, TIERS, canonical_bytes, expand_profiles, load_registry
+from awq.registry import (
+    EVIDENCE_CLASSES,
+    ROLE_PROFILES,
+    TIERS,
+    canonical_bytes,
+    expand_profiles,
+    load_registry,
+)
 
 POLICY_KEYS = {
     "schema_version",
@@ -218,10 +225,13 @@ def _validate_adapters(adapters: list[object]) -> None:
 
 def validate_policy(value: dict[str, Any]) -> None:
     """Validate fields required at runtime without third-party dependencies."""
-    if set(value) != POLICY_KEYS or value.get("schema_version") != 3:
+    if set(value) not in (POLICY_KEYS, POLICY_KEYS | {"role"}) or value.get("schema_version") != 3:
         raise ProjectError("project policy has unknown, missing or unsupported fields")
     if value.get("unknown_formats") not in {"error", "advisory"}:
         raise ProjectError("unknown_formats must be error or advisory")
+    role = value.get("role", "default")
+    if not isinstance(role, str) or role not in ROLE_PROFILES:
+        raise ProjectError("role selection is unknown; choose a supported role")
     profiles = value.get("profiles")
     if (
         not isinstance(profiles, list)
@@ -390,12 +400,14 @@ def _validate_exceptions(exceptions: list[object], governance: dict[str, Any]) -
 def validate_lock(value: dict[str, Any]) -> None:
     """Validate the exact lock shape."""
     expected = LOCK_KEYS | ({"receipt"} if value.get("schema_version") == 2 else set())
-    if (
-        set(value) != expected
-        or type(value.get("schema_version")) is not int
-        or value.get("schema_version") not in {1, 2}
+    if set(value) not in (expected, expected | {"role"}) or (
+        type(value.get("schema_version")) is not int or value.get("schema_version") not in {1, 2}
     ):
         raise ProjectError("policy lock has unknown, missing or unsupported fields")
+    if "role" in value and (
+        not isinstance(value["role"], str) or value["role"] not in ROLE_PROFILES
+    ):
+        raise ProjectError("policy lock role selection is unknown")
     if not isinstance(value.get("awq_version"), str) or not re.fullmatch(
         r"[0-9]+\.[0-9]+\.[0-9]+", value["awq_version"]
     ):
@@ -439,13 +451,18 @@ def load_project(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     return policy, lock
 
 
-def make_policy(profiles: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
+def make_policy(
+    profiles: list[str], role: str = "default"
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Create a deterministic consumer policy and expanded lock."""
-    selected = sorted(set(profiles))
+    if role not in ROLE_PROFILES:
+        raise ProjectError("role selection is unknown; choose a supported role")
+    selected = sorted(set(profiles) | set(ROLE_PROFILES[role]))
     expanded = expand_profiles(selected)
     _, _, digest = load_registry()
     policy = {
         "schema_version": 3,
+        "role": role,
         "profiles": selected,
         "unknown_formats": "error",
         "fixture_paths": ["fixtures/broken"],
@@ -464,6 +481,7 @@ def make_policy(profiles: list[str]) -> tuple[dict[str, Any], dict[str, Any]]:
         "registry_sha256": digest,
         "profiles": selected,
         "requirements": expanded,
+        "role": role,
     }
     return policy, lock
 

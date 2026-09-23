@@ -60,6 +60,12 @@ class CommandTests(unittest.TestCase):
         with self.assertRaises(ProjectError):
             commands.explain("AWQ-NOPE-999")
 
+    def test_role_init_selects_and_locks_role_baseline(self) -> None:
+        result = commands.initialize(self.repo.root, ["python"], False, "documentation")
+        self.assertEqual("documentation", load_project(self.repo.root)[0]["role"])
+        self.assertEqual("documentation", load_project(self.repo.root)[1]["role"])
+        self.assertIn("docs", result["profiles"])
+
     def test_inspect_recommends_opt_in_terminology_contract(self) -> None:
         self.repo.json(
             "quality/terminology.json",

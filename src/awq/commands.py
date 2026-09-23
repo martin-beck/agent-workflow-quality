@@ -101,10 +101,12 @@ def inspect(root: Path) -> dict[str, Any]:
     }
 
 
-def initialize(root: Path, profiles: list[str] | None, dry_run: bool) -> dict[str, Any]:
+def initialize(
+    root: Path, profiles: list[str] | None, dry_run: bool, role: str = "default"
+) -> dict[str, Any]:
     """Plan or create a deterministic consumer policy."""
     selected = profiles or detected_profiles(root)[0]
-    policy, lock = make_policy(selected)
+    policy, lock = make_policy(selected, role)
     files = ["quality/awq.json", "quality/awq.lock.json", "tools/awq"]
     if not dry_run:
         files = write_initialization(root, policy, lock)
@@ -312,8 +314,10 @@ def doctor(root: Path) -> dict[str, Any]:
                 "message": "lock registry digest differs from installed registry",
             }
         )
-    if lock["profiles"] != sorted(policy["profiles"]) or lock["requirements"] != expand_profiles(
-        policy["profiles"]
+    if (
+        lock.get("role", "default") != policy.get("role", "default")
+        or lock["profiles"] != sorted(policy["profiles"])
+        or lock["requirements"] != expand_profiles(policy["profiles"])
     ):
         findings.append(
             {"code": "lock-drift", "message": "lock expansion differs from project policy"}

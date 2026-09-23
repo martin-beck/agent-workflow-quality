@@ -47,6 +47,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-INTERACTION-GATE-V1` | 1 | `json-schema` | `schemas/interaction-gate.schema.json` | `awq.tests.interaction_gate.InteractionGateTests` | [docs/ORACLE_INTERACTION_GATES.md](ORACLE_INTERACTION_GATES.md) |
 | `AWQ-CONTRACT-LIFECYCLE-MODEL-V1` | 1 | `json-schema` | `schemas/lifecycle-model.schema.json` | `awq.tests.lifecycle_model.LifecycleTests` | [docs/FORMAL_ASSURANCE.md](FORMAL_ASSURANCE.md) |
 | `AWQ-CONTRACT-LOCK-V2` | 2 | `json-schema` | `schemas/lock.schema.json` | `awq.tests.registry_project.ProjectTests` | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
+| `AWQ-CONTRACT-LOCK-V3` | 3 | `json-schema` | `schemas/lock-v3.schema.json` | `awq.tests.registry_project.ProjectTests` | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
 | `AWQ-CONTRACT-NATIVE-BUNDLE-ASSURANCE-V1` | 1 | `json-schema` | `schemas/native-bundle-assurance.schema.json` | `awq.tests.native_bundle.NativeBundleTests` | [docs/NATIVE_BUNDLES.md](NATIVE_BUNDLES.md) |
 | `AWQ-CONTRACT-NATIVE-BUNDLE-ASSURANCE-V2-V1` | 1 | `json-schema` | `schemas/native-bundle-assurance-v2.schema.json` | `awq.tests.native_bundle.NativeBundleTests` | [docs/NATIVE_BUNDLES.md](NATIVE_BUNDLES.md) |
 | `AWQ-CONTRACT-NATIVE-GATE-MAPPING-V1` | 1 | `json-schema` | `schemas/native-gate-mapping.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
@@ -55,6 +56,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-PROFILE-REGISTRY-V1` | 1 | `json-schema` | `schemas/profile-registry.schema.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
 | `AWQ-CONTRACT-PROFILES-REGISTRY-V1` | 1 | `structured-registry` | `src/awq/data/profiles.json` | `awq.tests.registry_project.RegistryTests` | [docs/REQUIREMENTS.md](REQUIREMENTS.md) |
 | `AWQ-CONTRACT-PROJECT-POLICY-V3` | 3 | `json-schema` | `schemas/project-policy.schema.json` | `awq.tests.registry_project.ProjectTests` | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
+| `AWQ-CONTRACT-PROJECT-POLICY-V4` | 4 | `json-schema` | `schemas/project-policy-v4.schema.json` | `awq.tests.registry_project.ProjectTests` | [docs/ARCHITECTURE.md](ARCHITECTURE.md) |
 | `AWQ-CONTRACT-PYTHON-REFACTOR-V1` | 1 | `json-schema` | `schemas/python-refactor.schema.json` | `awq.tests.refactor.RefactorTests` | [docs/PYTHON_REFACTORING.md](PYTHON_REFACTORING.md) |
 | `AWQ-CONTRACT-REFINEMENT-MAP-V1` | 1 | `json-schema` | `schemas/refinement-map.schema.json` | `awq.tests.refinement.RefinementTests` | [docs/FORMAL_ASSURANCE.md](FORMAL_ASSURANCE.md) |
 | `AWQ-CONTRACT-RELEASE-LICENSE-INVENTORY-V1` | 1 | `json-schema` | `schemas/release-license-inventory.schema.json` | `awq.tests.sbom.SbomTests` | [docs/SBOM.md](SBOM.md) |
