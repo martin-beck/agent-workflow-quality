@@ -43,7 +43,7 @@ from awq import (
     vulnerability_supply,
 )
 from awq.project import ProjectError, confined_root
-from awq.registry import TIERS, RegistryError
+from awq.registry import ROLE_PROFILES, TIERS, RegistryError
 from awq.release import ReleaseError
 
 
@@ -66,6 +66,7 @@ def parser() -> argparse.ArgumentParser:
     _format_argument(item)
     item = sub.add_parser("init")
     item.add_argument("--profiles", nargs="+")
+    item.add_argument("--role", choices=sorted(ROLE_PROFILES), default="default")
     item.add_argument("--dry-run", action="store_true")
     _format_argument(item)
     item = sub.add_parser("plan")
@@ -220,7 +221,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         ),
         "assurance-plan-check": lambda: assurance_plan.evaluate_file(root, args.contract),
         "assurance-plan-diff": lambda: assurance_plan.diff_files(root, args.base, args.head),
-        "init": lambda: commands.initialize(root, args.profiles, args.dry_run),
+        "init": lambda: commands.initialize(root, args.profiles, args.dry_run, args.role),
         "plan": lambda: commands.plan(root, args.changed, args.base),
         "check": lambda: commands.check(root, args.tier, args.requirement),
         "promotion-evaluate": lambda: promotion.evaluate_file(root, args.evidence, args.as_of),

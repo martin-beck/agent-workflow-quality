@@ -3,7 +3,10 @@
 Agent Workflow Quality is a policy bundle and deterministic execution engine, not a replacement for
 a project's domain tests. The package contains the canonical requirement registry and profiles. A
 consumer checks in `quality/awq.json` plus `quality/awq.lock.json`; the lock expands every selected
-profile and binds it to the registry SHA-256 and AWQ version.
+profile and binds it to the registry SHA-256 and AWQ version. A policy may select one of the closed
+`default`, `security`, or `documentation` roles; the role contributes its reviewed baseline profiles
+before explicit profiles are expanded. Unknown roles fail closed and the selected role is repeated in
+the lock so drift is visible.
 
 `awq standards` and `awq explain` expose deterministic machine-readable traceability; generated
 `docs/STANDARDS.md` provides the human review surface and explicit gap and drift sections.

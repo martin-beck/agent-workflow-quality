@@ -59,6 +59,13 @@ EVIDENCE_CLASSES = {
     "bounded-model",
     "environmental",
 }
+# Roles are a small, closed vocabulary.  A role contributes its reviewed
+# baseline profiles; callers may still select additional profiles explicitly.
+ROLE_PROFILES = {
+    "default": ("core",),
+    "security": ("core", "github-actions", "privacy", "schemas", "supply-chain"),
+    "documentation": ("core", "docs", "terminology"),
+}
 RELATIONSHIPS = {"aligned", "supports", "related"}
 ALIGNMENT_CLAIM = "alignment-not-certification"
 FLOATING_EDITIONS = {"current", "head", "latest", "main", "master", "stable", "tip", "trunk"}
