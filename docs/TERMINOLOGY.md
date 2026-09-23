@@ -6,6 +6,13 @@ The opt-in `terminology` profile applies `AWQ-TERM-001` to a consumer-owned
 [starter template](../templates/terminology.json); it does not embed a product's preferred words.
 Coordinator and domain vocabulary therefore remains consumer data.
 
+The starter registry demonstrates the shared workflow vocabulary used by the
+quality contracts: `role`, `directive`, and `session`. These terms are
+checked in both normative and example scopes. `persona`, `instruction`, and
+`conversation` are forbidden aliases in those scopes; consumers may replace
+the starter terms with their own reviewed vocabulary while retaining the
+closed schema and bounded scope rules.
+
 Each term has a stable identifier, canonical label, forbidden aliases, severity, case policy, and
 the lexical scopes where it applies. `exact` preserves case and `casefold` uses deterministic
 Unicode NFC normalization plus Unicode case folding. Matching observes Unicode word boundaries, so
@@ -16,7 +23,8 @@ scanned because it necessarily declares forbidden aliases.
 
 The contract selects from Markdown, JSON, plain text, and YAML suffixes. Every selected file starts
 in `default_scope`; bounded repository-relative glob rules can classify whole paths as `example`,
-`quotation`, or `generated`. A tracked path matching rules for different scopes fails closed.
+`quotation`, or `generated`. A tracked path matching rules for different scopes fails closed. The
+starter registry reserves `fixtures/**` for examples and `quotes/**` for quotations.
 
 Within otherwise normative or generated Markdown, fenced code is `example` and block quotes are
 `quotation`. JSON and the other selected text formats are checked lexically in their path scope;
