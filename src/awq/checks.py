@@ -81,6 +81,24 @@ FORMAL_EVIDENCE_CLASSES = {
     "bounded-model",
     "environmental",
 }
+PIPELINE_PATH = "quality/pipeline.json"
+PIPELINE_ORDER = [
+    "coordinator-establish",
+    "quality",
+    "guidance",
+    "ui",
+    "children",
+    "coordinator-complete",
+]
+PIPELINE_START = ["manifest", "all_child_instructions", "applicable_child_state"]
+PIPELINE_EVIDENCE = {
+    "coordinator-establish": ["task", "owner", "dependencies", "revision"],
+    "quality": ["requirements", "gates", "evidence"],
+    "guidance": ["decision", "alternatives", "revision"],
+    "ui": ["session", "interaction", "revision"],
+    "children": ["native_checks", "artifacts", "limitations"],
+    "coordinator-complete": ["progress", "completion", "revision"],
+}
 
 
 @dataclass(frozen=True)
@@ -645,6 +663,84 @@ def discussion_tui_integration(
     return [Finding(**item) for item in check(root, paths)]
 
 
+def pipeline_enforcement(  # noqa: C901
+    root: Path, paths: list[Path], policy: dict[str, Any]
+) -> list[Finding]:
+    """Validate the closed umbrella pipeline declaration without executing it."""
+    del policy
+    path = next((item for item in paths if _relative(root, item) == PIPELINE_PATH), None)
+    if path is None:
+        return [Finding("pipeline-missing", PIPELINE_PATH, "pipeline contract is required")]
+    try:
+        value = json.loads(
+            _read_text(path) or "",
+            object_pairs_hook=_unique_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (TypeError, ValueError, RecursionError):
+        return [Finding("pipeline-invalid", PIPELINE_PATH, "pipeline contract is invalid JSON")]
+    required = {"schema_version", "start", "order", "no_skip", "stages"}
+    if not isinstance(value, dict) or set(value) != required:
+        return [
+            Finding(
+                "pipeline-fields", PIPELINE_PATH, "pipeline contract has unknown or missing fields"
+            )
+        ]
+    if (
+        value["schema_version"] != 1
+        or value["start"] != PIPELINE_START
+        or value["order"] != PIPELINE_ORDER
+    ):
+        return [
+            Finding(
+                "pipeline-order",
+                PIPELINE_PATH,
+                "pipeline start prerequisites or order do not match the reviewed contract",
+            )
+        ]
+    if value["no_skip"] is not True:
+        return [
+            Finding(
+                "pipeline-bypass", PIPELINE_PATH, "pipeline no-skip enforcement must be enabled"
+            )
+        ]
+    stages = value["stages"]
+    if not isinstance(stages, list) or len(stages) != len(PIPELINE_ORDER):
+        return [
+            Finding(
+                "pipeline-skip",
+                PIPELINE_PATH,
+                "pipeline stages must contain every ordered stage exactly once",
+            )
+        ]
+    if [item.get("id") for item in stages if isinstance(item, dict)] != PIPELINE_ORDER:
+        return [
+            Finding(
+                "pipeline-skip",
+                PIPELINE_PATH,
+                "pipeline stages must contain every ordered stage exactly once",
+            )
+        ]
+    for stage in stages:
+        if not isinstance(stage, dict) or set(stage) != {"id", "evidence"}:
+            return [
+                Finding(
+                    "pipeline-evidence",
+                    PIPELINE_PATH,
+                    "each pipeline stage requires its complete evidence list",
+                )
+            ]
+        if PIPELINE_EVIDENCE.get(stage["id"]) != stage["evidence"]:
+            return [
+                Finding(
+                    "pipeline-evidence",
+                    PIPELINE_PATH,
+                    "each pipeline stage requires its complete evidence list",
+                )
+            ]
+    return []
+
+
 CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] = {
     "portable-text": portable_text,
     "path-integrity": path_integrity,
@@ -671,6 +767,7 @@ CHECKS: dict[str, Callable[[Path, list[Path], dict[str, Any]], list[Finding]]] =
     "discussion-batch": discussion_batch,
     "discussion-persistence": discussion_persistence,
     "discussion-tui-integration": discussion_tui_integration,
+    "pipeline-enforcement": pipeline_enforcement,
 }
 
 

@@ -4,7 +4,7 @@ This file is generated from version-pinned control sources and reviewed mappings
 Mappings express alignment only. They do not assert certification, compliance, or a
 framework maturity level.
 
-Standards registry SHA-256: `8135ffd429bedb017e536224d2efb29472457a2f846411b251d6a0f807a0e811`
+Standards registry SHA-256: `cfbfe38235986b89e077b01ed16a8236863d97a1c9542468d3c908ccc3b982c2`
 
 ## Pinned sources
 
@@ -103,6 +103,12 @@ Standards registry SHA-256: `8135ffd429bedb017e536224d2efb29472457a2f846411b251d
 | Requirement | Source control | Relationship | Evidence | Limitation |
 | --- | --- | --- | --- | --- |
 | [AWQ-ORACLE-005](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The contract does not establish user intent, implementation correctness, formal refinement, provider integration, or consumer-native gate outcomes. |
+
+### `pipeline-enforcement`
+
+| Requirement | Source control | Relationship | Evidence | Limitation |
+| --- | --- | --- | --- | --- |
+| [AWQ-PIPELINE-001](REQUIREMENTS.md) | [NIST-SSDF PW.7.2](https://doi.org/10.6028/NIST.SP.800-218) | `supports` | `contract-test` | The declaration does not prove remote execution or native gate success. |
 
 ### `privacy`
 
