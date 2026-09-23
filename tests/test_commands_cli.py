@@ -134,6 +134,66 @@ class CommandTests(unittest.TestCase):
             {"weakening", "review"}, {item["classification"] for item in result["changes"]}
         )
 
+    def test_pipeline_policy_revision_classifications(self) -> None:
+        contract = {
+            "start": ["manifest"],
+            "order": ["quality"],
+            "no_skip": True,
+            "stages": [{"id": "quality", "evidence": ["requirements", "gates"]}],
+        }
+        changes: list[dict[str, str]] = []
+        with mock.patch.object(
+            commands, "_git_json", side_effect=[ProjectError("missing"), contract]
+        ):
+            commands._compare_pipeline_revisions(self.repo.root, "base", "head", changes)
+        self.assertEqual("strengthening", changes[0]["classification"])
+
+        changes = []
+        with mock.patch.object(
+            commands, "_git_json", side_effect=[contract, ProjectError("missing")]
+        ):
+            commands._compare_pipeline_revisions(self.repo.root, "base", "head", changes)
+        self.assertEqual("weakening", changes[0]["classification"])
+
+        changes = []
+        with mock.patch.object(
+            commands, "_git_json", side_effect=[ProjectError("missing"), ProjectError("missing")]
+        ):
+            commands._compare_pipeline_revisions(self.repo.root, "base", "head", changes)
+        self.assertEqual([], changes)
+
+        changed = {
+            **contract,
+            "start": ["manifest", "state"],
+            "order": ["quality", "guidance"],
+            "no_skip": False,
+            "stages": [{"id": "quality", "evidence": ["requirements"]}],
+        }
+        changes = []
+        with mock.patch.object(commands, "_git_json", side_effect=[contract, changed]):
+            commands._compare_pipeline_revisions(self.repo.root, "base", "head", changes)
+        self.assertEqual({"weakening"}, {item["classification"] for item in changes})
+        self.assertEqual(
+            {"pipeline.order", "pipeline.no_skip", "pipeline.stages.quality.evidence"},
+            {item["field"] for item in changes},
+        )
+
+        strengthened = {
+            **contract,
+            "no_skip": True,
+            "stages": [{"id": "quality", "evidence": ["requirements", "gates", "evidence"]}],
+        }
+        changes = []
+        with mock.patch.object(commands, "_git_json", side_effect=[changed, strengthened]):
+            commands._compare_pipeline_revisions(self.repo.root, "base", "head", changes)
+        self.assertIn("strengthening", {item["classification"] for item in changes})
+        self.assertIn("review", {item["classification"] for item in changes})
+
+        changes = []
+        with mock.patch.object(commands, "_git_json", side_effect=[contract, contract]):
+            commands._compare_pipeline_revisions(self.repo.root, "base", "head", changes)
+        self.assertEqual([], changes)
+
     def test_cli_json_success_failure_and_error(self) -> None:
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):

@@ -41,6 +41,60 @@ class CheckTests(unittest.TestCase):
         self.assertEqual("non-lf", self.run_one(checks.portable_text, script)[0].code)
         self.assertEqual([], self.run_one(checks.classified_formats, script))
 
+    def test_pipeline_order_and_stage_evidence(self) -> None:
+        stages = [
+            {"id": stage, "evidence": checks.PIPELINE_EVIDENCE[stage]}
+            for stage in checks.PIPELINE_ORDER
+        ]
+        contract = {
+            "schema_version": 1,
+            "start": checks.PIPELINE_START,
+            "order": checks.PIPELINE_ORDER,
+            "no_skip": True,
+            "stages": stages,
+        }
+        path = self.repo.json(checks.PIPELINE_PATH, contract)
+        self.assertEqual([], self.run_one(checks.pipeline_enforcement, path))
+
+        bypass = dict(contract, no_skip=False)
+        path = self.repo.json(checks.PIPELINE_PATH, bypass)
+        self.assertEqual("pipeline-bypass", self.run_one(checks.pipeline_enforcement, path)[0].code)
+
+        skipped = dict(contract, order=checks.PIPELINE_ORDER[:-1])
+        path = self.repo.json(checks.PIPELINE_PATH, skipped)
+        self.assertEqual("pipeline-order", self.run_one(checks.pipeline_enforcement, path)[0].code)
+
+        incomplete = [dict(item) for item in stages]
+        incomplete[1] = {"id": "quality", "evidence": ["requirements"]}
+        path = self.repo.json(checks.PIPELINE_PATH, dict(contract, stages=incomplete))
+        self.assertEqual(
+            "pipeline-evidence", self.run_one(checks.pipeline_enforcement, path)[0].code
+        )
+
+        self.assertEqual("pipeline-missing", self.run_one(checks.pipeline_enforcement)[0].code)
+        path = self.repo.write(checks.PIPELINE_PATH, "{")
+        self.assertEqual(
+            "pipeline-invalid", self.run_one(checks.pipeline_enforcement, path)[0].code
+        )
+        path = self.repo.json(checks.PIPELINE_PATH, [contract])
+        self.assertEqual("pipeline-fields", self.run_one(checks.pipeline_enforcement, path)[0].code)
+        path = self.repo.json(checks.PIPELINE_PATH, {**contract, "unexpected": True})
+        self.assertEqual("pipeline-fields", self.run_one(checks.pipeline_enforcement, path)[0].code)
+        path = self.repo.json(checks.PIPELINE_PATH, dict(contract, schema_version=2))
+        self.assertEqual("pipeline-order", self.run_one(checks.pipeline_enforcement, path)[0].code)
+        path = self.repo.json(checks.PIPELINE_PATH, dict(contract, stages=[]))
+        self.assertEqual("pipeline-skip", self.run_one(checks.pipeline_enforcement, path)[0].code)
+        path = self.repo.json(checks.PIPELINE_PATH, dict(contract, stages={}))
+        self.assertEqual("pipeline-skip", self.run_one(checks.pipeline_enforcement, path)[0].code)
+        path = self.repo.json(checks.PIPELINE_PATH, dict(contract, stages=[*stages, stages[-1]]))
+        self.assertEqual("pipeline-skip", self.run_one(checks.pipeline_enforcement, path)[0].code)
+        malformed = json.loads(json.dumps(stages))
+        malformed[0]["extra"] = 1
+        path = self.repo.json(checks.PIPELINE_PATH, dict(contract, stages=malformed))
+        self.assertEqual(
+            "pipeline-evidence", self.run_one(checks.pipeline_enforcement, path)[0].code
+        )
+
     def test_path_integrity(self) -> None:
         first = self.repo.write("Name.txt", "one\n")
         second = self.repo.write("name.txt", "two\n")

@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 
 from awq import __version__
 from awq.adapters import AdapterError, load_adapter_catalog, run_adapter
-from awq.checks import run_checks
+from awq.checks import PIPELINE_PATH, run_checks
 from awq.project import (
     EXCEPTION_KEYS,
     POLICY_KEYS,
@@ -564,6 +564,11 @@ def policy_diff(root: Path, base: str, head: str) -> dict[str, Any]:
     validate_lock(new_lock)
     changes: list[dict[str, str]] = []
     _compare_policy(old_policy, new_policy, changes)
+    if (
+        "pipeline-enforcement" in old_policy["profiles"]
+        or "pipeline-enforcement" in new_policy["profiles"]
+    ):
+        _compare_pipeline_revisions(root, base, head, changes)
     _compare_lock(old_lock, new_lock, changes)
     try:
         old_claims = _git_json(root, base, "src/awq/data/capability_claims.json")
@@ -855,6 +860,56 @@ def _compare_policy(
     _compare_adapters(old["adapters"], new["adapters"], changes)
     _compare_extensions(old["extensions"], new["extensions"], changes)
     _compare_exceptions(old["exceptions"], new["exceptions"], changes)
+
+
+def _compare_pipeline_revisions(
+    root: Path, base: str, head: str, changes: list[dict[str, str]]
+) -> None:
+    """Classify pipeline order, no-skip and evidence changes as policy semantics."""
+    try:
+        old = _git_json(root, base, PIPELINE_PATH)
+    except ProjectError:
+        old = None
+    try:
+        new = _git_json(root, head, PIPELINE_PATH)
+    except ProjectError:
+        new = None
+    if old is None and new is not None:
+        _change(changes, "strengthening", "pipeline", "added pipeline enforcement contract")
+        return
+    if old is not None and new is None:
+        _change(changes, "weakening", "pipeline", "removed pipeline enforcement contract")
+        return
+    if old is None or new is None:
+        return
+    if old.get("order") != new.get("order") or old.get("start") != new.get("start"):
+        _change(
+            changes, "weakening", "pipeline.order", "pipeline order or start prerequisites changed"
+        )
+    if old.get("no_skip") != new.get("no_skip"):
+        classification = "weakening" if new.get("no_skip") is not True else "strengthening"
+        _change(changes, classification, "pipeline.no_skip", "pipeline bypass rule changed")
+    old_stages = {
+        item["id"]: item
+        for item in old.get("stages", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    new_stages = {
+        item["id"]: item
+        for item in new.get("stages", [])
+        if isinstance(item, dict) and isinstance(item.get("id"), str)
+    }
+    for stage in sorted(old_stages.keys() & new_stages.keys()):
+        old_evidence = old_stages[stage].get("evidence", [])
+        new_evidence = new_stages[stage].get("evidence", [])
+        if old_evidence != new_evidence:
+            classification = "weakening" if set(new_evidence) < set(old_evidence) else "review"
+            _change(
+                changes,
+                classification,
+                f"pipeline.stages.{stage}.evidence",
+                "stage evidence requirements changed",
+            )
 
 
 def _compare_lock(old: dict[str, Any], new: dict[str, Any], changes: list[dict[str, str]]) -> None:

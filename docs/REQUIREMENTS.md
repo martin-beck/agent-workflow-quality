@@ -2,7 +2,7 @@
 
 This file is generated from the registry consumed by AWQ. Do not edit it directly.
 
-Registry SHA-256: `f2673939e03f094641d0a20608d4c69d53e30f4b5f9f3fe54c32dab5df8c23ca`
+Registry SHA-256: `3ed2fa648ab65b2df367ece533b07d677c1967ccfe75043da3142bfcce47600a`
 
 ## Profiles
 
@@ -21,6 +21,7 @@ Registry SHA-256: `f2673939e03f094641d0a20608d4c69d53e30f4b5f9f3fe54c32dab5df8c2
 | `guidance-resolution` | Contradiction, clarification, rejection and reopen state transitions. | 1 |
 | `interaction-gates` | Typed, privacy-safe oracle interaction-gate evidence. | 1 |
 | `oracle-workflow-integration` | Coordinator, AWG and AWQ synthetic oracle workflow integration trace. | 1 |
+| `pipeline-enforcement` | Umbrella pipeline order, start prerequisites, no-skip enforcement and per-stage evidence declarations. | 1 |
 | `privacy` | Content-minimized public repository baseline. | 1 |
 | `python` | Python source baseline. | 1 |
 | `rust` | Rust dependency-integrity baseline. | 1 |
@@ -267,6 +268,20 @@ A bounded public-safe trace preserves session provenance, pane synchronization, 
 - Limitation: A valid trace proves only bounded cross-contract composition; it does not prove UI behavior, user intent, implementation refinement, provider execution or consumer-native gates.
 - Remediation: Provide the complete public-safe integration trace with every required stage and explicit non-authorizing handoff, or keep the quality gate failed.
 - Exception policy: No exceptions for stale panes, skipped stages, unevaluated proposals, incomplete persistence, failed reconciliation, authorized UI selection or private projections.
+- Standards: NIST-SSDF-PW.7
+
+### AWQ-PIPELINE-001: Ordered pipeline enforcement
+
+The reviewed pipeline contract starts with manifest, child instructions and applicable state, executes every ordered stage without skips, and records the required bounded evidence at each stage.
+
+- Profiles: `pipeline-enforcement`
+- Tier: `pr`
+- Evidence: `contract-test`
+- Deterministic: `true`
+- Network: `false`
+- Limitation: This validates the declared pipeline contract and evidence shape; it does not prove that a remote worker or native gate actually executed.
+- Remediation: Restore the exact reviewed stage order, start prerequisites, no-skip rule and per-stage evidence declarations.
+- Exception policy: No exceptions for bypassed stages, missing start prerequisites, reordered stages or missing evidence.
 - Standards: NIST-SSDF-PW.7
 
 ### AWQ-PRIV-001: Credential and private-path exclusion

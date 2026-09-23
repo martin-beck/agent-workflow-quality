@@ -20,6 +20,7 @@
     ,{"name":"discussion-batch","description":"Batched proposal, implication, user-alternative and independent response quality.","requirements":["AWQ-ORACLE-004"]}
     ,{"name":"discussion-persistence","description":"Atomic discussion journal, safe exit, revision-bound resume, re-ask and future-request mapping.","requirements":["AWQ-ORACLE-006"]},
     {"name":"oracle-workflow-integration","description":"Coordinator, AWG and AWQ synthetic oracle workflow integration trace.","requirements":["AWQ-ORACLE-005"]},
-    {"name":"discussion-tui-integration","description":"End-to-end discussion TUI trace across session, panes, proposals, persistence, reconciliation and handoff.","requirements":["AWQ-ORACLE-007"]}
+    {"name":"discussion-tui-integration","description":"End-to-end discussion TUI trace across session, panes, proposals, persistence, reconciliation and handoff.","requirements":["AWQ-ORACLE-007"]},
+    {"name":"pipeline-enforcement","description":"Umbrella pipeline order, start prerequisites, no-skip enforcement and per-stage evidence declarations.","requirements":["AWQ-PIPELINE-001"]}
   ]
 }
