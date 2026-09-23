@@ -62,7 +62,7 @@ EVIDENCE_CLASSES = {
 # Roles are a small, closed vocabulary.  A role contributes its reviewed
 # baseline profiles; callers may still select additional profiles explicitly.
 ROLE_PROFILES = {
-    "default": ("core",),
+    "default": (),
     "security": ("core", "github-actions", "privacy", "schemas", "supply-chain"),
     "documentation": ("core", "docs", "terminology"),
 }
