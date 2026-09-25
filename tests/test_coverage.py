@@ -42,3 +42,32 @@ class CoverageTests(unittest.TestCase):
                     coverage.evaluate(ROOT, path.relative_to(ROOT).as_posix())
             finally:
                 path.unlink()
+
+    def test_coverage_rejects_malformed_records_and_documents(self) -> None:
+        fixture = ROOT / "fixtures/conforming/evidence-coverage.json"
+        original = json.loads(fixture.read_text())
+        for kind in ("missing", "empty", "status", "evidence"):
+            value = json.loads(json.dumps(original))
+            if kind == "missing":
+                value["records"][0].pop("status")
+            elif kind == "empty":
+                value["records"][0]["task_id"] = ""
+            elif kind == "status":
+                value["records"][0]["status"] = "bogus"
+            else:
+                value["records"][0]["evidence_class"] = "bogus"
+            path = ROOT / "fixtures/conforming/evidence-coverage-hostile.json"
+            path.write_text(json.dumps(value), encoding="utf-8")
+            try:
+                with self.assertRaises(ProjectError):
+                    coverage.evaluate(ROOT, path.relative_to(ROOT).as_posix())
+            finally:
+                path.unlink()
+        for value in ({"schema_version": 2, "records": []}, {"schema_version": 1, "records": {}}):
+            path = ROOT / "fixtures/conforming/evidence-coverage-hostile.json"
+            path.write_text(json.dumps(value), encoding="utf-8")
+            try:
+                with self.assertRaises(ProjectError):
+                    coverage.evaluate(ROOT, path.relative_to(ROOT).as_posix())
+            finally:
+                path.unlink()
