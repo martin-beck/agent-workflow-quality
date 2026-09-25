@@ -285,6 +285,30 @@ class WorkflowTrustTests(unittest.TestCase):
         self.assertTrue(findings)
         self.assertNotIn(private_label, json.dumps(findings))
 
+    def test_directive_intake_and_rollback_trust_boundaries(self) -> None:
+        directive = workflow(event="workflow_dispatch", runner="trusted-linux").replace(
+            "    runs-on: trusted-linux\n",
+            "    runs-on: trusted-linux\n    if: github.ref == 'refs/heads/main'\n",
+        )
+        self.assertEqual(set(), self.codes(directive, ".github/workflows/directive-intake.yml"))
+
+        rollback = workflow(
+            event="workflow_dispatch", runner="trusted-linux", permission="contents: write"
+        ).replace(
+            "    runs-on: trusted-linux\n",
+            "    runs-on: trusted-linux\n    if: github.ref == 'refs/heads/main'\n",
+        )
+        self.assertEqual(
+            {"privilege-boundary"},
+            self.codes(rollback, ".github/workflows/rollback.yml"),
+        )
+
+        publication = workflow(event="push", permission="contents: write").replace(
+            '"on": push\n',
+            '"on":\n  push:\n    tags: ["v*"]\n',
+        )
+        self.assertEqual(set(), self.codes(publication, ".github/workflows/release.yml"))
+
     def test_repository_check_requires_valid_policy(self) -> None:
         repository = Repository()
         self.addCleanup(repository.close)

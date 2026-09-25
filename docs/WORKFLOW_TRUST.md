@@ -27,3 +27,9 @@ consumer's own review. They are non-authorizing: they never turn an AWQ result i
 replace a retained native gate, or block acceptance of the AWQ implementation when unavailable.
 The Android/JVM and Rust adapter contracts still validate their exact native invocations and fail
 closed when a consumer elects to run them.
+
+Directive-intake and rollback workflows use the same boundary: manual trusted
+capacity requires a protected-ref guard, rollback jobs cannot request write
+permissions, and only the separately named tag-publication workflow may cross
+the publication boundary. These examples are covered by deterministic fixtures
+and findings remain label- and expression-free.
