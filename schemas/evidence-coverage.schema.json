@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {"const": 1},
+    "records": {
+      "maxItems": 4096,
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "task_id": {"maxLength": 100, "minLength": 1, "type": "string"},
+          "role": {"enum": ["gate-evidence", "publication", "diagnostic", "release"]},
+          "requirement": {"maxLength": 100, "minLength": 1, "type": "string"},
+          "status": {"enum": ["pass", "fail", "missing", "unavailable"]},
+          "evidence_class": {"enum": ["mechanical", "contract-test", "property-or-fuzz", "bounded-model", "environmental"]}
+        },
+        "required": ["task_id", "role", "requirement", "status", "evidence_class"],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "required": ["schema_version", "records"],
+  "type": "object"
+}

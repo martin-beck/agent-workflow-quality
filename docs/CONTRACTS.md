@@ -31,6 +31,7 @@ Catalog presence is inventory evidence; only each listed executable conformance 
 | `AWQ-CONTRACT-DISCUSSION-RECONCILIATION-V1` | 1 | `json-schema` | `schemas/discussion-reconciliation.schema.json` | `awq.tests.discussion_reconciliation.DiscussionReconciliationTests` | [docs/DISCUSSION_RECONCILIATION.md](DISCUSSION_RECONCILIATION.md) |
 | `AWQ-CONTRACT-DISCUSSION-TUI-INTEGRATION-V1` | 1 | `json-schema` | `schemas/discussion-tui-integration.schema.json` | `awq.tests.discussion_tui_integration.DiscussionTuiIntegrationTests` | [docs/DISCUSSION_TUI_INTEGRATION.md](DISCUSSION_TUI_INTEGRATION.md) |
 | `AWQ-CONTRACT-DISCUSSION-TUI-V1` | 1 | `json-schema` | `schemas/discussion-tui.schema.json` | `awq.tests.discussion_tui.DiscussionTuiTests` | [docs/DISCUSSION_TUI.md](DISCUSSION_TUI.md) |
+| `AWQ-CONTRACT-EVIDENCE-COVERAGE-V1` | 1 | `json-schema` | `schemas/evidence-coverage.schema.json` | `awq.tests.coverage.CoverageTests` | [docs/EVIDENCE_COVERAGE.md](EVIDENCE_COVERAGE.md) |
 | `AWQ-CONTRACT-EVIDENCE-IDENTITY-V1` | 1 | `json-schema` | `schemas/evidence-identity.schema.json` | `awq.tests.native_mapping.NativeMappingTests` | [docs/NATIVE_GATE_MAPPINGS.md](NATIVE_GATE_MAPPINGS.md) |
 | `AWQ-CONTRACT-EVIDENCE-LIFECYCLE-V1` | 1 | `json-schema` | `schemas/evidence-lifecycle.schema.json` | `awq.tests.evidence_lifecycle.EvidenceLifecycleTests` | [docs/EVIDENCE_LIFECYCLE.md](EVIDENCE_LIFECYCLE.md) |
 | `AWQ-CONTRACT-EVIDENCE-V1` | 1 | `json-schema` | `schemas/evidence.schema.json` | `awq.tests.commands_cli.CommandTests` | [docs/QUALITY.md](QUALITY.md) |
