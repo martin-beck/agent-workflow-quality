@@ -71,6 +71,58 @@ def append_contract() -> tuple[dict[str, Any], str]:
 
 
 class EvidenceLifecycleTests(unittest.TestCase):
+    def test_v2_separates_checkpoint_ancestry_and_rollback_outcomes(self) -> None:
+        value = contract()
+        value["schema_version"] = 2
+        checkpoint = {
+            "id": "CHECKPOINT-BASE",
+            "parent_sha256": None,
+            "checkpoint_sha256": "b" * 64,
+            "source_revision": value["source_revision"],
+            "created_at": "2026-09-10T00:30:00Z",
+        }
+        value["checkpoints"] = [checkpoint]
+        value["rollback_outcomes"] = [{
+            "id": "ROLLBACK-BASE",
+            "checkpoint_sha256": checkpoint["checkpoint_sha256"],
+            "source_revision": value["source_revision"],
+            "requested_at": "2026-09-10T00:31:00Z",
+            "completed_at": "2026-09-10T00:32:00Z",
+            "rollback_status": "applied",
+            "reason": "operator requested recovery",
+        }]
+        validate(value, "evidence-lifecycle.schema.json")
+        result = evaluate(value)
+        self.assertEqual({"records": 1, "head_sha256": "b" * 64}, result["checkpoints"])
+        self.assertEqual(1, result["rollback"]["records"])
+        self.assertEqual(1, result["rollback"]["statuses"]["applied"])
+        self.assertEqual("pass", result["quality_status"])
+
+    def test_v2_rejects_noncanonical_checkpoint_or_unbound_rollback(self) -> None:
+        value = contract()
+        value.update({"schema_version": 2, "checkpoints": [], "rollback_outcomes": []})
+        value["checkpoints"] = [{
+            "id": "CHECKPOINT-BASE",
+            "parent_sha256": "a" * 64,
+            "checkpoint_sha256": "b" * 64,
+            "source_revision": value["source_revision"],
+            "created_at": "2026-09-10T00:30:00Z",
+        }]
+        with self.assertRaises(ProjectError):
+            evaluate(value)
+        value["checkpoints"][0]["parent_sha256"] = None
+        value["rollback_outcomes"] = [{
+            "id": "ROLLBACK-BASE",
+            "checkpoint_sha256": "c" * 64,
+            "source_revision": value["source_revision"],
+            "requested_at": "2026-09-10T00:31:00Z",
+            "completed_at": None,
+            "rollback_status": "requested",
+            "reason": "operator requested recovery",
+        }]
+        with self.assertRaises(ProjectError):
+            evaluate(value)
+
     def test_complete_contract_is_deterministic_and_non_authorizing(self) -> None:
         value = contract()
         validate(value, "evidence-lifecycle.schema.json")
