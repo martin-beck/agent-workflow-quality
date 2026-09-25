@@ -129,6 +129,12 @@ class EvidenceLifecycleTests(unittest.TestCase):
         with self.assertRaises(ProjectError):
             evaluate(value)
 
+    def test_v2_schema_requires_both_extension_sections(self) -> None:
+        value = contract()
+        value["schema_version"] = 2
+        with self.assertRaises(ValidationError):
+            validate(value, "evidence-lifecycle.schema.json")
+
     def test_complete_contract_is_deterministic_and_non_authorizing(self) -> None:
         value = contract()
         validate(value, "evidence-lifecycle.schema.json")

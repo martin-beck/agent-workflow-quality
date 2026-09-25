@@ -138,6 +138,12 @@
     "source_revision": {"$ref": "#/$defs/revision"}
   },
   "required": ["schema_version", "kind", "source_revision", "prior_lineage_head_sha256", "lineage_head_sha256", "lineage", "publications", "retention_policy", "inventory"],
+  "allOf": [
+    {
+      "if": {"properties": {"schema_version": {"const": 2}}},
+      "then": {"required": ["checkpoints", "rollback_outcomes"]}
+    }
+  ],
   "title": "Immutable evidence lineage, publication outcomes and retention planning",
   "type": "object"
 }
