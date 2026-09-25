@@ -1,463 +1,176 @@
 # Copyright (C) Huawei Technologies Co., Ltd. 2026. All rights reserved.
 # SPDX-License-Identifier: MIT
 
-"""Bounded, privacy-safe GitHub Actions trust-transition checks."""
+"""Offline trust-boundary validation for directive and rollback workflows."""
 
 from __future__ import annotations
 
-import json
 import re
-from pathlib import Path
+from datetime import datetime
 from typing import Any
 
-POLICY_PATH = Path("quality/workflow-trust.json")
-POLICY_KEYS = {
-    "schema_version",
-    "events",
-    "runners",
-    "protected_branches",
-    "publication_events",
-    "required_gate_workflows",
-    "publication_workflows",
-}
-EVENT_KEYS = {"untrusted", "environmental", "trusted", "prohibited"}
-RUNNER_KEYS = {"disposable", "trusted", "persistent"}
-KNOWN_EVENTS = {
-    "pull_request",
-    "pull_request_target",
-    "push",
-    "schedule",
-    "workflow_call",
-    "workflow_dispatch",
-}
-PATH_PATTERN = re.compile(r"^\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml$")
-SHA_EXPRESSION = "${{ github.event.pull_request.head.sha }}"
+from awq.release import ReleaseError
+
+REVISION = re.compile(r"^[0-9a-f]{40}$")
+HASH = re.compile(r"^[0-9a-f]{64}$")
+IDENTIFIER = re.compile(r"^[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){1,8}$")
+RUNNER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 
 
-class WorkflowTrustError(ValueError):
-    """The workflow trust policy is unavailable or invalid."""
-
-
-def _strict_object(raw: str) -> dict[str, Any]:
-    def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
-        value: dict[str, Any] = {}
-        for key, item in items:
-            if key in value:
-                raise WorkflowTrustError("workflow trust policy contains duplicate keys")
-            value[key] = item
-        return value
-
+def _timestamp(value: object) -> datetime:
+    if not isinstance(value, str) or not TIMESTAMP.fullmatch(value):
+        raise ReleaseError("workflow trust timestamp is invalid")
     try:
-        value = json.loads(
-            raw,
-            object_pairs_hook=pairs,
-            parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
-        )
-    except WorkflowTrustError:
-        raise
-    except (json.JSONDecodeError, ValueError) as error:
-        raise WorkflowTrustError("workflow trust policy is not strict JSON") from error
-    if not isinstance(value, dict):
-        raise WorkflowTrustError("workflow trust policy must be an object")
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ReleaseError("workflow trust timestamp is invalid") from error
+
+
+def _exact(value: object, fields: set[str]) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != fields:
+        raise ReleaseError("workflow trust fields are unknown or incomplete")
     return value
 
 
-def _strings(value: object, *, name: str, maximum: int = 32) -> list[str]:
-    if (
-        not isinstance(value, list)
-        or not value
-        or len(value) > maximum
-        or any(not isinstance(item, str) or not item or len(item) > 100 for item in value)
-        or len(set(value)) != len(value)
-    ):
-        raise WorkflowTrustError(f"{name} must be a bounded unique string list")
+def _id(value: object, prefix: str) -> str:
+    if not isinstance(value, str) or len(value) > 100 or not IDENTIFIER.fullmatch(value):
+        raise ReleaseError("workflow trust identifier is invalid")
+    if not value.startswith(prefix + "-"):
+        raise ReleaseError("workflow trust identifier prefix is invalid")
     return value
 
 
-def validate_policy(value: object) -> dict[str, Any]:  # noqa: C901
-    """Validate the closed policy shape and cross-field trust classes."""
-    if not isinstance(value, dict) or set(value) != POLICY_KEYS or value.get("schema_version") != 1:
-        raise WorkflowTrustError("workflow trust policy has unknown or missing fields")
-    events = value["events"]
-    runners = value["runners"]
-    if not isinstance(events, dict) or set(events) != EVENT_KEYS:
-        raise WorkflowTrustError("event trust classes are incomplete")
-    if not isinstance(runners, dict) or set(runners) != RUNNER_KEYS:
-        raise WorkflowTrustError("runner trust classes are incomplete")
-    event_sets = {key: set(_strings(events[key], name=f"events.{key}")) for key in EVENT_KEYS}
-    if set().union(*event_sets.values()) != KNOWN_EVENTS:
-        raise WorkflowTrustError("event trust classes must cover the supported event set exactly")
-    if sum(len(items) for items in event_sets.values()) != len(KNOWN_EVENTS):
-        raise WorkflowTrustError("event trust classes must not overlap")
-    runner_sets = {key: set(_strings(runners[key], name=f"runners.{key}")) for key in RUNNER_KEYS}
-    if any(
-        runner_sets[left] & runner_sets[right]
-        for left, right in (
-            ("disposable", "trusted"),
-            ("disposable", "persistent"),
-            ("trusted", "persistent"),
-        )
-    ):
-        raise WorkflowTrustError("runner trust classes must not overlap")
-    for field in ("protected_branches", "publication_events"):
-        _strings(value[field], name=field)
-    for field in ("required_gate_workflows", "publication_workflows"):
-        paths = _strings(value[field], name=field)
-        if any(not PATH_PATTERN.fullmatch(path) for path in paths):
-            raise WorkflowTrustError(f"{field} contains an unsafe workflow path")
-    if not set(value["publication_events"]) <= {"push-tags", "workflow_dispatch"}:
-        raise WorkflowTrustError("publication events contain an unsupported privilege boundary")
+def _revision(value: object) -> str:
+    if not isinstance(value, str) or not REVISION.fullmatch(value):
+        raise ReleaseError("workflow trust source revision is invalid")
     return value
 
 
-def load_policy(root: Path) -> dict[str, Any]:
-    path = root.resolve() / POLICY_PATH
-    try:
-        if path.resolve(strict=True) != path or not path.is_file():
-            raise WorkflowTrustError("workflow trust policy path is unsafe")
-        with path.open("rb") as stream:
-            encoded = stream.read(16385)
-        if len(encoded) > 16384:
-            raise WorkflowTrustError("workflow trust policy exceeds the byte limit")
-        raw = encoded.decode("utf-8")
-    except (OSError, UnicodeError) as error:
-        raise WorkflowTrustError("workflow trust policy is missing or unreadable") from error
-    return validate_policy(_strict_object(raw))
+def _hash(value: object, message: str) -> str:
+    if not isinstance(value, str) or not HASH.fullmatch(value):
+        raise ReleaseError(message)
+    return value
 
 
-def _events(text: str) -> set[str]:
-    lines = text.splitlines()
-    for index, line in enumerate(lines):
-        match = re.fullmatch(r'(?:"on"|on):\s*(.*)', line)
-        if not match:
-            continue
-        tail = match.group(1).strip()
-        if tail:
-            if tail.startswith("[") and tail.endswith("]"):
-                return {item.strip().strip("'\"") for item in tail[1:-1].split(",") if item.strip()}
-            return {tail.strip("'\"")}
-        found: set[str] = set()
-        for nested in lines[index + 1 :]:
-            if not nested.strip() or nested.lstrip().startswith("#"):
-                continue
-            if nested and not nested.startswith(" "):
-                break
-            event = re.match(r"^  ([a-z_]+):", nested)
-            if event:
-                found.add(event.group(1))
-        return found
-    return set()
+def _runner(value: object) -> str:
+    item = _exact(value, {"runner_id", "trust_class", "platform"})
+    runner_id = item["runner_id"]
+    if not isinstance(runner_id, str) or not RUNNER.fullmatch(runner_id):
+        raise ReleaseError("workflow trust runner identity is invalid")
+    if item["trust_class"] not in {"trusted-host", "ephemeral"}:
+        raise ReleaseError("workflow trust runner class is invalid")
+    if item["platform"] not in {"linux", "windows", "macos"}:
+        raise ReleaseError("workflow trust runner platform is invalid")
+    return runner_id
 
 
-def _jobs(text: str) -> list[str]:
-    match = re.search(r"(?m)^jobs:\s*$", text)
-    if not match:
-        return []
-    body = text[match.end() :]
-    starts = list(re.finditer(r"(?m)^  [A-Za-z0-9_-]+:\s*$", body))
-    return [
-        body[item.end() : starts[index + 1].start() if index + 1 < len(starts) else None]
-        for index, item in enumerate(starts)
-    ]
-
-
-def _runner_values(text: str, job: str) -> set[str] | None:
-    match = re.search(r"(?m)^    runs-on:\s*(.+?)\s*$", job)
-    if not match:
-        return None
-    value = match.group(1).strip().strip("'\"")
-    if value == "${{ matrix.os }}":
-        matrix = re.search(r"(?m)^        os:\s*\[([^]]+)\]", text)
-        if not matrix:
-            return set()
-        return {item.strip().strip("'\"") for item in matrix.group(1).split(",")}
-    if value.startswith("[") and value.endswith("]"):
-        return {item.strip().strip("'\"") for item in value[1:-1].split(",")}
-    if "${{" in value:
-        return set()
-    return {value}
-
-
-def _permission_writes(job: str) -> set[str]:
-    block = re.search(r"(?m)^    permissions:[ \t]*$((?:\n      [^\n]+)*)", job)
-    if not block:
-        return set()
+def validate_directive(value: object, as_of: str) -> dict[str, str]:
+    item = _exact(
+        value,
+        {
+            "schema_version",
+            "id",
+            "source_revision",
+            "request_id",
+            "actor",
+            "action",
+            "created_at",
+            "expires_at",
+            "runner",
+            "permission",
+            "payload_sha256",
+        },
+    )
+    if item["schema_version"] != 1:
+        raise ReleaseError("workflow trust directive version is invalid")
+    identifier = _id(item["id"], "DIRECTIVE")
+    _revision(item["source_revision"])
+    request_id = _id(item["request_id"], "REQUEST")
+    if item["actor"] not in {"human", "coordinator"} or item["action"] not in {
+        "intake",
+        "reopen",
+        "rollback",
+        "publish-review",
+    }:
+        raise ReleaseError("workflow trust directive authority is invalid")
+    created, expires, now = (
+        _timestamp(item["created_at"]),
+        _timestamp(item["expires_at"]),
+        _timestamp(as_of),
+    )
+    if created > expires or expires <= now:
+        raise ReleaseError("workflow trust directive is expired")
+    runner_id = _runner(item["runner"])
+    if item["permission"] not in {"review", "approve", "execute"}:
+        raise ReleaseError("workflow trust directive permission is invalid")
+    _hash(item["payload_sha256"], "workflow trust directive payload digest is invalid")
     return {
-        match.group(1)
-        for match in re.finditer(r"(?m)^      ([a-z-]+):\s*write\s*$", block.group(1))
+        "id": identifier,
+        "request_id": request_id,
+        "runner_id": runner_id,
+        "action": item["action"],
     }
 
 
-def _permissions_invalid(job: str) -> bool:
-    inline = re.search(r"(?m)^    permissions:[ \t]*(\S[^\n]*)?$", job)
-    if inline and inline.group(1) and inline.group(1).strip() != "{}":
-        return True
-    block = re.search(r"(?m)^    permissions:[ \t]*$((?:\n      [^\n]+)*)", job)
-    if not block:
-        return False
-    lines = [line for line in block.group(1).splitlines() if line.strip()]
-    if not lines:
-        return True
-    entries = re.findall(r"(?m)^      ([a-z-]+):\s*([a-z-]+)\s*$", block.group(1))
-    allowed = {"actions", "attestations", "checks", "contents", "id-token", "packages"}
-    return any(
-        key not in allowed or value not in {"none", "read", "write"} for key, value in entries
-    ) or len(entries) != len(lines)
-
-
-def _top_permissions_invalid(text: str) -> bool:
-    declaration = re.search(r"(?m)^permissions:[ \t]*(\S[^\n]*)?$", text)
-    if not declaration:
-        return True
-    if declaration.group(1):
-        return declaration.group(1).strip() != "{}"
-    block = re.search(r"(?m)^permissions:[ \t]*$((?:\n  [^\n]+)*)", text)
-    if not block:
-        return True
-    lines = [line for line in block.group(1).splitlines() if line.strip()]
-    entries = re.findall(r"(?m)^  ([a-z-]+):\s*([a-z-]+)\s*$", block.group(1))
-    return not lines or len(entries) != len(lines) or entries != [("contents", "read")]
-
-
-def _checkout_blocks(job: str) -> list[str]:
-    starts = list(re.finditer(r"(?m)^      - uses: actions/checkout@[^\s]+\s*$", job))
-    blocks: list[str] = []
-    for index, item in enumerate(starts):
-        end = starts[index + 1].start() if index + 1 < len(starts) else len(job)
-        next_step = re.search(r"(?m)^      - ", job[item.end() : end])
-        if next_step:
-            end = item.end() + next_step.start()
-        blocks.append(job[item.start() : end])
-    return blocks
-
-
-def _pinned_checkout(block: str) -> bool:
-    return bool(re.search(r"(?m)^      - uses: actions/checkout@[0-9a-f]{40}\s*$", block))
-
-
-def _run_content(text: str) -> str:
-    """Return only command-bearing scalar and block lines."""
-    lines = text.splitlines()
-    selected: list[str] = []
-    block_indent: int | None = None
-    for line in lines:
-        indent = len(line) - len(line.lstrip(" "))
-        if block_indent is not None:
-            if line.strip() and indent <= block_indent:
-                block_indent = None
-            else:
-                selected.append(line)
-                continue
-        match = re.match(r"^\s*(?:-\s+)?run:\s*(.*)$", line)
-        if match:
-            selected.append(match.group(1))
-            if match.group(1).strip() in {"|", ">", "|-", ">-"}:
-                block_indent = indent
-    return "\n".join(selected)
-
-
-def _finding(code: str, message: str) -> tuple[str, str]:
-    return code, message
-
-
-def evaluate_workflow(  # noqa: C901
-    relative: str, text: str, policy: dict[str, Any]
-) -> list[tuple[str, str]]:
-    """Return content-minimized trust findings for one bounded workflow."""
-    if len(text.encode()) > 262144:
-        return [_finding("workflow-size-limit", "workflow exceeds the bounded inspection limit")]
-    if re.search(r"(?m)(?:^|\s)[&*!][A-Za-z_]", text):
-        return [
-            _finding("unsupported-workflow-syntax", "workflow uses unsupported YAML indirection")
-        ]
-    if any(
-        len(re.findall(pattern, text)) != 1
-        for pattern in (r'(?m)^(?:"on"|on):', r"(?m)^permissions:", r"(?m)^jobs:")
+def validate_rollback(value: object, as_of: str) -> dict[str, str]:
+    item = _exact(
+        value,
+        {
+            "schema_version",
+            "id",
+            "source_revision",
+            "checkpoint_sha256",
+            "requested_by",
+            "permission",
+            "publication_state",
+            "runner",
+            "created_at",
+        },
+    )
+    if item["schema_version"] != 1:
+        raise ReleaseError("workflow trust rollback version is invalid")
+    identifier = _id(item["id"], "ROLLBACK")
+    _revision(item["source_revision"])
+    if not isinstance(item["requested_by"], str) or not re.fullmatch(
+        r"[A-Za-z0-9_.@+-]{1,128}", item["requested_by"]
     ):
-        return [
-            _finding(
-                "unsupported-workflow-syntax",
-                "workflow has missing or duplicate trust-critical declarations",
-            )
-        ]
-    findings: list[tuple[str, str]] = []
-    events = _events(text)
-    classified = {event: key for key, values in policy["events"].items() for event in values}
-    unknown = events - set(classified)
-    if not events or unknown:
-        findings.append(
-            _finding("unsupported-workflow-event", "workflow event is missing or unsupported")
-        )
-    if events & set(policy["events"]["prohibited"]):
-        findings.append(
-            _finding("prohibited-trust-event", "workflow crosses a prohibited event trust boundary")
-        )
-    is_untrusted = bool(events & set(policy["events"]["untrusted"]))
-    push_tags = bool(re.search(r"(?m)^    tags:\s*(?:\[|$)", text))
-    publication_event = (
-        "push" in events and push_tags and "push-tags" in policy["publication_events"]
-    ) or ("workflow_dispatch" in events and "workflow_dispatch" in policy["publication_events"])
-    publication_workflow = relative in policy["publication_workflows"]
-    required_gate = relative in policy["required_gate_workflows"]
-    if "push" in events and not push_tags:
-        branch_match = re.search(r"(?m)^    branches:\s*\[([^]]+)\]", text)
-        branches = (
-            {item.strip().strip("'\"") for item in branch_match.group(1).split(",")}
-            if branch_match
-            else set()
-        )
-        if not branches or not branches <= set(policy["protected_branches"]):
-            findings.append(
-                _finding(
-                    "unprotected-push",
-                    "trusted push workflow is not restricted to policy-owned protected branches",
-                )
-            )
-    if re.search(r"(?m)^\s*continue-on-error:\s*true\s*$", text):
-        findings.append(
-            _finding("required-gate-fail-open", "required workflow execution can fail open")
-        )
-    if re.search(
-        r"(?m)^\s*(?:container:\s*[^\s{]|image:\s*)[^\n]*?(?<!@sha256:[0-9a-f]{64})\s*$", text
+        raise ReleaseError("workflow trust rollback requester is invalid")
+    if item["permission"] != "operator-approved" or item["publication_state"] not in {
+        "not-requested",
+        "review-only",
+    }:
+        raise ReleaseError("workflow trust rollback permission or publication is invalid")
+    runner_id = _runner(item["runner"])
+    created = _timestamp(item["created_at"])
+    if created > _timestamp(as_of):
+        raise ReleaseError("workflow trust rollback timestamp is invalid")
+    _hash(item["checkpoint_sha256"], "workflow trust checkpoint digest is invalid")
+    return {
+        "id": identifier,
+        "runner_id": runner_id,
+        "publication_state": item["publication_state"],
+    }
+
+
+def evaluate(value: object, as_of: str) -> dict[str, Any]:
+    item = _exact(value, {"schema_version", "directives", "rollbacks"})
+    if (
+        item["schema_version"] != 1
+        or not isinstance(item["directives"], list)
+        or not isinstance(item["rollbacks"], list)
     ):
-        findings.append(
-            _finding("mutable-container-image", "container image is not pinned by SHA-256 digest")
-        )
-    expressions = re.findall(r"\$\{\{\s*([^}]+?)\s*}}", _run_content(text))
-    if any(
-        re.search(
-            r"(?:github\.event\.(?!pull_request\.(?:base|head)\.sha)|github\.head_ref|inputs\.|secrets\.)",
-            expression,
-        )
-        for expression in expressions
-    ):
-        findings.append(
-            _finding(
-                "caller-controlled-expression",
-                "workflow uses caller-controlled data across a command or privilege boundary",
-            )
-        )
-    if is_untrusted and re.search(r"\$\{\{\s*secrets\.", text):
-        findings.append(
-            _finding(
-                "secret-exposure",
-                "untrusted event references a secret-bearing expression",
-            )
-        )
-    jobs = _jobs(text)
-    if not jobs:
-        findings.append(
-            _finding("unsupported-workflow-jobs", "workflow has no statically inspectable jobs")
-        )
-    disposable = set(policy["runners"]["disposable"])
-    trusted = set(policy["runners"]["trusted"]) | set(policy["runners"]["persistent"])
-    for job in jobs:
-        if (
-            len(re.findall(r"(?m)^    runs-on:", job)) != 1
-            or len(re.findall(r"(?m)^    permissions:", job)) > 1
-        ):
-            findings.append(
-                _finding(
-                    "unsupported-workflow-syntax",
-                    "job has missing or duplicate trust-critical declarations",
-                )
-            )
-        runners = _runner_values(text, job)
-        if runners is None or not runners or not runners <= disposable | trusted:
-            findings.append(
-                _finding(
-                    "unknown-runner-class", "job runner cannot be mapped to a declared trust class"
-                )
-            )
-            continue
-        privileged = _permission_writes(job)
-        if _permissions_invalid(job):
-            findings.append(
-                _finding(
-                    "widened-job-permissions",
-                    "job permissions are dynamic, unsupported, or wider than the reviewed set",
-                )
-            )
-        if is_untrusted and runners & trusted:
-            findings.append(
-                _finding(
-                    "untrusted-code-trusted-runner",
-                    "unreviewed event code targets trusted or persistent capacity",
-                )
-            )
-        manual_guard = re.search(
-            r"(?m)^    if:\s*github\.ref\s*==\s*['\"]refs/heads/([A-Za-z0-9_.-]+)['\"]\s*$",
-            job,
-        )
-        if (
-            "workflow_dispatch" in events
-            and runners & trusted
-            and (not manual_guard or manual_guard.group(1) not in policy["protected_branches"])
-        ):
-            findings.append(
-                _finding(
-                    "unguarded-manual-trusted-runner",
-                    "manual trusted-runner job lacks a static protected-ref guard",
-                )
-            )
-        if privileged and not (publication_workflow and publication_event and not is_untrusted):
-            findings.append(
-                _finding(
-                    "privilege-boundary",
-                    "write permission is outside a policy-owned publication boundary",
-                )
-            )
-        if (privileged or runners & trusted) and re.search(
-            r"\$\{\{\s*(?:inputs\.|github\.event\.inputs)", job
-        ):
-            findings.append(
-                _finding(
-                    "caller-controlled-privilege",
-                    "caller-controlled input reaches a privileged job",
-                )
-            )
-        checkouts = _checkout_blocks(job)
-        if required_gate and len(checkouts) != 1:
-            findings.append(
-                _finding(
-                    "required-gate-checkout",
-                    "required-gate candidate evidence requires exactly one "
-                    "statically inspectable checkout",
-                )
-            )
-        if required_gate and len(checkouts) == 1 and not _pinned_checkout(checkouts[0]):
-            findings.append(
-                _finding(
-                    "required-gate-checkout",
-                    "required-gate candidate evidence requires exactly one "
-                    "statically inspectable checkout",
-                )
-            )
-        for checkout in checkouts:
-            if not re.search(r"(?m)^\s+persist-credentials:\s*false\s*$", checkout):
-                findings.append(
-                    _finding(
-                        "checkout-credentials", "checkout credentials are not explicitly disabled"
-                    )
-                )
-            if required_gate and not re.search(
-                rf"(?m)^\s+ref:\s*{re.escape(SHA_EXPRESSION)}\s*$", checkout
-            ):
-                findings.append(
-                    _finding(
-                        "checkout-not-exact-head",
-                        "candidate evidence checkout is not bound to the pull-request head SHA",
-                    )
-                )
-    if not re.search(r"(?m)^permissions:", text):
-        findings.append(
-            _finding("missing-permissions", "workflow lacks top-level explicit permissions")
-        )
-    elif _top_permissions_invalid(text):
-        findings.append(
-            _finding(
-                "widened-workflow-permissions",
-                "top-level workflow permissions are missing, unsupported, or exceed contents read",
-            )
-        )
-    return sorted(set(findings))
+        raise ReleaseError("workflow trust document is invalid")
+    directives = [validate_directive(entry, as_of) for entry in item["directives"]]
+    rollbacks = [validate_rollback(entry, as_of) for entry in item["rollbacks"]]
+    if len({entry["id"] for entry in directives}) != len(directives) or len(
+        {entry["id"] for entry in rollbacks}
+    ) != len(rollbacks):
+        raise ReleaseError("workflow trust identifiers are reused")
+    return {
+        "schema_version": 1,
+        "directive_ids": sorted(entry["id"] for entry in directives),
+        "rollback_ids": sorted(entry["id"] for entry in rollbacks),
+        "trusted_runner_count": len({entry["runner_id"] for entry in directives + rollbacks}),
+        "publication_authorized": False,
+    }
