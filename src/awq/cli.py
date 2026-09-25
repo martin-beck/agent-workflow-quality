@@ -20,6 +20,7 @@ from awq import (
     assurance_plan,
     commands,
     contracts,
+    coverage,
     discussion_batch,
     discussion_persistence,
     discussion_reconciliation,
@@ -160,6 +161,9 @@ def parser() -> argparse.ArgumentParser:
     item.add_argument("--as-of", required=True)
     item.add_argument("--trusted-prior-head", required=True)
     _format_argument(item)
+    item = sub.add_parser("coverage")
+    item.add_argument("records", default="quality/evidence-coverage.json", nargs="?")
+    _format_argument(item)
     item = sub.add_parser("structural-refactor-verify")
     item.add_argument("contract")
     _format_argument(item)
@@ -235,6 +239,7 @@ def _dispatch(args: argparse.Namespace, root: Path) -> dict[str, Any]:
         "evidence-lifecycle-evaluate": lambda: evidence_lifecycle.evaluate_file(
             root, args.contract, args.as_of, args.trusted_prior_head
         ),
+        "coverage": lambda: coverage.evaluate(root, args.records),
         "structural-refactor-verify": lambda: structural_refactoring.evaluate_file(
             root, args.contract
         ),

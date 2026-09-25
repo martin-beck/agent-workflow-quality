@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "records": [
+    {"task_id": "AR-1001", "role": "gate-evidence", "requirement": "AWQ-CORE-001", "status": "pass", "evidence_class": "mechanical"},
+    {"task_id": "AR-1001", "role": "publication", "requirement": "AWQ-DOC-001", "status": "missing", "evidence_class": "contract-test"},
+    {"task_id": "AR-1002", "role": "diagnostic", "requirement": "AWQ-CORE-002", "status": "unavailable", "evidence_class": "environmental"}
+  ]
+}
