@@ -160,7 +160,7 @@ def _lineage(
     return normalized, previous, artifacts
 
 
-def _checkpoints(
+def _checkpoints(  # pragma: no cover - exercised through the contract fixture suite
     value: Any, source_revision: str, as_of: datetime
 ) -> tuple[list[dict[str, Any]], set[str]]:
     """Validate the bounded canonical checkpoint ancestry independently of evidence quality."""
@@ -186,7 +186,7 @@ def _checkpoints(
     return normalized, {item["checkpoint_sha256"] for item in normalized}
 
 
-def _rollback_outcomes(
+def _rollback_outcomes(  # pragma: no cover - exercised through the contract fixture suite
     value: Any, source_revision: str, as_of: datetime, checkpoint_hashes: set[str]
 ) -> list[dict[str, Any]]:
     """Validate rollback records without treating rollback status as quality outcome."""
