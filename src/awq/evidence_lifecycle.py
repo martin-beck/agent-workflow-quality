@@ -160,7 +160,9 @@ def _lineage(
     return normalized, previous, artifacts
 
 
-def _checkpoints(value: Any, source_revision: str, as_of: datetime) -> tuple[list[dict[str, Any]], set[str]]:
+def _checkpoints(
+    value: Any, source_revision: str, as_of: datetime
+) -> tuple[list[dict[str, Any]], set[str]]:
     """Validate the bounded canonical checkpoint ancestry independently of evidence quality."""
     if not isinstance(value, list) or len(value) > 64:
         _fail("checkpoint-bound")
@@ -203,15 +205,22 @@ def _rollback_outcomes(
         checkpoint = _hash(item["checkpoint_sha256"])
         if checkpoint not in checkpoint_hashes:
             _fail("rollback-checkpoint")
-        if item["source_revision"] != source_revision or item["rollback_status"] not in CHECKPOINT_STATUS:
+        if (
+            item["source_revision"] != source_revision
+            or item["rollback_status"] not in CHECKPOINT_STATUS
+        ):
             _fail("rollback-contract")
         requested = timestamp(item["requested_at"])
         completed = None if item["completed_at"] is None else timestamp(item["completed_at"])
-        if requested > as_of or (completed is not None and (completed < requested or completed > as_of)):
+        if requested > as_of or (
+            completed is not None and (completed < requested or completed > as_of)
+        ):
             _fail("rollback-chronology")
         reason = item["reason"]
-        if not isinstance(reason, str) or not 1 <= len(reason) <= 240 or not re.fullmatch(
-            r"[A-Za-z0-9][A-Za-z0-9 .,;:_/-]{0,239}", reason
+        if (
+            not isinstance(reason, str)
+            or not 1 <= len(reason) <= 240
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 .,;:_/-]{0,239}", reason)
         ):
             _fail("rollback-reason")
         seen.add(identifier)
@@ -438,11 +447,22 @@ def evaluate(
     trusted_prior_head: object = _MISSING,
 ) -> dict[str, Any]:
     base_fields = {
-        "schema_version", "kind", "source_revision", "prior_lineage_head_sha256",
-        "lineage_head_sha256", "lineage", "publications", "retention_policy", "inventory",
+        "schema_version",
+        "kind",
+        "source_revision",
+        "prior_lineage_head_sha256",
+        "lineage_head_sha256",
+        "lineage",
+        "publications",
+        "retention_policy",
+        "inventory",
     }
     optional_fields = {"checkpoints", "rollback_outcomes"}
-    if not isinstance(value, dict) or set(value) - base_fields - optional_fields or not base_fields <= set(value):
+    if (
+        not isinstance(value, dict)
+        or set(value) - base_fields - optional_fields
+        or not base_fields <= set(value)
+    ):
         _fail("fields")
     item = cast(dict[str, Any], value)
     if (
