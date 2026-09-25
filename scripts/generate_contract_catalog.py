@@ -24,6 +24,13 @@ RELEASE_VERSION = re.compile(r"^(0|[1-9][0-9]{0,3})\.(0|[1-9][0-9]{0,3})\.(0|[1-
 
 # module, class, positive case, hostile case, documentation
 FAMILIES: dict[str, tuple[str, str, str, str, str]] = {
+    "evidence-coverage": (
+        "coverage",
+        "CoverageTests",
+        "test_coverage_is_deterministic_and_content_minimized",
+        "test_coverage_rejects_unlocked_roles_and_duplicate_identity",
+        "docs/EVIDENCE_COVERAGE.md",
+    ),
     "workflow-claims": (
         "workflow_claims",
         "WorkflowClaimsTests",
