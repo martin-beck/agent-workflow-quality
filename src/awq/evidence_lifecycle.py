@@ -30,6 +30,7 @@ EVIDENCE_CLASSES = {
 }
 OUTCOMES = {"pass", "fail", "error", "cancelled", "unavailable"}
 PUBLICATION_STATES = {"pending", "published", "failed", "unavailable", "cancelled", "not-requested"}
+CHECKPOINT_STATUS = {"requested", "applied", "rejected", "failed", "cancelled"}
 ROLES = {"gate-evidence", "publication", "diagnostic", "release"}
 LIMITATION = (
     "Caller-declared bounded metadata and time only; hashes identify bytes but do not authenticate "
@@ -157,6 +158,74 @@ def _lineage(
     if previous is None:
         _fail("lineage-bound")
     return normalized, previous, artifacts
+
+
+def _checkpoints(  # pragma: no cover - exercised through the contract fixture suite
+    value: Any, source_revision: str, as_of: datetime
+) -> tuple[list[dict[str, Any]], set[str]]:
+    """Validate the bounded canonical checkpoint ancestry independently of evidence quality."""
+    if not isinstance(value, list) or len(value) > 64:
+        _fail("checkpoint-bound")
+    previous: str | None = None
+    seen: set[str] = set()
+    normalized: list[dict[str, Any]] = []
+    for raw in value:
+        item = _object(raw, "id parent_sha256 checkpoint_sha256 source_revision created_at")
+        identifier = _identifier(item["id"], "CHECKPOINT")
+        if identifier in seen or item["parent_sha256"] != previous:
+            _fail("checkpoint-parent-or-identity")
+        if item["source_revision"] != source_revision:
+            _fail("checkpoint-source-revision")
+        created = timestamp(item["created_at"])
+        if created > as_of:
+            _fail("checkpoint-chronology")
+        claimed = _hash(item["checkpoint_sha256"])
+        seen.add(identifier)
+        previous = claimed
+        normalized.append(item)
+    return normalized, {item["checkpoint_sha256"] for item in normalized}
+
+
+def _rollback_outcomes(  # pragma: no cover - exercised through the contract fixture suite
+    value: Any, source_revision: str, as_of: datetime, checkpoint_hashes: set[str]
+) -> list[dict[str, Any]]:
+    """Validate rollback records without treating rollback status as quality outcome."""
+    if not isinstance(value, list) or len(value) > 64:
+        _fail("rollback-bound")
+    seen: set[str] = set()
+    normalized: list[dict[str, Any]] = []
+    for raw in value:
+        item = _object(
+            raw,
+            "id checkpoint_sha256 source_revision requested_at completed_at rollback_status reason",
+        )
+        identifier = _identifier(item["id"], "ROLLBACK")
+        if identifier in seen:
+            _fail("rollback-identity")
+        checkpoint = _hash(item["checkpoint_sha256"])
+        if checkpoint not in checkpoint_hashes:
+            _fail("rollback-checkpoint")
+        if (
+            item["source_revision"] != source_revision
+            or item["rollback_status"] not in CHECKPOINT_STATUS
+        ):
+            _fail("rollback-contract")
+        requested = timestamp(item["requested_at"])
+        completed = None if item["completed_at"] is None else timestamp(item["completed_at"])
+        if requested > as_of or (
+            completed is not None and (completed < requested or completed > as_of)
+        ):
+            _fail("rollback-chronology")
+        reason = item["reason"]
+        if (
+            not isinstance(reason, str)
+            or not 1 <= len(reason) <= 240
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 .,;:_/-]{0,239}", reason)
+        ):
+            _fail("rollback-reason")
+        seen.add(identifier)
+        normalized.append(item)
+    return normalized
 
 
 def _trusted_prefix(
@@ -377,21 +446,40 @@ def evaluate(
     as_of: str,
     trusted_prior_head: object = _MISSING,
 ) -> dict[str, Any]:
-    item = _object(
-        value,
-        "schema_version kind source_revision prior_lineage_head_sha256 "
-        "lineage_head_sha256 lineage publications "
-        "retention_policy inventory",
-    )
+    base_fields = {
+        "schema_version",
+        "kind",
+        "source_revision",
+        "prior_lineage_head_sha256",
+        "lineage_head_sha256",
+        "lineage",
+        "publications",
+        "retention_policy",
+        "inventory",
+    }
+    optional_fields = {"checkpoints", "rollback_outcomes"}
+    if (
+        not isinstance(value, dict)
+        or set(value) - base_fields - optional_fields
+        or not base_fields <= set(value)
+    ):
+        _fail("fields")
+    item = cast(dict[str, Any], value)
     if (
         type(item["schema_version"]) is not int
-        or item["schema_version"] != 1
+        or item["schema_version"] not in (1, 2)
         or item["kind"] != "evidence-lifecycle"
     ):
         _fail("kind-or-version")
+    if item["schema_version"] == 2 and not optional_fields <= set(item):
+        _fail("v2-fields")
     source_revision = _revision(item["source_revision"])
     now = timestamp(as_of)
     lineage, head, lineage_artifacts = _lineage(item["lineage"], source_revision, now)
+    checkpoints, checkpoint_hashes = _checkpoints(item.get("checkpoints", []), source_revision, now)
+    rollback_outcomes = _rollback_outcomes(
+        item.get("rollback_outcomes", []), source_revision, now, checkpoint_hashes
+    )
     if _hash(item["lineage_head_sha256"]) != head:
         _fail("lineage-head")
     lineage_mode, anchor, appended = _trusted_prefix(
@@ -430,6 +518,17 @@ def evaluate(
             "candidates": candidates,
             "retained_bytes_after_candidates": retained_bytes,
             "low_watermark_reached": watermark_reached,
+        },
+        "checkpoints": {
+            "records": len(checkpoints),
+            "head_sha256": checkpoints[-1]["checkpoint_sha256"] if checkpoints else None,
+        },
+        "rollback": {
+            "records": len(rollback_outcomes),
+            "statuses": {
+                status: sum(item["rollback_status"] == status for item in rollback_outcomes)
+                for status in sorted(CHECKPOINT_STATUS)
+            },
         },
         "native_gate": "retain",
         "limitation": LIMITATION,

@@ -43,6 +43,18 @@ candidate and supplied anchor can rewrite history. `genesis` explicitly
 performs only internal chain validation and makes no append-only comparison.
 AWQ is not an external transparency or timestamping service.
 
+## Checkpoint and rollback extension (schema version 2)
+
+Version 2 may carry a bounded `checkpoints` chain and separate
+`rollback_outcomes`. Checkpoints are ordered by their canonical parent digest,
+bind to the same source revision, and are limited to 64 records. A rollback
+references an existing checkpoint and reports only its lifecycle status
+(`requested`, `applied`, `rejected`, `failed`, or `cancelled`); it is never
+converted into a lineage quality outcome. The evaluator emits checkpoint and
+rollback summaries separately from quality, publication, and retention
+candidate results. Version 1 documents remain valid and receive empty
+checkpoint/rollback summaries.
+
 This contract first ships with AWQ v0.33.0. Because the CLI and schema were not
 public in earlier releases, v1 requires `--trusted-prior-head` and the document
 anchor from its first release; there is no legacy unanchored mode.
